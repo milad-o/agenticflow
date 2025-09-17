@@ -16,7 +16,8 @@
 ⚙️ **Task Orchestration** - DAG workflows with parallel execution and retry logic  
 🧠 **Advanced Memory** - Vector stores, semantic search, cross-session persistence  
 🛠️ **Comprehensive Tooling** - LLM providers, MCP integration, custom tools  
-🔧 **Production Ready** - Type-safe config, async-native, enterprise-grade  
+📊 **Rich Visualizations** - Modern Mermaid diagrams with v11.3.0+ syntax, themes, frontmatter  
+🔧 **Production Ready** - Type-safe config, async-native, enterprise-grade
 
 ## 🚀 Quick Start
 
@@ -96,6 +97,12 @@ uv run python examples/memory/vector_store_memory_demo.py
 uv run python examples/mcp/mcp_integration_example.py
 ```
 
+### 📊 **Workflow Visualization**
+```bash
+# Modern Mermaid diagrams with v11.3.0+ features
+uv run python examples/visualization/test_modern_mermaid_features.py
+```
+
 ## 📚 Documentation
 
 | **Getting Started** | **Core Features** | **Advanced** |
@@ -113,6 +120,7 @@ agenticflow/
 ├── 🧠 Advanced memory systems (Buffer, SQLite, PostgreSQL, Vector)
 ├── 🔗 Tool integration (LangChain, custom functions, MCP servers)
 ├── ⚙️ LLM providers (OpenAI, Groq, Ollama, Azure)
+├── 🗺️ Rich visualizations (Mermaid v11.3.0+, themes, frontmatter)
 ├── 📈 Real-time monitoring and performance tracking
 ├── 🧪 100+ comprehensive examples and demos
 └── 🏭 Production-ready business systems

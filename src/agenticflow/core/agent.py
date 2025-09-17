@@ -26,6 +26,7 @@ from ..memory import AsyncMemory, MemoryFactory
 from ..tools.base_tool import AsyncTool, ToolRegistry, ToolResult, get_tool_registry
 from ..orchestration import ToolSelector, RuleBasedToolSelector, ParameterExtractor
 from ..mcp.manager import MCPServerManager
+from ..visualization.mixins import AgentVisualizationMixin
 
 logger = structlog.get_logger(__name__)
 
@@ -69,7 +70,7 @@ class AgentState:
         }
 
 
-class Agent:
+class Agent(AgentVisualizationMixin):
     """Base Agent class with async functionality and tool integration."""
     
     def __init__(self, config: AgentConfig) -> None:

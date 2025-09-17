@@ -21,6 +21,7 @@ from .topologies import (
     HierarchicalTopology, PipelineTopology, CustomTopology,
     TopologyType, create_topology
 )
+from ..visualization.mixins import MultiAgentSystemVisualizationMixin
 
 logger = structlog.get_logger(__name__)
 
@@ -35,7 +36,7 @@ class AgentRegistrationError(MultiAgentSystemError):
     pass
 
 
-class MultiAgentSystem:
+class MultiAgentSystem(MultiAgentSystemVisualizationMixin):
     """Multi-agent system with star topology and supervisor coordination."""
     
     def __init__(

@@ -17,6 +17,7 @@ from .task_management import (
     FunctionTaskExecutor, ErrorCategory, RetryPolicy
 )
 from .task_dag import TaskDAG, CyclicDependencyError
+from ..visualization.mixins import WorkflowVisualizationMixin
 
 logger = structlog.get_logger(__name__)
 
@@ -97,7 +98,7 @@ class WorkflowStatus:
         }
 
 
-class TaskOrchestrator:
+class TaskOrchestrator(WorkflowVisualizationMixin):
     """
     Orchestrates complex workflows with sophisticated task management.
     

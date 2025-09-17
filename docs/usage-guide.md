@@ -190,6 +190,46 @@ print(result['response'])
 await system.stop()
 ```
 
+## 📊 Workflow Visualization
+
+**Visualize your agents and workflows with modern diagrams:**
+
+```python
+# Visualize any agent directly
+agent.visualize()  # Opens diagram in browser
+agent.show()       # Shows in Jupyter notebook
+
+# Visualize multi-agent systems
+system.visualize(title="Content Creation Pipeline")
+
+# Create custom workflow diagrams
+from agenticflow.visualization.mermaid_generator import (
+    MermaidGenerator, NodeShape, MermaidTheme, ThemeVariables
+)
+
+generator = MermaidGenerator(use_modern_syntax=True)
+generator.set_title("AI Processing Pipeline")
+generator.set_theme(MermaidTheme.BASE, ThemeVariables(primary_color="#2563eb"))
+
+# Modern node shapes (v11.3.0+)
+generator.add_node("input", "Data Input", NodeShape.EVENT)
+generator.add_node("process", "AI Processing", NodeShape.PROCESS)
+generator.add_node("db", "Store Results", NodeShape.DATABASE)
+generator.add_node("output", "Deliver Response", NodeShape.TERMINAL)
+
+generator.add_edge("input", "process", "Raw Data")
+generator.add_edge("process", "db", "Processed Data")
+generator.add_edge("db", "output", "Final Result")
+
+print(generator.generate())  # Mermaid diagram with frontmatter
+```
+
+**See it in action:**
+```bash
+# Modern Mermaid features showcase
+uv run python examples/visualization/test_modern_mermaid_features.py
+```
+
 ## 📊 Task Orchestration
 
 **Manage complex workflows with dependencies:**
