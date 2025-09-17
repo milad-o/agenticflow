@@ -76,6 +76,15 @@ docs = [
     "mkdocs-material>=9.4.0",
     "mkdocstrings[python]>=0.24.0",
 ]
+memory = [
+    # SQLite async support
+    "aiosqlite>=0.19.0",
+    # PostgreSQL async support  
+    "asyncpg>=0.28.0",
+]
+memory-all = [
+    "agenticflow[memory]",
+]
 
 [project.scripts]
 agenticflow = "agenticflow.cli:main"

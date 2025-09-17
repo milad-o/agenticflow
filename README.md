@@ -554,6 +554,216 @@ All MCP components have been thoroughly tested and validated:
 
 ---
 
+## 🧠 Memory Backends
+
+AgenticFlow supports multiple memory backends for different use cases, from ephemeral in-memory storage to persistent database-backed memory with cross-session support.
+
+### Memory Backend Types
+
+#### 🟢 Buffer Memory (Ephemeral)
+Fast in-memory storage for temporary conversations:
+
+```python
+from agenticflow import Agent, AgentConfig
+from agenticflow.config.settings import MemoryConfig
+
+# Ephemeral buffer memory
+config = AgentConfig(
+    name="chat_agent",
+    llm=LLMProviderConfig(provider=LLMProvider.OLLAMA, model="granite3.2:8b"),
+    memory=MemoryConfig(
+        type="buffer",
+        max_messages=100  # Keep last 100 messages
+    )
+)
+
+agent = Agent(config)
+```
+
+**Features:**
+- ⚡ Fastest access (in-memory)
+- 🔄 Lost on agent restart  
+- 💾 Automatic message trimming
+- 🎯 Best for: Chat sessions, temporary context
+
+#### 🔵 SQLite Memory (Persistent)
+Local database storage with session management:
+
+```python
+# Persistent SQLite memory
+config = AgentConfig(
+    name="assistant_agent",
+    llm=LLMProviderConfig(provider=LLMProvider.OLLAMA, model="granite3.2:8b"),
+    memory=MemoryConfig(
+        type="sqlite",
+        connection_params={"database": "agent_memory.db"},
+        max_messages=1000
+    )
+)
+```
+
+**Features:**
+- 💾 Survives agent restarts
+- 🗂️ Multi-session support
+- 🔍 Full-text search capability
+- 📊 Session statistics and management
+- 🎯 Best for: Personal assistants, customer history
+
+#### 🟣 PostgreSQL Memory (Enterprise)
+Scalable database storage for production systems:
+
+```python
+# PostgreSQL memory backend
+config = AgentConfig(
+    name="enterprise_agent",
+    llm=LLMProviderConfig(provider=LLMProvider.OPENAI, model="gpt-4o-mini"),
+    memory=MemoryConfig(
+        type="postgresql",
+        connection_params={
+            "host": "localhost",
+            "database": "agenticflow",
+            "user": "postgres",
+            "password": "password"
+        }
+    )
+)
+```
+
+**Features:**
+- 🏢 Multi-user support
+- 🔍 Advanced full-text search
+- 📈 Analytics and reporting
+- ⚡ Connection pooling
+- 🎯 Best for: Enterprise systems, multi-tenant apps
+
+#### 🟡 Custom Memory (Extensible)
+Implement your own memory backend:
+
+```python
+class RedisMemoryHandler:
+    async def add_message(self, message, metadata=None):
+        # Your Redis implementation
+        pass
+    
+    async def get_messages(self, limit=None, filter_metadata=None):
+        # Your retrieval logic
+        pass
+    
+    # ... implement other required methods
+
+# Use custom handler
+custom_handler = RedisMemoryHandler()
+config = AgentConfig(
+    name="custom_agent", 
+    memory=MemoryConfig(
+        type="custom",
+        custom_handler_class="mymodule.RedisMemoryHandler",
+        custom_handler_config={"redis_url": "redis://localhost:6379"}
+    )
+)
+```
+
+### Memory Architecture
+
+```
+Agent Memory System
+├── Memory Interface (AsyncMemory)
+├── Built-in Backends
+│   ├── Buffer Memory (Ephemeral)
+│   ├── SQLite Memory (Persistent)
+│   ├── PostgreSQL Memory (Enterprise)
+│   └── Retrieval Memory (Vector-based)
+├── Custom Backends
+│   └── Your Implementation
+└── Session Management
+    ├── Cross-session Data Access
+    ├── Session Statistics
+    └── Multi-user Isolation
+```
+
+### Session Management
+
+Persistent memory backends support advanced session features:
+
+```python
+# Access previous sessions
+sessions = await memory.get_sessions()
+print(f"Found {len(sessions)} previous sessions")
+
+# Get messages from specific session
+previous_messages = await memory.get_messages(session_id="session-123")
+
+# Session statistics
+stats = await memory.get_session_stats("session-123")
+print(f"Session had {stats['message_count']} messages")
+print(f"Duration: {stats['duration_seconds']} seconds")
+```
+
+### Memory Performance Comparison
+
+| Backend | Speed | Persistence | Sessions | Search | Use Case |
+|---------|--------|-------------|----------|---------|----------|
+| Buffer | ⚡⚡⚡ | ❌ | ❌ | Basic | Development, Chat |
+| SQLite | ⚡⚡ | ✅ | ✅ | Full-text | Personal, Local |
+| PostgreSQL | ⚡ | ✅ | ✅ | Advanced | Enterprise, Multi-user |
+| Custom | Varies | Varies | Varies | Custom | Specialized needs |
+
+### Installation
+
+Memory backends have optional dependencies:
+
+```bash
+# Basic installation (includes Buffer memory)
+pip install agenticflow
+
+# With SQLite and PostgreSQL support
+pip install agenticflow[memory]
+
+# Individual backends
+pip install aiosqlite  # SQLite async support
+pip install asyncpg    # PostgreSQL support
+```
+
+### Example: Multi-Session Agent
+
+```python
+import asyncio
+from agenticflow import Agent, AgentConfig
+
+# Create agent with persistent memory
+config = AgentConfig(
+    name="memory_demo_agent",
+    llm=LLMProviderConfig(provider=LLMProvider.OLLAMA, model="granite3.2:8b"),
+    memory=MemoryConfig(type="sqlite", connection_params={"database": "demo.db"})
+)
+
+async def main():
+    agent = Agent(config)
+    await agent.start()
+    
+    # Session 1
+    response1 = await agent.execute_task("Remember: my favorite color is blue")
+    print(f"Agent: {response1['response']}")
+    
+    await agent.stop()
+    
+    # Restart agent (new session, same memory)
+    agent2 = Agent(config)
+    await agent2.start()
+    
+    response2 = await agent2.execute_task("What's my favorite color?")
+    print(f"Agent: {response2['response']}")  # Should remember blue!
+    
+    await agent2.stop()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+> **🧪 Try it**: Run `examples/memory_demo.py` to see different memory backends in action!
+
+---
+
 ## 🧪 Examples & Testing
 
 The `examples/` directory contains comprehensive test suites and examples:
@@ -565,6 +775,8 @@ The `examples/` directory contains comprehensive test suites and examples:
 - **`test_system_comprehensive.py`**: End-to-end system integration tests
 - **🆕 `mcp_integration_example.py`**: Comprehensive MCP server integration examples
 - **🆕 `validate_mcp_integration.py`**: MCP integration validation tests
+- **🆕 `memory_demo.py`**: Memory backends demonstration (Buffer, SQLite, PostgreSQL)
+- **🆕 `real_web_search_example.py`**: Real web search using external MCP server
 
 ### Running Examples
 
@@ -588,6 +800,12 @@ python examples/mcp_integration_example.py
 
 # Validate MCP integration
 python examples/validate_mcp_integration.py
+
+# Test different memory backends
+python examples/memory_demo.py
+
+# Real web search with external MCP server
+python examples/real_web_search_example.py
 ```
 
 ### Test Results
