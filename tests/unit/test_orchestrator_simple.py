@@ -35,7 +35,7 @@ class TestTaskOrchestratorSimple:
         def sample_function(x, y):
             return x + y
         
-        task_node = basic_orchestrator.add_function_task(
+        task_id = basic_orchestrator.add_function_task(
             "test_task",
             "Test Task",
             sample_function,
@@ -44,10 +44,12 @@ class TestTaskOrchestratorSimple:
             priority=TaskPriority.HIGH
         )
         
-        assert task_node.task_id == "test_task"
+        assert task_id == "test_task"
+        assert "test_task" in basic_orchestrator.dag.tasks
+        
+        task_node = basic_orchestrator.dag.tasks["test_task"]
         assert task_node.name == "Test Task"
         assert task_node.priority == TaskPriority.HIGH
-        assert "test_task" in basic_orchestrator.dag.tasks
     
     def test_add_task_with_dependencies(self, basic_orchestrator):
         """Test adding tasks with dependencies."""
@@ -77,7 +79,7 @@ class TestTaskOrchestratorSimple:
         def task_func():
             return "result"
         
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(ValueError, match="does not exist"):
             basic_orchestrator.add_function_task(
                 "task_1",
                 "Task 1", 

@@ -189,3 +189,37 @@ secrets.json
 *.bak
 *.backup
 *~
+
+# UV specific
+.uv/
+uv.lock.backup
+
+# Vector databases and embeddings
+*.faiss
+*.index
+chroma_db/
+vector_store/
+embeddings_cache/
+
+# MCP related
+mcp_servers/
+*.mcp
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+memory.db
+
+# Temporary agent files
+agent_state/
+task_results/
+orchestration_logs/
+
+# Performance and profiling
+*.prof
+*.profile
+performance_logs/
+
+# Warp AI terminal files (local only)
+WARP.md

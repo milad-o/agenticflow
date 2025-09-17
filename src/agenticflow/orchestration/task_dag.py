@@ -315,6 +315,12 @@ class TaskDAG:
         
         return descendants
     
+    def get_dependencies(self, task_id: str) -> Set[str]:
+        """Get direct dependencies of a task."""
+        if task_id not in self.tasks:
+            return set()
+        return self.reverse_adjacency[task_id].copy()
+    
     def validate_dag(self) -> Tuple[bool, List[str]]:
         """
         Validate the entire DAG structure.

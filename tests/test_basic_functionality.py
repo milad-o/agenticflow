@@ -47,9 +47,10 @@ def test_add_simple_task():
         return "test"
     
     # This should not raise an exception
-    task_node = orchestrator.add_function_task("test", "Test Task", simple_func)
-    assert task_node is not None
-    assert task_node.task_id == "test"
+    task_id = orchestrator.add_function_task("test", "Test Task", simple_func)
+    assert task_id is not None
+    assert task_id == "test"
+    assert "test" in orchestrator.tasks
 
 
 def test_framework_components_exist():

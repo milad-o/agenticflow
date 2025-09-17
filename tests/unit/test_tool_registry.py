@@ -185,7 +185,8 @@ class TestToolRegistry:
             return a + b
         
         result = await registry.execute_tool("sync_add", a=5, b=3)
-        assert result == 8
+        assert result.success is True
+        assert result.result == 8
     
     @pytest.mark.asyncio
     async def test_execute_async_function_tool(self):
@@ -198,7 +199,8 @@ class TestToolRegistry:
             return a * b
         
         result = await registry.execute_tool("async_multiply", a=4, b=7)
-        assert result == 28
+        assert result.success is True
+        assert result.result == 28
     
     @pytest.mark.asyncio
     async def test_execute_class_tool(self):
@@ -237,7 +239,8 @@ class TestToolRegistry:
         registry.register_tool(calculator)
         
         result = await registry.execute_tool("calculator", operation="add", a=10, b=15)
-        assert result == 25
+        assert result.success is True
+        assert result.result == {"result": 25}  # Class tool returns dict
     
     @pytest.mark.asyncio
     async def test_execute_nonexistent_tool_raises_error(self):
@@ -401,8 +404,8 @@ class TestToolRegistry:
                 pass
         
         # Test None function
-        with pytest.raises(ValueError, match="Function cannot be None"):
-            registry.register_function_tool(None, "invalid")
+        with pytest.raises(ValueError, match="Function must be callable"):
+            registry.register_function("invalid", "Test", None)
     
     @pytest.mark.asyncio
     async def test_tool_execution_timeout(self):
@@ -417,7 +420,7 @@ class TestToolRegistry:
         # Test with timeout
         with pytest.raises(asyncio.TimeoutError):
             await asyncio.wait_for(
-                registry.execute_tool("slow_tool"), 
+                registry.execute_tool("slow_tool", {}), 
                 timeout=0.1
             )
     

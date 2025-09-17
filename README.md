@@ -23,11 +23,18 @@ AgenticFlow is a comprehensive, production-ready framework for building sophisti
 - **💾 Cross-Session Persistence**: Agents remember across restarts with database backends
 - **🏗️ Clean Architecture**: Proper separation of interfaces and implementations
 
-### ✅ **NEW: Advanced Text Chunking & Vector Stores (v0.1.2)**
-- **📝 Modular Chunking System**: 5 strategies from simple fixed-size to AI-powered semantic chunking
+### ✅ **Advanced Text Splitters & Vector Stores (v0.1.2)**
+- **📝 Comprehensive Text Splitters**: Multiple strategies including recursive, semantic, markdown-aware, and code-aware splitting
 - **🧠 Vector Store Support**: FAISS, Chroma, Pinecone with unified interface and persistence
-- **🔍 Semantic Search**: Vector-enabled memory with automatic chunking and embedding generation
-- **⚡ Smart Chunking**: Automatic strategy selection based on content analysis
+- **🔍 Semantic Search**: Vector-enabled memory with automatic text splitting and embedding generation
+- **⚡ Smart Content Detection**: Automatic splitter selection based on content analysis and type detection
+
+### ✅ **Latest Enhancements (v0.1.3)**
+- **🔧 Enhanced LangChain Integration**: Fixed missing LangChain integration packages for vector stores
+- **📁 Reorganized Examples**: Comprehensive examples directory with enhanced vector capabilities
+- **🏗️ Modular LLM Provider Architecture**: Clean separation with dedicated files per provider
+- **🆕 Azure OpenAI Support**: Enterprise-grade Azure OpenAI Service integration
+- **🧹 Code Quality Improvements**: Enhanced task orchestration and tool integration
 
 ## ✨ Key Features
 
@@ -47,7 +54,7 @@ AgenticFlow is a comprehensive, production-ready framework for building sophisti
 ### 🧠 **Intelligence & Memory**
 - **Advanced Memory Systems**: Buffer, vector-enabled, retrieval-based, and hybrid memory with embeddings
 - **Vector Stores**: FAISS, Chroma, Pinecone support with persistent and ephemeral storage
-- **Smart Text Chunking**: 5 strategies including semantic boundary detection and automatic selection
+- **Advanced Text Splitting**: Multiple strategies including semantic, markdown-aware, and code-aware splitting with automatic selection
 - **Semantic Search**: Vector-based retrieval across conversation history and documents
 - **Self-Verification**: Agents validate their own outputs and decisions
 - **Context-Aware Processing**: Vector-based retrieval for long-term context storage
@@ -135,7 +142,7 @@ asyncio.run(main())
 import asyncio
 from agenticflow.memory.vector_memory import VectorMemory, VectorMemoryConfig
 from agenticflow.vectorstores import VectorStoreFactory
-from agenticflow.text.chunking import ChunkingConfig, ChunkingStrategy
+from agenticflow.text.splitters import SplitterConfig, SplitterType
 from agenticflow.config.settings import MemoryConfig
 from langchain_core.messages import HumanMessage, AIMessage
 
@@ -147,19 +154,19 @@ async def main():
         embedding_dimension=1536  # OpenAI embedding dimension
     )
     
-    # Configure smart chunking
-    chunking_config = ChunkingConfig(
-        strategy=ChunkingStrategy.SEMANTIC,  # AI-powered semantic boundaries
-        chunk_size=1000,
-        chunk_overlap=200,
-        min_chunk_size=100
+    # Configure smart text splitting
+    splitter_config = SplitterConfig(
+        splitter_type=SplitterType.SEMANTIC,  # AI-powered semantic boundaries
+        fragment_size=1000,
+        fragment_overlap=200,
+        min_fragment_size=100
     )
     
     # Create vector memory configuration
     vector_memory_config = VectorMemoryConfig(
         vector_store_config=vector_store_config,
-        chunking_config=chunking_config,
-        enable_chunking=True,
+        splitter_config=splitter_config,
+        enable_splitting=True,
         enable_semantic_search=True
     )
     
@@ -171,7 +178,7 @@ async def main():
         embeddings=openai_embeddings  # Your embedding model
     )
     
-    # Add messages with automatic chunking and embedding
+    # Add messages with automatic text splitting and embedding
     await vector_memory.add_message(HumanMessage(
         content="I'm working on a machine learning project involving natural language processing and need help with transformer architectures."
     ))
@@ -1153,7 +1160,7 @@ The `examples/` directory contains comprehensive test suites and examples organi
 - **`memory/memory_demo.py`**: Memory backends demonstration (Buffer, SQLite, PostgreSQL)
 - **`memory/test_vector_memory.py`**: Comprehensive vector memory testing suite
 - **`memory/vector_store_memory_demo.py`**: Vector-enabled memory demonstrations
-- **`memory/advanced_memory_chunking_demo.py`**: Enhanced memory with chunking and analytics
+- **`memory/advanced_memory_splitting_demo.py`**: Enhanced memory with text splitting and analytics
 - **`memory/memory_backends_test.py`**: Memory backend testing and validation
 
 ### 🔍 **Vector Stores & Embeddings Examples**
@@ -1374,7 +1381,7 @@ spec:
 - [x] 📊 Complex dependency validation
 - [x] 🔄 Error recovery and retry validation
 - [x] 📈 Real-time monitoring validation
-- [x] 🔧 Fixed parameter handling in FunctionTaskExecutor (v0.2.1)
+- [x] 🔧 Enhanced parameter handling in FunctionTaskExecutor
 
 ### 🚧 **In Progress**
 - [ ] 🌐 WebUI dashboard for monitoring and configuration

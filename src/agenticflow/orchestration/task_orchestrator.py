@@ -137,6 +137,16 @@ class TaskOrchestrator:
         
         self.logger = logger.bind(component="task_orchestrator")
     
+    @property
+    def task_dag(self) -> TaskDAG:
+        """Access to the internal DAG for compatibility."""
+        return self.dag
+    
+    @property
+    def tasks(self) -> Dict[str, TaskNode]:
+        """Access to tasks for compatibility."""
+        return self.dag.tasks
+    
     def add_task(
         self,
         task_id: str,
@@ -165,7 +175,7 @@ class TaskOrchestrator:
         if dependencies:
             for dep_id in dependencies:
                 if dep_id not in self.dag.tasks:
-                    raise ValueError(f"Dependency task '{dep_id}' not found")
+                    raise ValueError(f"Dependency task '{dep_id}' does not exist")
                 self.dag.add_dependency(task_id, dep_id)
         
         self.logger.debug(f"Added task '{task_id}' with {len(dependencies or [])} dependencies")
@@ -180,10 +190,11 @@ class TaskOrchestrator:
         kwargs: Optional[Dict[str, Any]] = None,
         dependencies: Optional[List[str]] = None,
         **task_kwargs
-    ) -> TaskNode:
+    ) -> str:
         """Add a function-based task to the workflow."""
         executor = FunctionTaskExecutor(func, *args, **(kwargs or {}))
-        return self.add_task(task_id, name, executor, dependencies, **task_kwargs)
+        self.add_task(task_id, name, executor, dependencies, **task_kwargs)
+        return task_id
     
     async def execute_workflow(self) -> Dict[str, Any]:
         """Execute the entire workflow."""
@@ -262,8 +273,10 @@ class TaskOrchestrator:
                 pending_tasks = [t for t in self.dag.tasks.values() if t.state in {TaskState.PENDING, TaskState.RETRYING}]
                 if pending_tasks:
                     self.logger.warning(f"Possible deadlock: {len(pending_tasks)} pending tasks but none ready")
-                    await self._diagnose_deadlock()
-                    if not any(t.state == TaskState.PENDING for t in self.dag.tasks.values()):
+                    resolved = await self._diagnose_deadlock()
+                    # If deadlock resolution didn't help, break to avoid infinite loop
+                    if not resolved and not any(t.state == TaskState.PENDING for t in self.dag.tasks.values()):
+                        self.logger.warning("Breaking execution loop - deadlock detected")
                         break
             
             # Brief sleep to prevent busy waiting
@@ -390,6 +403,8 @@ class TaskOrchestrator:
             retry_time = time.time() + retry_delay
             await self.retry_queue.put((retry_time, task.task_id))
         else:
+            # Mark task as permanently failed
+            await task.set_state(TaskState.FAILED)
             self.failed_tasks.add(task.task_id)
             self.logger.error(f"Task {task.task_id} failed permanently after {task.attempts} attempts")
     
@@ -466,9 +481,10 @@ class TaskOrchestrator:
             except asyncio.CancelledError:
                 break
     
-    async def _diagnose_deadlock(self) -> None:
+    async def _diagnose_deadlock(self) -> bool:
         """Diagnose and attempt to resolve deadlocks."""
         blocked_tasks = self.dag.get_blocked_tasks(self.completed_tasks)
+        resolved_count = 0
         
         if blocked_tasks:
             self.logger.warning(f"Found {len(blocked_tasks)} blocked tasks:")
@@ -480,6 +496,18 @@ class TaskOrchestrator:
                     self.logger.error(f"Task {task.task_id} blocked by failed dependencies: {failed_deps}")
                     await task.set_state(TaskState.FAILED)
                     self.failed_tasks.add(task.task_id)
+                    resolved_count += 1
+        
+        # Also check for tasks stuck in retry loop for too long
+        current_time = time.time()
+        for task in self.dag.tasks.values():
+            if task.state == TaskState.RETRYING and task.attempts >= task.retry_policy.max_attempts:
+                self.logger.error(f"Task {task.task_id} exceeded max retry attempts, marking as failed")
+                await task.set_state(TaskState.FAILED)
+                self.failed_tasks.add(task.task_id)
+                resolved_count += 1
+        
+        return resolved_count > 0
     
     async def cancel_workflow(self) -> None:
         """Cancel the running workflow gracefully."""
@@ -541,3 +569,27 @@ class TaskOrchestrator:
         """Get status of a specific task."""
         task = self.dag.tasks.get(task_id)
         return task.to_dict() if task else None
+    
+    def get_execution_stats(self) -> Dict[str, Any]:
+        """Get execution statistics for the workflow."""
+        self.status.update_from_dag(self.dag)
+        
+        execution_time = None
+        if self.status.started_at and self.status.completed_at:
+            execution_time = (self.status.completed_at - self.status.started_at).total_seconds()
+        elif self.status.started_at:
+            execution_time = (datetime.now() - self.status.started_at).total_seconds()
+        
+        return {
+            "total_tasks": self.status.total_tasks,
+            "completed_tasks": self.status.completed_tasks,
+            "failed_tasks": self.status.failed_tasks,
+            "running_tasks": self.status.running_tasks,
+            "pending_tasks": self.status.pending_tasks,
+            "cancelled_tasks": self.status.cancelled_tasks,
+            "execution_time": execution_time or 0.0,
+            "success_rate": (self.status.completed_tasks / max(1, self.status.total_tasks)) * 100,
+            "progress_percentage": self.status.get_progress_percentage(),
+            "is_complete": self.status.is_complete(),
+            "active_workers": len(self.status.active_workers)
+        }

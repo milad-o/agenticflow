@@ -293,13 +293,16 @@ class FunctionTaskExecutor(TaskExecutor):
             positional_param_names = param_names[:num_positional_args]
             positional_param_names_set = set(positional_param_names)
             
+            # Check if function accepts **kwargs
+            accepts_var_kwargs = any(p.kind == p.VAR_KEYWORD for p in sig.parameters.values())
+            
             # Only pass context values that are:
-            # 1. Accepted by the function parameter names
+            # 1. Accepted by the function parameter names (or function accepts **kwargs)
             # 2. Not already filled by positional arguments
             # 3. Not already in self.kwargs (constructor kwargs take precedence)
             safe_context = {
                 k: v for k, v in merged_context.items() 
-                if k in param_names_set
+                if (k in param_names_set or accepts_var_kwargs)
                 and k not in positional_param_names_set
                 and k not in self.kwargs
             }

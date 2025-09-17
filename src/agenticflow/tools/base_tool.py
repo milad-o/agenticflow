@@ -96,12 +96,20 @@ class AsyncTool(ABC):
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert tool to dictionary representation."""
-        return {
+        data = {
             "name": self.name,
             "description": self.description,
             "type": self.tool_type.value,
             "parameters": self.parameters,
         }
+        
+        # Add category and tags if they exist
+        if hasattr(self, 'category') and self.category:
+            data["category"] = self.category
+        if hasattr(self, 'tags') and self.tags:
+            data["tags"] = self.tags
+            
+        return data
 
 
 class LangChainToolWrapper(AsyncTool):
@@ -216,12 +224,17 @@ class FunctionTool(AsyncTool):
         name: str, 
         description: str, 
         func: callable, 
-        parameters_schema: Dict[str, Any]
+        parameters_schema: Dict[str, Any],
+        category: Optional[str] = None,
+        tags: Optional[List[str]] = None
     ) -> None:
         """Initialize with a function and parameters schema."""
         super().__init__(name, description, ToolType.CUSTOM)
         self.func = func
+        self.function = func  # Alias for backward compatibility
         self._parameters = parameters_schema
+        self.category = category
+        self.tags = tags or []
     
     @property
     def parameters(self) -> Dict[str, Any]:
@@ -257,11 +270,8 @@ class FunctionTool(AsyncTool):
             error_msg = f"Function execution failed: {e}"
             self.logger.error(error_msg)
             
-            return ToolResult.error_result(
-                error=error_msg,
-                metadata={"tool_type": "function", "exception": str(type(e).__name__)},
-                execution_time=execution_time
-            )
+            # Re-raise the original exception for proper error handling
+            raise
 
 
 class ToolRegistry:
@@ -270,11 +280,22 @@ class ToolRegistry:
     def __init__(self) -> None:
         """Initialize the registry."""
         self.tools: Dict[str, AsyncTool] = {}
+        self.categories: Dict[str, List[str]] = {}  # category -> list of tool names
         self.logger = logger.bind(component="tool_registry")
     
     def register_tool(self, tool: AsyncTool) -> None:
         """Register a tool."""
+        if tool.name in self.tools:
+            raise ValueError(f"Tool '{tool.name}' is already registered")
+            
         self.tools[tool.name] = tool
+        
+        # Handle categories
+        if hasattr(tool, 'category') and tool.category:
+            if tool.category not in self.categories:
+                self.categories[tool.category] = []
+            self.categories[tool.category].append(tool.name)
+            
         self.logger.info(f"Registered tool: {tool.name}")
     
     def register_langchain_tool(self, langchain_tool: Any) -> None:
@@ -285,17 +306,75 @@ class ToolRegistry:
     def register_function(
         self, 
         name: str, 
-        description: str, 
-        func: callable, 
-        parameters_schema: Dict[str, Any]
-    ) -> None:
-        """Register a function as a tool."""
-        tool = FunctionTool(name, description, func, parameters_schema)
-        self.register_tool(tool)
+        description: str = None, 
+        func: callable = None, 
+        parameters_schema: Dict[str, Any] = None,
+        category: Optional[str] = None,
+        tags: Optional[List[str]] = None
+    ):
+        """Register a function as a tool. Can be used as decorator or direct call."""
+        
+        # Validate tool name
+        if not name or not name.strip():
+            raise ValueError("Tool name cannot be empty")
+        
+        def decorator(f: callable):
+            nonlocal description, parameters_schema
+            
+            # Validate function
+            if not callable(f):
+                raise ValueError("Function must be callable")
+            
+            # Use function docstring as description if not provided
+            if description is None:
+                description = f.__doc__ or f"Tool: {name}"
+            
+            # Auto-generate schema if not provided
+            if parameters_schema is None:
+                from .registry import generate_schema_from_function
+                parameters_schema = generate_schema_from_function(f)
+            
+            tool = FunctionTool(name, description, f, parameters_schema, category, tags)
+            self.register_tool(tool)
+            return f
+        
+        # If used as direct call with all parameters
+        if func is not None:
+            if not callable(func):
+                raise ValueError("Function must be callable")
+                
+            if description is None:
+                description = func.__doc__ or f"Tool: {name}"
+            if parameters_schema is None:
+                from .registry import generate_schema_from_function  
+                parameters_schema = generate_schema_from_function(func)
+                
+            tool = FunctionTool(name, description, func, parameters_schema, category, tags)
+            self.register_tool(tool)
+            return func
+        
+        # Check for explicit None func (invalid)
+        # If description is provided and func is None, it's likely a direct call with None func
+        if func is None and description is not None:
+            raise ValueError("Function must be callable")
+            
+        # Used as decorator
+        return decorator
     
     def unregister_tool(self, name: str) -> bool:
         """Unregister a tool."""
         if name in self.tools:
+            tool = self.tools[name]
+            
+            # Remove from categories
+            if hasattr(tool, 'category') and tool.category:
+                if tool.category in self.categories:
+                    if name in self.categories[tool.category]:
+                        self.categories[tool.category].remove(name)
+                    # Remove category if empty
+                    if not self.categories[tool.category]:
+                        del self.categories[tool.category]
+            
             del self.tools[name]
             self.logger.info(f"Unregistered tool: {name}")
             return True
@@ -305,9 +384,34 @@ class ToolRegistry:
         """Get a tool by name."""
         return self.tools.get(name)
     
-    def list_tools(self) -> List[str]:
-        """List all registered tool names."""
-        return list(self.tools.keys())
+    def list_tools(
+        self, 
+        category: Optional[str] = None, 
+        tags: Optional[List[str]] = None
+    ) -> List[str]:
+        """List tool names, optionally filtered by category or tags."""
+        if category is None and tags is None:
+            return list(self.tools.keys())
+        
+        filtered_tools = []
+        
+        for name, tool in self.tools.items():
+            # Filter by category if specified
+            if category is not None:
+                if not (hasattr(tool, 'category') and tool.category == category):
+                    continue
+            
+            # Filter by tags if specified
+            if tags is not None:
+                if not hasattr(tool, 'tags') or not tool.tags:
+                    continue
+                # Check if any of the specified tags match
+                if not any(tag in tool.tags for tag in tags):
+                    continue
+            
+            filtered_tools.append(name)
+        
+        return filtered_tools
     
     def has_tool(self, name: str) -> bool:
         """Check if a tool is registered."""
@@ -317,20 +421,79 @@ class ToolRegistry:
         """Get information about all tools."""
         return [tool.to_dict() for tool in self.tools.values()]
     
-    async def execute_tool(self, name: str, parameters: Dict[str, Any]) -> ToolResult:
+    async def execute_tool(self, name: str, parameters: Dict[str, Any] = None, **kwargs) -> ToolResult:
         """Execute a tool by name."""
         tool = self.get_tool(name)
         if not tool:
-            return ToolResult.error_result(f"Tool '{name}' not found")
+            raise ValueError(f"Tool '{name}' not found")
         
-        try:
-            return await tool.execute(parameters)
-        except Exception as e:
-            return ToolResult.error_result(f"Tool execution error: {e}")
+        # Support both dictionary parameters and keyword arguments
+        if parameters is None:
+            parameters = kwargs
+        elif kwargs:
+            # If both provided, merge kwargs into parameters
+            parameters = {**parameters, **kwargs}
+        
+        result = await tool.execute(parameters)
+        
+        # If tool returns a ToolResult, use it directly
+        if isinstance(result, ToolResult):
+            return result
+        # Otherwise wrap the raw result in a ToolResult
+        else:
+            return ToolResult.success_result(
+                result=result,
+                metadata={"tool_name": name, "tool_type": tool.tool_type.value}
+            )
+    
+    def remove_tool(self, name: str) -> bool:
+        """Remove a tool by name. Alias for unregister_tool."""
+        return self.unregister_tool(name)
+    
+    def get_tool_metadata(self, name: str) -> Optional[Dict[str, Any]]:
+        """Get metadata for a specific tool."""
+        tool = self.get_tool(name)
+        if tool:
+            return tool.to_dict()
+        return None
+    
+    def search_tools(self, query: str) -> List[str]:
+        """Search tools by name or description."""
+        query_lower = query.lower()
+        matches = []
+        
+        for name, tool in self.tools.items():
+            if (query_lower in name.lower() or 
+                query_lower in tool.description.lower()):
+                matches.append(name)
+        
+        return matches
+    
+    def get_categories(self) -> Dict[str, List[str]]:
+        """Get all categories and their associated tool names."""
+        return dict(self.categories)
+    
+    def bulk_register_functions(self, tools: List[Dict[str, Any]]) -> None:
+        """Register multiple functions at once."""
+        for tool_info in tools:
+            name = tool_info["name"]
+            function = tool_info["function"]
+            description = tool_info.get("description", "")
+            category = tool_info.get("category")
+            tags = tool_info.get("tags")
+            parameters_schema = tool_info.get("parameters_schema")
+            
+            # Auto-generate schema if not provided
+            if parameters_schema is None:
+                from .registry import generate_schema_from_function
+                parameters_schema = generate_schema_from_function(function)
+            
+            self.register_function(name, description, function, parameters_schema, category, tags)
     
     def clear(self) -> None:
         """Clear all registered tools."""
         self.tools.clear()
+        self.categories.clear()
         self.logger.info("Cleared all tools")
 
 

@@ -24,12 +24,14 @@ class TestAgenticFlowCore:
             return "completed"
         
         # Should be able to add tasks
-        task_node = orchestrator.add_function_task("test", "Test Task", simple_task)
-        assert task_node.task_id == "test"
-        assert task_node.name == "Test Task"
+        task_id = orchestrator.add_function_task("test", "Test Task", simple_task)
+        assert task_id == "test"
         
         # Should have the task in DAG
         assert "test" in orchestrator.dag.tasks
+        task_node = orchestrator.dag.tasks["test"]
+        assert task_node.task_id == "test"
+        assert task_node.name == "Test Task"
     
     def test_task_priorities(self):
         """Test task priority system."""
@@ -39,9 +41,14 @@ class TestAgenticFlowCore:
             return "done"
         
         # Test different priorities
-        low_task = orchestrator.add_function_task("low", "Low Priority", task, priority=TaskPriority.LOW)
-        high_task = orchestrator.add_function_task("high", "High Priority", task, priority=TaskPriority.HIGH)
-        critical_task = orchestrator.add_function_task("critical", "Critical", task, priority=TaskPriority.CRITICAL)
+        low_task_id = orchestrator.add_function_task("low", "Low Priority", task, priority=TaskPriority.LOW)
+        high_task_id = orchestrator.add_function_task("high", "High Priority", task, priority=TaskPriority.HIGH)
+        critical_task_id = orchestrator.add_function_task("critical", "Critical", task, priority=TaskPriority.CRITICAL)
+        
+        # Get the actual task nodes from DAG
+        low_task = orchestrator.dag.tasks[low_task_id]
+        high_task = orchestrator.dag.tasks[high_task_id]
+        critical_task = orchestrator.dag.tasks[critical_task_id]
         
         assert low_task.priority == TaskPriority.LOW
         assert high_task.priority == TaskPriority.HIGH
