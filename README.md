@@ -45,11 +45,14 @@ AgenticFlow is a comprehensive, production-ready framework for building sophisti
 - **Error Recovery**: Configurable strategies (retry, rephrase, escalate) with exponential backoff
 
 ### 🛠️ **Comprehensive Tooling**
-- **LLM Provider Agnostic**: OpenAI, Groq, and Ollama with automatic failover
-- **Tool Integration**: LangChain tools, custom functions, and MCP servers
+- **🔧 Modular LLM Providers**: Clean provider architecture with OpenAI, Groq, Ollama, and AzureOpenAI
+- **⚡ Automatic Failover**: Multi-provider fallback with intelligent retry logic
+- **🏭 Enterprise Ready**: Azure OpenAI Service integration for enterprise deployments
+- **📈 Easy Extensibility**: Add custom providers (Anthropic, Cohere, etc.) with simple patterns
+- **🔗 Tool Integration**: LangChain tools, custom functions, and MCP servers
 - **🆕 MCP Support**: Full Model Context Protocol integration with external tool servers
-- **Dynamic Tool Loading**: Runtime tool registration and management
-- **Multi-Server MCP**: Connect to multiple MCP servers simultaneously with auto-discovery
+- **🎛️ Dynamic Tool Loading**: Runtime tool registration and management
+- **🌐 Multi-Server MCP**: Connect to multiple MCP servers simultaneously with auto-discovery
 
 ### 🔧 **Developer Experience**
 - **Fully Async**: Built on Python's asyncio for high-performance concurrent operations
@@ -292,7 +295,213 @@ async def main():
 asyncio.run(main())
 ```
 
-## 🏗️ Architecture Overview
+## 🔧 LLM Providers & Extensibility
+
+AgenticFlow features a modular LLM provider architecture that makes it easy to work with multiple AI providers and add custom ones.
+
+### 🏢 Provider Architecture
+
+The LLM providers system is organized as a clean, extensible module:
+
+```
+src/agenticflow/llm_providers/
+├── __init__.py         # Public API exports
+├── base.py             # Abstract base classes & exceptions
+├── openai.py           # OpenAI GPT models + embeddings
+├── groq.py             # Groq high-speed inference
+├── ollama.py           # Local Ollama deployment
+├── azure_openai.py     # Azure OpenAI Service
+├── factory.py          # Provider creation & management
+└── manager.py          # Multi-provider orchestration
+```
+
+### 📊 Supported Providers
+
+#### 🤖 **OpenAI**
+- **Models**: GPT-4o, GPT-4, GPT-3.5, GPT-4o-mini
+- **Embeddings**: text-embedding-3-small, text-embedding-3-large
+- **Features**: Function calling, streaming, vision (GPT-4V)
+
+#### ⚡ **Groq**
+- **Models**: Mixtral-8x7B, Llama-3.3-70B, Gemma-2-9B
+- **Features**: Ultra-fast inference, competitive pricing
+- **Note**: No embedding support currently
+
+#### 💻 **Ollama**
+- **Models**: Any Ollama-supported model (Llama, Mistral, CodeLlama, etc.)
+- **Features**: Complete local deployment, privacy-focused
+- **Embeddings**: Planned (not yet implemented)
+
+#### 🏭 **Azure OpenAI** 
+- **Models**: Same as OpenAI but through Azure infrastructure
+- **Features**: Enterprise security, compliance, dedicated capacity
+- **Embeddings**: Full Azure OpenAI embedding support
+
+### 🚀 Quick Provider Examples
+
+#### Basic Provider Usage
+```python
+from agenticflow import Agent, AgentConfig, LLMProviderConfig, LLMProvider
+
+# OpenAI
+config = AgentConfig(
+    name="openai_agent",
+    llm=LLMProviderConfig(
+        provider=LLMProvider.OPENAI,
+        model="gpt-4o-mini",
+        api_key="your-openai-key",
+        temperature=0.7
+    )
+)
+
+# Groq for fast inference
+config = AgentConfig(
+    name="groq_agent", 
+    llm=LLMProviderConfig(
+        provider=LLMProvider.GROQ,
+        model="llama-3.3-70b-versatile",
+        api_key="your-groq-key"
+    )
+)
+
+# Ollama for local deployment
+config = AgentConfig(
+    name="ollama_agent",
+    llm=LLMProviderConfig(
+        provider=LLMProvider.OLLAMA,
+        model="qwen2.5:7b",
+        base_url="http://localhost:11434"  # Default Ollama URL
+    )
+)
+
+# Azure OpenAI for enterprise
+config = AgentConfig(
+    name="azure_agent",
+    llm=LLMProviderConfig(
+        provider=LLMProvider.AZURE_OPENAI,
+        model="gpt-4",
+        api_key="your-azure-key",
+        base_url="https://your-resource.openai.azure.com/",
+        api_version="2024-02-01"
+    )
+)
+```
+
+#### Multi-Provider Fallback
+```python
+from agenticflow.llm_providers import LLMManager, get_llm_manager
+
+# Configure multiple providers with automatic fallback
+manager = get_llm_manager()
+
+# Primary: OpenAI
+manager.add_provider("primary", LLMProviderConfig(
+    provider=LLMProvider.OPENAI,
+    model="gpt-4o-mini",
+    api_key="your-openai-key"
+), is_default=True)
+
+# Fallback: Groq
+manager.add_provider("fallback", LLMProviderConfig(
+    provider=LLMProvider.GROQ,
+    model="llama-3.3-70b-versatile", 
+    api_key="your-groq-key"
+))
+
+# Automatic failover on errors
+response = await manager.generate_with_fallback(
+    messages=[HumanMessage(content="Hello!")],
+    provider_names=["primary", "fallback"]  # Try in order
+)
+```
+
+### 🔌 Adding Custom Providers
+
+AgenticFlow makes it easy to add new LLM providers:
+
+#### 1. **Create Provider Class**
+```python
+# src/agenticflow/llm_providers/anthropic.py
+from langchain_anthropic import ChatAnthropic
+from .base import AsyncLLMProvider
+
+class AnthropicProvider(AsyncLLMProvider):
+    """Anthropic Claude provider implementation."""
+    
+    @property
+    def supports_embeddings(self) -> bool:
+        return False  # Anthropic doesn't provide embeddings
+    
+    def _create_llm(self) -> BaseLanguageModel:
+        kwargs = {
+            "model": self.config.model,  # claude-3-sonnet, claude-3-haiku
+            "temperature": self.config.temperature,
+            "max_tokens": self.config.max_tokens or 4096,
+        }
+        
+        if self.config.api_key:
+            kwargs["anthropic_api_key"] = self.config.api_key.get_secret_value()
+        
+        return ChatAnthropic(**kwargs)
+```
+
+#### 2. **Register in Factory**
+```python
+# Update src/agenticflow/llm_providers/factory.py
+from .anthropic import AnthropicProvider
+
+class LLMProviderFactory:
+    _providers = {
+        LLMProvider.OPENAI: OpenAIProvider,
+        LLMProvider.GROQ: GroqProvider, 
+        LLMProvider.OLLAMA: OllamaProvider,
+        LLMProvider.AZURE_OPENAI: AzureOpenAIProvider,
+        LLMProvider.ANTHROPIC: AnthropicProvider,  # Add here
+    }
+```
+
+#### 3. **Update Configuration**
+```python
+# Add to src/agenticflow/config/settings.py
+class LLMProvider(str, Enum):
+    OPENAI = "openai"
+    GROQ = "groq"
+    OLLAMA = "ollama"
+    AZURE_OPENAI = "azure_openai"
+    ANTHROPIC = "anthropic"  # Add here
+```
+
+#### 4. **Use Your Custom Provider**
+```python
+config = AgentConfig(
+    name="claude_agent",
+    llm=LLMProviderConfig(
+        provider=LLMProvider.ANTHROPIC,
+        model="claude-3-sonnet-20240229",
+        api_key="your-anthropic-key"
+    )
+)
+```
+
+### 🚀 Benefits of Modular Architecture
+
+1. **🎨 Clean Separation**: Each provider has its own focused file
+2. **📈 Easy Extension**: Adding new providers requires minimal changes
+3. **🛠️ Better Testing**: Provider-specific tests can be organized cleanly
+4. **👥 Team Development**: Multiple developers can work on different providers
+5. **🔄 Backward Compatibility**: All existing imports continue to work
+6. **🏠 Future-Proof**: Ready for any new LLM provider
+
+### 📊 Provider Comparison
+
+| Provider | Speed | Cost | Local | Embeddings | Enterprise |
+|----------|-------|------|-------|------------|------------|
+| **OpenAI** | ⭐⭐⭐ | ⭐⭐ | ❌ | ✅ | ⭐⭐⭐ |
+| **Groq** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ❌ | ❌ | ⭐⭐ |
+| **Ollama** | ⭐⭐ | ⭐⭐⭐⭐⭐ | ✅ | 🚧 | ⭐⭐ |
+| **Azure OpenAI** | ⭐⭐⭐ | ⭐⭐ | ❌ | ✅ | ⭐⭐⭐⭐⭐ |
+
+## 🏢 Architecture Overview
 
 ### Core Components
 
@@ -325,11 +534,15 @@ asyncio.run(main())
   - **MCPServerManager**: Multi-server lifecycle management
 - **LangChain Integration**: Automatic wrapping of existing tools
 
-#### 5. **LLM Providers** (`src/agenticflow/llm_providers.py`)
-- **OpenAI**: GPT-4, GPT-3.5 with embedding support
-- **Groq**: High-speed inference with Mixtral and Llama models
-- **Ollama**: Local model deployment and inference
-- **Automatic Failover**: Graceful provider switching and retry logic
+#### 5. **LLM Providers** (`src/agenticflow/llm_providers/`)
+- **Modular Architecture**: Clean separation with dedicated files per provider
+- **OpenAI**: GPT-4, GPT-3.5 with embedding support (`openai.py`)
+- **Groq**: High-speed inference with Mixtral and Llama models (`groq.py`)
+- **Ollama**: Local model deployment and inference (`ollama.py`)
+- **AzureOpenAI**: Enterprise Azure OpenAI Service integration (`azure_openai.py`)
+- **Extensible**: Easy addition of custom providers (Anthropic, Cohere, etc.)
+- **Factory Pattern**: Centralized provider creation and management (`factory.py`)
+- **Multi-Provider Manager**: Automatic failover and load balancing (`manager.py`)
 
 ### Task Execution Flow
 

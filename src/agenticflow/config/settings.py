@@ -19,6 +19,7 @@ class LLMProvider(str, Enum):
     OPENAI = "openai"
     GROQ = "groq"
     OLLAMA = "ollama"
+    AZURE_OPENAI = "azure_openai"
 
 
 class LogLevel(str, Enum):

@@ -22,6 +22,7 @@ from .base import (
     EmbeddingNotSupportedError,
     ProviderNotAvailableError,
 )
+from .azure_openai import AzureOpenAIProvider
 from .factory import EmbeddingProviderFactory, LLMProviderFactory
 from .groq import GroqProvider
 from .manager import LLMManager, get_llm_manager, llm_manager
@@ -42,6 +43,7 @@ __all__ = [
     "OpenAIProvider",
     "GroqProvider",
     "OllamaProvider",
+    "AzureOpenAIProvider",
     
     # Factory classes
     "LLMProviderFactory",

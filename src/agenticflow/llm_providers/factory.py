@@ -10,6 +10,7 @@ from langchain_core.embeddings import Embeddings
 from langchain_openai import OpenAIEmbeddings
 
 from ..config.settings import EmbeddingConfig, LLMProvider, LLMProviderConfig
+from .azure_openai import AzureOpenAIProvider
 from .base import AsyncLLMProvider, EmbeddingNotSupportedError, ProviderNotAvailableError
 from .groq import GroqProvider
 from .ollama import OllamaProvider
@@ -23,6 +24,7 @@ class LLMProviderFactory:
         LLMProvider.OPENAI: OpenAIProvider,
         LLMProvider.GROQ: GroqProvider,
         LLMProvider.OLLAMA: OllamaProvider,
+        LLMProvider.AZURE_OPENAI: AzureOpenAIProvider,
     }
     
     @classmethod
@@ -64,6 +66,20 @@ class EmbeddingProviderFactory:
         
         elif config.provider == LLMProvider.OLLAMA:
             raise EmbeddingNotSupportedError("Ollama embeddings not yet implemented")
+        
+        elif config.provider == LLMProvider.AZURE_OPENAI:
+            from langchain_openai import AzureOpenAIEmbeddings
+            kwargs = {
+                "model": config.model,
+            }
+            
+            if config.api_key:
+                kwargs["openai_api_key"] = config.api_key.get_secret_value()
+            
+            if config.dimensions:
+                kwargs["dimensions"] = config.dimensions
+                
+            return AzureOpenAIEmbeddings(**kwargs)
         
         else:
             raise ProviderNotAvailableError(f"Embedding provider {config.provider} is not supported")
