@@ -2,12 +2,23 @@
 
 > **A fully intelligent, production-ready AI system framework for building sophisticated multi-agent workflows with advanced orchestration**
 
+> **🚀 New to AgenticFlow?** Start with the [**Usage Guide**](USAGE.md) for quick setup and practical examples!
+
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Async Support](https://img.shields.io/badge/async-native-green.svg)](https://docs.python.org/3/library/asyncio.html)
 [![Production Ready](https://img.shields.io/badge/status-production--ready-brightgreen.svg)]()
 
 AgenticFlow is a comprehensive, production-ready framework for building sophisticated multi-agent AI systems with async support, advanced task orchestration, flexible topologies, and extensive tooling integration. Built with modern Python patterns and designed for enterprise-grade deployment.
+
+## 📚 Quick Navigation
+
+| **Getting Started** | **Core Features** | **Advanced Topics** |
+|-------------------|------------------|--------------------|
+| [**Usage Guide**](USAGE.md) ⭐ | [Examples](#-examples--testing) | [Architecture Details](#key-features) |
+| [Installation](#installation) | [Multi-Agent Systems](#multi-agent-systems) | [Production Deployment](#production-deployment) |
+| [Quick Start](#quick-start) | [Task Orchestration](#task-orchestration) | [Performance & Scaling](#performance--scalability) |
+| [Basic Examples](#basic-agent-example) | [Memory Systems](#memory-backends) | [Contributing](#contributing) |
 
 ## 🚀 Recent Major Improvements
 
