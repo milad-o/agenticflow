@@ -13,6 +13,7 @@ from .core.agent import Agent
 from .core.supervisor import SupervisorAgent
 from .core.task_manager import TaskManager, TaskPriority
 from .workflows.multi_agent import MultiAgentSystem
+# from .tools.base_tool import ToolRegistry  # TODO: Fix this import
 
 # Import implemented components
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     "MultiAgentSystem",
     "AgenticFlowConfig",
     "LLMProviderConfig",
+    # "ToolRegistry",  # TODO: Fix this import
 ]

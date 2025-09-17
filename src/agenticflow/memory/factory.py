@@ -9,7 +9,7 @@ import importlib
 from typing import Any, Optional
 from langchain_core.embeddings import Embeddings
 
-from ..memory import AsyncMemory, BufferMemory, RetrievalMemory, HybridMemory, MemoryError
+from .core import AsyncMemory, BufferMemory, RetrievalMemory, HybridMemory, MemoryError
 from .backends import SQLiteMemory, PostgreSQLMemory, CustomMemory
 from .config import MemoryBackendType, MemoryBackendConfig
 
