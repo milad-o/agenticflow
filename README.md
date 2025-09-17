@@ -608,6 +608,7 @@ spec:
 - [x] 📊 Complex dependency validation
 - [x] 🔄 Error recovery and retry validation
 - [x] 📈 Real-time monitoring validation
+- [x] 🔧 Fixed parameter handling in FunctionTaskExecutor (v0.2.1)
 
 ### 🚧 **In Progress**
 - [ ] 🌐 WebUI dashboard for monitoring and configuration

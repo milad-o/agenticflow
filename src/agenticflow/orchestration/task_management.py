@@ -282,10 +282,27 @@ class FunctionTaskExecutor(TaskExecutor):
             # Get the function signature to check for parameter name conflicts
             import inspect
             sig = inspect.signature(self.func)
-            param_names = set(sig.parameters.keys())
+            param_names = list(sig.parameters.keys())
+            param_names_set = set(param_names)
             
-            # Only pass context values that don't conflict with function parameters
-            safe_context = {k: v for k, v in merged_context.items() if k not in param_names}
+            # Define reserved system keys that should not be passed to task functions
+            reserved_keys = {'task_id', 'task_name', 'task_state', 'created_at', 'started_at', 'completed_at'}
+            
+            # Determine which parameters are already filled by positional arguments
+            num_positional_args = len(self.args)
+            positional_param_names = param_names[:num_positional_args]
+            positional_param_names_set = set(positional_param_names)
+            
+            # Only pass context values that are:
+            # 1. Accepted by the function parameter names
+            # 2. Not already filled by positional arguments
+            # 3. Not already in self.kwargs (constructor kwargs take precedence)
+            safe_context = {
+                k: v for k, v in merged_context.items() 
+                if k in param_names_set
+                and k not in positional_param_names_set
+                and k not in self.kwargs
+            }
             final_kwargs = {**self.kwargs, **safe_context}
             
             # Execute function (handle both sync and async)
