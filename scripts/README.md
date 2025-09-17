@@ -36,7 +36,7 @@ python scripts/test_installation.py
 ============================================================
 🎉 SUCCESS: AgenticFlow is properly installed!
 ✅ All core components are working
-📚 Check out USAGE.md or examples/ to get started
+📚 Check out docs/usage-guide.md or examples/ to get started
 ```
 
 ---
@@ -53,6 +53,6 @@ To add new utility scripts:
 
 ## 📚 Related Documentation
 
-- [Installation Guide](../USAGE.md#installation)
+- [Installation Guide](../docs/usage-guide.md#installation)
 - [Development Setup](../README.md#development-installation)
 - [Troubleshooting](../README.md#troubleshooting)

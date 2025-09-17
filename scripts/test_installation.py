@@ -112,7 +112,7 @@ def main():
     if core_passed and agent_test_passed:
         print("🎉 SUCCESS: AgenticFlow is properly installed!")
         print("✅ All core components are working")
-        print("📚 Check out USAGE.md or examples/ to get started")
+        print("📚 Check out docs/usage-guide.md or examples/ to get started")
         return 0
     else:
         print("❌ ISSUES DETECTED:")
