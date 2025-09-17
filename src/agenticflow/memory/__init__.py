@@ -1,25 +1,11 @@
 """
-Enhanced Memory System for AgenticFlow
-======================================
-Provides multiple memory backends including ephemeral (buffer), persistent 
-(SQLite, PostgreSQL), and custom implementations with session management.
+Memory System for AgenticFlow
+=============================
+Comprehensive memory backends including buffer, SQLite, PostgreSQL, and custom implementations.
 """
 
-from .backends import (
-    SQLiteMemory,
-    PostgreSQLMemory, 
-    CustomMemory,
-    PersistentMemoryMixin
-)
-from .config import (
-    MemoryBackendType,
-    MemoryBackendConfig,
-    DatabaseConfig
-)
-from .factory import EnhancedMemoryFactory
-
-# Re-export original memory classes for compatibility
-from ..memory import (
+# Import core memory classes
+from .core import (
     AsyncMemory,
     BufferMemory,
     RetrievalMemory,
@@ -30,7 +16,35 @@ from ..memory import (
     MemoryFactory
 )
 
+# Import enhanced backends
+from .backends import (
+    SQLiteMemory,
+    PostgreSQLMemory,
+    CustomMemory,
+    PersistentMemoryMixin
+)
+
+# Import configuration
+from .config import (
+    MemoryBackendType,
+    MemoryBackendConfig,
+    DatabaseConfig
+)
+
+# Import factory
+from .factory import EnhancedMemoryFactory
+
 __all__ = [
+    # Core memory classes
+    'AsyncMemory',
+    'BufferMemory',
+    'RetrievalMemory',
+    'HybridMemory',
+    'MemoryDocument',
+    'MemoryError',
+    'VectorStoreError',
+    'MemoryFactory',
+    
     # Enhanced backends
     'SQLiteMemory',
     'PostgreSQLMemory',
@@ -39,19 +53,9 @@ __all__ = [
     
     # Configuration
     'MemoryBackendType',
-    'MemoryBackendConfig', 
+    'MemoryBackendConfig',
     'DatabaseConfig',
     
     # Factory
-    'EnhancedMemoryFactory',
-    
-    # Original classes (compatibility)
-    'AsyncMemory',
-    'BufferMemory',
-    'RetrievalMemory', 
-    'HybridMemory',
-    'MemoryDocument',
-    'MemoryError',
-    'VectorStoreError',
-    'MemoryFactory'
+    'EnhancedMemoryFactory'
 ]

@@ -23,6 +23,9 @@ from pydantic import BaseModel
 from agenticflow.config.settings import MemoryConfig
 from .config import DatabaseConfig, MemoryBackendConfig
 
+# Import base classes from core module  
+from .core import AsyncMemory, MemoryDocument
+
 logger = structlog.get_logger(__name__)
 
 try:
@@ -340,38 +343,36 @@ class SQLiteMemory(AsyncMemory, PersistentMemoryMixin):
             self._connection = None
 
 
-class PostgreSQLMemory(AsyncMemory, PersistentMemoryMixin):
-    """PostgreSQL-based persistent memory backend."""
-    
-    def __init__(self, config: MemoryBackendConfig):
-        if not POSTGRESQL_AVAILABLE:
-            raise MemoryError("PostgreSQL backend requires 'asyncpg' package")
+if POSTGRESQL_AVAILABLE:
+    class PostgreSQLMemory(AsyncMemory, PersistentMemoryMixin):
+        """PostgreSQL-based persistent memory backend."""
         
-        AsyncMemory.__init__(self, config.to_memory_config())
-        PersistentMemoryMixin.__init__(self, config)
+        def __init__(self, config: MemoryBackendConfig):
+            AsyncMemory.__init__(self, config.to_memory_config())
+            PersistentMemoryMixin.__init__(self, config)
+            
+            self._pool: Optional[asyncpg.Pool] = None
+            self._setup_complete = False
+            
+            # Extract connection parameters
+            self.connection_params = {
+                'host': config.connection_params.get('host', 'localhost'),
+                'port': config.connection_params.get('port', 5432),
+                'database': config.connection_params.get('database', 'agenticflow'),
+                'user': config.connection_params.get('user', 'postgres'),
+                'password': config.connection_params.get('password', ''),
+            }
         
-        self._pool: Optional[asyncpg.Pool] = None
-        self._setup_complete = False
-        
-        # Extract connection parameters
-        self.connection_params = {
-            'host': config.connection_params.get('host', 'localhost'),
-            'port': config.connection_params.get('port', 5432),
-            'database': config.connection_params.get('database', 'agenticflow'),
-            'user': config.connection_params.get('user', 'postgres'),
-            'password': config.connection_params.get('password', ''),
-        }
-    
-    async def _get_pool(self) -> asyncpg.Pool:
-        """Get database connection pool."""
-        if not self._pool:
-            try:
-                self._pool = await asyncpg.create_pool(**self.connection_params)
-                self.logger.info("Connected to PostgreSQL")
-            except Exception as e:
-                raise MemoryError(f"Failed to connect to PostgreSQL: {e}")
-        
-        return self._pool
+        async def _get_pool(self) -> asyncpg.Pool:
+            """Get database connection pool."""
+            if not self._pool:
+                try:
+                    self._pool = await asyncpg.create_pool(**self.connection_params)
+                    self.logger.info("Connected to PostgreSQL")
+                except Exception as e:
+                    raise MemoryError(f"Failed to connect to PostgreSQL: {e}")
+            
+            return self._pool
     
     async def _setup_tables(self):
         """Setup database tables if not exists."""
@@ -562,11 +563,17 @@ class PostgreSQLMemory(AsyncMemory, PersistentMemoryMixin):
         
         return {'session_id': target_session, 'message_count': 0}
     
-    async def close(self) -> None:
-        """Close database connection pool."""
-        if self._pool:
-            await self._pool.close()
-            self._pool = None
+        async def close(self) -> None:
+            """Close database connection pool."""
+            if self._pool:
+                await self._pool.close()
+                self._pool = None
+
+else:
+    # Fallback when asyncpg is not available
+    class PostgreSQLMemory:
+        def __init__(self, config):
+            raise MemoryError("PostgreSQL backend requires 'asyncpg' package. Install with: pip install asyncpg")
 
 
 class CustomMemory(AsyncMemory):

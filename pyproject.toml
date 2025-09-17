@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agenticflow"
-version = "0.1.0"
-description = "A fully intelligent, agentic AI system framework for building multi-agent workflows"
+version = "0.1.1"
+description = "Production-ready AI agent framework with enhanced tool calling, comprehensive memory backends, and advanced multi-agent orchestration"
 authors = [
     {name = "AgenticFlow Team"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
-keywords = ["ai", "agents", "langchain", "langgraph", "async", "automation"]
+keywords = ["ai", "agents", "langchain", "langgraph", "async", "automation", "tool-calling", "memory", "multi-agent", "orchestration", "llm"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -78,9 +78,14 @@ docs = [
 ]
 memory = [
     # SQLite async support
-    "aiosqlite>=0.19.0",
+    "aiosqlite>=0.21.0",
     # PostgreSQL async support  
-    "asyncpg>=0.28.0",
+    "asyncpg>=0.30.0",
+]
+all = [
+    "agenticflow[dev]",
+    "agenticflow[docs]", 
+    "agenticflow[memory]",
 ]
 memory-all = [
     "agenticflow[memory]",
