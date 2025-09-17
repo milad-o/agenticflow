@@ -96,11 +96,20 @@ AgenticFlow is a comprehensive, production-ready framework for building sophisti
 
 ### Install with UV (Recommended)
 ```bash
-# Install the core framework
-uv add agenticflow
+# Install with all extras (recommended)
+uv add "git+https://github.com/milad-o/agenticflow.git[all]"
 
-# Install with all extras (recommended for development)
-uv add agenticflow[all]
+# Or basic installation
+uv add "git+https://github.com/milad-o/agenticflow.git"
+```
+
+### Install with Pip
+```bash
+# Install with all extras (recommended)
+pip install "git+https://github.com/milad-o/agenticflow.git[all]"
+
+# Or basic installation
+pip install "git+https://github.com/milad-o/agenticflow.git"
 ```
 
 ### Development Installation

@@ -5,7 +5,7 @@ AgenticFlow provides a comprehensive framework for building multi-agent AI syste
 with async support, LangChain/LangGraph integration, and Agent-to-Agent communication.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.4"
 __author__ = "AgenticFlow Team"
 
 from .config.settings import AgenticFlowConfig, LLMProviderConfig
@@ -13,7 +13,6 @@ from .core.agent import Agent
 from .core.supervisor import SupervisorAgent
 from .core.task_manager import TaskManager, TaskPriority
 from .workflows.multi_agent import MultiAgentSystem
-# from .tools.base_tool import ToolRegistry  # TODO: Fix this import
 
 # Import implemented components
 __all__ = [
@@ -24,5 +23,4 @@ __all__ = [
     "MultiAgentSystem",
     "AgenticFlowConfig",
     "LLMProviderConfig",
-    # "ToolRegistry",  # TODO: Fix this import
 ]

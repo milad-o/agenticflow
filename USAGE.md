@@ -6,15 +6,27 @@ This guide focuses on practical usage of AgenticFlow - from basic agents to comp
 
 ## 📦 Installation
 
+### From GitHub (Currently the only method)
+**Note: AgenticFlow is not yet published to PyPI. Install directly from GitHub:**
 ```bash
-# Basic installation
-pip install agenticflow
+# Using UV (recommended)
+uv add "git+https://github.com/milad-o/agenticflow.git[all]"
 
-# With all features (recommended)
-pip install agenticflow[all]
+# Using pip
+pip install "git+https://github.com/milad-o/agenticflow.git[all]"
 
-# Using UV (recommended for development)
-uv sync --all-extras
+# Basic installation without extras (minimal dependencies)
+uv add "git+https://github.com/milad-o/agenticflow.git"
+```
+
+### Verify Installation
+```bash
+# Download and run the test script
+wget https://raw.githubusercontent.com/milad-o/agenticflow/main/test_installation.py
+python test_installation.py
+
+# Or test basic import
+python -c "from agenticflow import Agent; print('✅ AgenticFlow installed successfully!')"
 ```
 
 ## 🔑 Setup
@@ -425,9 +437,11 @@ print(f"Tasks completed: {stats.completed_tasks}")
 
 ```bash
 # Install
-pip install agenticflow[all]
+uv add "git+https://github.com/milad-o/agenticflow.git[all]"
 
-# Run examples
+# Run examples (after cloning the repo)
+git clone https://github.com/milad-o/agenticflow.git
+cd agenticflow
 uv run python examples/agent/final_tool_calling_validation.py
 uv run python examples/realistic_systems/sales_analysis/simple_sales_analysis.py
 
