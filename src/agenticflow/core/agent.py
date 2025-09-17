@@ -25,6 +25,7 @@ from ..llm_providers import LLMProviderFactory, get_llm_manager
 from ..memory import AsyncMemory, MemoryFactory
 from ..tools.base_tool import AsyncTool, ToolRegistry, ToolResult, get_tool_registry
 from ..orchestration import ToolSelector, RuleBasedToolSelector, ParameterExtractor
+from ..mcp.manager import MCPServerManager
 
 logger = structlog.get_logger(__name__)
 
@@ -87,6 +88,7 @@ class Agent:
         self._memory: Optional[AsyncMemory] = None
         self._tool_registry: Optional[ToolRegistry] = None
         self._a2a_handler: Optional[A2AHandler] = None
+        self._mcp_manager: Optional[MCPServerManager] = None
         
         # Execution control
         self._task_queue: asyncio.Queue = asyncio.Queue()
@@ -111,6 +113,10 @@ class Agent:
             # Initialize tool registry
             await self._initialize_tools()
             
+            # Initialize MCP servers if configured
+            if self.config.mcp_config:
+                await self._initialize_mcp()
+            
             # Initialize A2A communication if enabled
             if self.config.enable_a2a_communication:
                 await self._initialize_a2a()
@@ -131,6 +137,10 @@ class Agent:
         
         self._running = False
         self.state.status = "stopped"
+        
+        # Stop MCP servers
+        if self._mcp_manager:
+            await self._mcp_manager.stop()
         
         # Stop A2A handler
         if self._a2a_handler:
@@ -811,6 +821,31 @@ Use tools whenever they can help you provide more accurate or current informatio
             self.logger.info(f"Initialized {actual_tools_count} tools")
         except Exception as e:
             self.logger.warning(f"Failed to initialize tools: {e}")
+    
+    async def _initialize_mcp(self) -> None:
+        """Initialize MCP server connections."""
+        try:
+            self._mcp_manager = MCPServerManager(self.config.mcp_config)
+            await self._mcp_manager.start()
+            
+            # Register MCP tools with the agent's tool registry
+            if self.config.mcp_config.auto_register_tools:
+                mcp_tools = self._mcp_manager.get_tools()
+                for tool in mcp_tools:
+                    # Use namespaced names if configured
+                    tool_name = tool.name
+                    if self.config.mcp_config.tool_namespace:
+                        tool_name = f"{tool.mcp_client.name}.{tool.name}"
+                    
+                    # Register with a unique name to avoid conflicts
+                    self._tool_registry.register_tool(tool)
+                    self.logger.info(f"Registered MCP tool: {tool_name}")
+            
+            self.logger.info("MCP integration initialized", 
+                           servers=self._mcp_manager.list_active_servers(),
+                           total_tools=len(self._mcp_manager.get_tools()))
+        except Exception as e:
+            self.logger.warning(f"Failed to initialize MCP integration: {e}")
     
     async def _initialize_a2a(self) -> None:
         """Initialize A2A communication."""

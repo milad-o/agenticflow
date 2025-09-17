@@ -113,7 +113,7 @@ class AgentConfig(BaseModel):
     error_recovery: ErrorRecoveryStrategy = Field(ErrorRecoveryStrategy.RETRY, description="Error recovery strategy")
     
     tools: List[str] = Field(default_factory=list, description="List of tool names/identifiers")
-    mcp_servers: List[str] = Field(default_factory=list, description="List of MCP server URLs")
+    mcp_config: Optional[Any] = Field(None, description="MCP server configuration")
     
     # Tool selection configuration for CONTROLLED execution mode
     tool_selection_strategy: ToolSelectionStrategy = Field(ToolSelectionStrategy.RULE_BASED, description="Tool selection strategy for controlled mode")

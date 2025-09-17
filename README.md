@@ -33,8 +33,9 @@ AgenticFlow is a comprehensive, production-ready framework for building sophisti
 ### 🛠️ **Comprehensive Tooling**
 - **LLM Provider Agnostic**: OpenAI, Groq, and Ollama with automatic failover
 - **Tool Integration**: LangChain tools, custom functions, and MCP servers
-- **MCP Support**: Model Context Protocol integration for external tool servers
+- **🆕 MCP Support**: Full Model Context Protocol integration with external tool servers
 - **Dynamic Tool Loading**: Runtime tool registration and management
+- **Multi-Server MCP**: Connect to multiple MCP servers simultaneously with auto-discovery
 
 ### 🔧 **Developer Experience**
 - **Fully Async**: Built on Python's asyncio for high-performance concurrent operations
@@ -233,7 +234,10 @@ asyncio.run(main())
 #### 4. **Tool Integration** (`src/agenticflow/tools/`)
 - **AsyncTool**: Base class for all agent tools
 - **ToolRegistry**: Per-agent tool registration and management
-- **MCPClient**: Model Context Protocol integration
+- **🆕 MCP Integration**: Complete Model Context Protocol support (`src/agenticflow/mcp/`)
+  - **MCPClient**: JSON-RPC communication with MCP servers
+  - **MCPTool**: MCP tool integration with AgenticFlow
+  - **MCPServerManager**: Multi-server lifecycle management
 - **LangChain Integration**: Automatic wrapping of existing tools
 
 #### 5. **LLM Providers** (`src/agenticflow/llm_providers.py`)
@@ -389,28 +393,166 @@ retry_policy = RetryPolicy(
 orchestrator = TaskOrchestrator(default_retry_policy=retry_policy)
 ```
 
-### MCP Server Integration
+### 🆕 MCP Server Integration
 
 ```python
-from agenticflow.tools.mcp_client import MCPClient, MCPServerConfig, ConnectionType
+from agenticflow import Agent, LLMProviderConfig
+from agenticflow.config.settings import AgentConfig, LLMProvider  
+from agenticflow.mcp.config import MCPServerConfig, MCPConfig
 
-# Configure external MCP server
-mcp_config = MCPServerConfig(
-    name="research_tools",
-    connection_type=ConnectionType.STDIO,
-    command=["python", "-m", "research_mcp_server"],
-    env={"API_KEY": "your_api_key"},
-    timeout=30.0
+# Configure external MCP servers
+mcp_config = MCPConfig(
+    servers=[
+        MCPServerConfig(
+            name="calculator",
+            command=["python", "calculator_server.py"],
+            expected_tools=["calculate"],
+            timeout=30.0
+        ),
+        MCPServerConfig(
+            name="research_tools",
+            command=["python", "research_server.py"],
+            expected_tools=["web_search", "summarize"]
+        )
+    ],
+    auto_register_tools=True,     # Automatically register discovered tools
+    tool_namespace=True,          # Namespace tools by server name
+    startup_timeout=60.0
 )
 
-# Connect and auto-register tools
-mcp_client = MCPClient(mcp_config)
-await mcp_client.connect()
+# Create agent with MCP integration
+agent = Agent(AgentConfig(
+    name="research_agent",
+    llm=LLMProviderConfig(
+        provider=LLMProvider.OLLAMA,
+        model="granite3.2:8b"
+    ),
+    mcp_config=mcp_config         # Enable MCP integration
+))
 
-# Tools from MCP server are now available
-research_agent = create_agent("researcher") 
-research_agent.register_mcp_client(mcp_client)
+# Start agent - MCP servers start automatically
+await agent.start()
+
+# MCP tools are now automatically available
+result = await agent.execute_task("Calculate 15 + 27 and search for Python tutorials")
+print(result['response'])  # Uses both calculator.calculate and research_tools.web_search
+
+await agent.stop()  # Automatically stops MCP servers
 ```
+
+#### MCP Configuration Options
+
+**MCPServerConfig** - Individual server configuration:
+```python
+server_config = MCPServerConfig(
+    name="calculator",                    # Unique server name
+    command=["python", "server.py"],    # Command to start server
+    working_directory="/path/to/dir",   # Working directory (optional)
+    timeout=30.0,                       # Communication timeout
+    max_retries=3,                      # Max retry attempts
+    expected_tools=["calculate"],       # Expected tools (validation)
+    environment={"API_KEY": "key"},     # Environment variables
+    description="Calculator server"     # Human-readable description
+)
+```
+
+**MCPConfig** - Global MCP configuration:
+```python
+mcp_config = MCPConfig(
+    servers=[server1, server2],      # List of server configs
+    auto_register_tools=True,         # Auto-register discovered tools
+    tool_namespace=True,              # Namespace tools by server name
+    startup_timeout=60.0,             # Startup timeout for all servers
+    shutdown_timeout=30.0             # Shutdown timeout
+)
+```
+
+#### Advanced MCP Server Management
+
+```python
+from agenticflow.mcp.manager import MCPServerManager
+
+# Direct server management
+manager = MCPServerManager(mcp_config)
+await manager.start()
+
+# Monitor server health
+health = await manager.health_check()
+for server_name, is_healthy in health.items():
+    print(f"{server_name}: {'Healthy' if is_healthy else 'Unhealthy'}")
+
+# Get server status and tools
+status = manager.server_status()
+for name, info in status.items():
+    print(f"{name}: {len(info['tools'])} tools available")
+
+# Start/stop individual servers
+await manager.start_server("calculator")
+await manager.stop_server("calculator")
+```
+
+#### MCP Features
+
+- **🔌 Multiple Server Support**: Connect to multiple MCP servers simultaneously
+- **🔍 Auto-Discovery**: Automatic tool discovery and registration
+- **🏥 Health Monitoring**: Built-in server health checks and monitoring
+- **🛡️ Error Resilience**: Robust error handling and retry logic
+- **🏷️ Tool Namespacing**: Avoid conflicts with server-prefixed tool names
+- **⚙️ Flexible Configuration**: Per-server timeouts, retries, and environments
+- **🚀 Production Ready**: Process isolation and secure communication
+
+#### MCP Architecture
+
+AgenticFlow's MCP integration follows a clean, modular architecture:
+
+```
+AgenticFlow Agent
+├── LLM Provider (Ollama, OpenAI, etc.)
+├── Tool Registry
+│   ├── Regular Tools
+│   └── MCP Tools ←── MCP Integration
+├── MCP Manager
+│   ├── MCP Client 1 ←── External MCP Server 1
+│   ├── MCP Client 2 ←── External MCP Server 2
+│   └── MCP Client N ←── External MCP Server N
+└── Memory & Communication
+```
+
+#### MCP Testing Results
+
+All MCP components have been thoroughly tested and validated:
+
+**✅ MCP Client Test**
+- Server process startup/shutdown: **PASS**
+- JSON-RPC communication: **PASS**
+- Tool discovery (`tools/list`): **PASS** 
+- Tool execution (`tools/call`): **PASS**
+- Health monitoring (ping): **PASS**
+
+**✅ MCP Tool Integration**
+- Tool execution via MCP server: **PASS**
+- Result parsing and formatting: **PASS**
+- Error handling: **PASS**
+- Integration with ToolResult: **PASS**
+
+**✅ MCP Manager**
+- Multiple server management: **PASS**
+- Auto-discovery and registration: **PASS**
+- Server status reporting: **PASS**
+- Tool registry integration: **PASS**
+
+#### Benefits for Framework Users
+
+1. **🔌 Easy External Tool Integration**: Connect to any MCP-compatible server
+2. **📈 Scalable Architecture**: Add multiple servers and tools without complexity
+3. **🏢 Vendor Agnostic**: Work with any MCP server implementation
+4. **🏭 Production Ready**: Robust error handling and monitoring
+5. **⚡ Zero Configuration**: Auto-discovery and registration of tools
+6. **🧬 Framework Native**: MCP tools work exactly like built-in tools
+
+> **📖 Complete Documentation**: See `examples/README_MCP.md` for comprehensive MCP integration guide, advanced configurations, and detailed examples.
+
+---
 
 ## 🧪 Examples & Testing
 
@@ -421,6 +563,8 @@ The `examples/` directory contains comprehensive test suites and examples:
 - **`test_complex_deps_only.py`**: Complex dependency patterns and performance testing  
 - **`test_orchestration_only.py`**: Full orchestration system validation
 - **`test_system_comprehensive.py`**: End-to-end system integration tests
+- **🆕 `mcp_integration_example.py`**: Comprehensive MCP server integration examples
+- **🆕 `validate_mcp_integration.py`**: MCP integration validation tests
 
 ### Running Examples
 
@@ -438,6 +582,12 @@ python examples/test_complex_deps_only.py
 
 # Run comprehensive system tests
 python examples/test_system_comprehensive.py
+
+# Run MCP integration examples (requires Ollama with granite3.2:8b model)
+python examples/mcp_integration_example.py
+
+# Validate MCP integration
+python examples/validate_mcp_integration.py
 ```
 
 ### Test Results
@@ -583,8 +733,9 @@ spec:
 - [x] 🤖 LLM providers (OpenAI, Groq, Ollama) with failover
 - [x] 🧠 Advanced memory systems with vector embeddings
 - [x] 📡 A2A communication protocol implementation
-- [x] 🎯 Base Agent class with async execution
-- [x] 🛠️ Comprehensive tool integration (LangChain, MCP, custom)
+- [x] 🎆 Base Agent class with async execution
+- [x] 🛠️ Comprehensive tool integration (LangChain, custom functions)
+- [x] 🆕 **Full MCP Integration**: Model Context Protocol support with multi-server management
 
 **Orchestration System**:
 - [x] 📊 Task orchestration with DAG dependency management
