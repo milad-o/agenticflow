@@ -34,6 +34,7 @@ dependencies = [
     "langchain-openai>=0.1.0",
     "langchain-groq>=0.1.0",
     "langchain-ollama>=0.1.0",
+    "langchain-huggingface>=0.3.0",
     # Model Context Protocol (official SDK)
     "mcp>=1.0.0",
     "fastmcp>=0.1.0",
@@ -64,6 +65,10 @@ dependencies = [
     "pydantic-yaml>=1.1.0",
     "orjson>=3.9.0",
     "pandas>=2.3.2",
+    "langchain-chroma>=0.2.6",
+    "langchain-pinecone>=0.2.12",
+    "langchain-qdrant>=0.2.1",
+    "langchain-huggingface>=0.3.1",
 ]
 
 [project.optional-dependencies]
@@ -93,6 +98,10 @@ vectorstores = [
     "chromadb>=0.4.0",
     "pinecone-client>=3.0.0",
     "qdrant-client>=1.6.0",
+    # LangChain vector store integrations
+    "langchain-chroma>=0.2.0",
+    "langchain-pinecone>=0.2.0",
+    "langchain-qdrant>=0.2.0",
 ]
 all = [
     "agenticflow[dev]",

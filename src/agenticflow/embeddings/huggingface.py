@@ -91,7 +91,7 @@ class HuggingFaceEmbeddingProvider(AsyncEmbeddingProvider):
         
         # Try sentence-transformers first (recommended for embeddings)
         try:
-            from sentence_transformers import SentenceTransformer
+            from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
             
             self.model = SentenceTransformer(
                 model_name,
@@ -109,8 +109,8 @@ class HuggingFaceEmbeddingProvider(AsyncEmbeddingProvider):
         
         # Fallback to transformers
         try:
-            from transformers import AutoModel, AutoTokenizer
-            import torch
+            from transformers import AutoModel, AutoTokenizer  # type: ignore[import-untyped]
+            import torch  # type: ignore[import-untyped]
             
             self.tokenizer = AutoTokenizer.from_pretrained(
                 model_name,
