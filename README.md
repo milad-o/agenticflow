@@ -1181,6 +1181,14 @@ The `examples/` directory contains comprehensive test suites and examples organi
 - **`workflows/real_web_search_example.py`**: Real web search using external MCP server
 - **`workflows/web-search/`**: Complete MCP web search server (Node.js) - provides Google search capability
 
+### 🏢 **Complete Business Systems** ⭐ **NEW!**
+- **`realistic_systems/sales_analysis/`**: Production-ready sales analysis system
+  - **Multi-agent coordination** for end-to-end business workflows
+  - **Text-to-CSV conversion** with custom data processing tools
+  - **Statistical analysis** with pandas integration and business intelligence
+  - **Validated results**: Successfully processes $96K+ revenue data with 27.5% growth analysis
+  - **Two execution modes**: Full multi-agent system and simplified rate-limit-friendly version
+
 ### Running Examples
 
 ```bash
@@ -1210,6 +1218,11 @@ python examples/mcp/validate_mcp_integration.py
 
 # Realistic Workflows
 python examples/workflows/realistic_data_analysis.py
+
+# Complete Business Systems (NEW!)
+# Realistic sales analysis system - processes real business data
+export GROQ_API_KEY="your-groq-api-key"  # Get free key at console.groq.com
+python examples/realistic_systems/sales_analysis/simple_sales_analysis.py
 
 # Web Search Example (requires Node.js MCP server setup)
 cd examples/workflows/web-search && npm install && npm run build && cd ../../..

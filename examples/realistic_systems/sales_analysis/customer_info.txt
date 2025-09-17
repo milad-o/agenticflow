@@ -1,0 +1,170 @@
+CUSTOMER DATABASE - 2024
+=========================
+Last Updated: June 30, 2024
+
+CUSTOMER PROFILES:
+
+Customer: Tech Solutions Inc
+Customer ID: CUST-001
+Type: B2B
+Industry: Technology Services
+Contact: John Smith
+Email: john.smith@techsolutions.com
+Phone: (555) 123-4567
+Address: 123 Tech Street, San Francisco, CA 94105
+Credit Limit: $50,000
+Account Manager: Sarah Johnson
+
+Customer: Audio Experts LLC
+Customer ID: CUST-002
+Type: B2B
+Industry: Audio Equipment
+Contact: Maria Rodriguez
+Email: maria@audioexperts.com
+Phone: (555) 234-5678
+Address: 456 Sound Ave, Los Angeles, CA 90210
+Credit Limit: $25,000
+Account Manager: Mike Chen
+
+Customer: Corporate Furnishings
+Customer ID: CUST-003
+Type: B2B
+Industry: Office Furniture
+Contact: Robert Davis
+Email: robert.davis@corpfurn.com
+Phone: (555) 345-6789
+Address: 789 Business Blvd, Chicago, IL 60601
+Credit Limit: $75,000
+Account Manager: Lisa Martinez
+
+Customer: Modern Workspace
+Customer ID: CUST-004
+Type: B2B
+Industry: Workspace Design
+Contact: Jennifer Wilson
+Email: j.wilson@modernworkspace.com
+Phone: (555) 456-7890
+Address: 321 Design Way, Austin, TX 73301
+Credit Limit: $40,000
+Account Manager: David Wilson
+
+Customer: Mobile Solutions Co
+Customer ID: CUST-005
+Type: B2B
+Industry: Mobile Technology
+Contact: Michael Chang
+Email: mchang@mobilesolutions.com
+Phone: (555) 567-8901
+Address: 654 Mobile Dr, Seattle, WA 98101
+Credit Limit: $60,000
+Account Manager: Sarah Johnson
+
+Customer: Executive Offices
+Customer ID: CUST-006
+Type: B2B
+Industry: Executive Services
+Contact: Patricia Brown
+Email: patricia.brown@execoffices.com
+Phone: (555) 678-9012
+Address: 987 Executive Plaza, New York, NY 10001
+Credit Limit: $100,000
+Account Manager: Lisa Martinez
+
+Customer: Education Systems
+Customer ID: CUST-007
+Type: B2B
+Industry: Education Technology
+Contact: David Kim
+Email: dkim@educationsystems.com
+Phone: (555) 789-0123
+Address: 147 Learning Lane, Boston, MA 02101
+Credit Limit: $80,000
+Account Manager: Mike Chen
+
+Customer: Library Systems
+Customer ID: CUST-008
+Type: B2B
+Industry: Library Services
+Contact: Susan Taylor
+Email: staylor@librarysystems.com
+Phone: (555) 890-1234
+Address: 258 Knowledge St, Denver, CO 80201
+Credit Limit: $30,000
+Account Manager: Sarah Johnson
+
+Customer: Design Studios
+Customer ID: CUST-009
+Type: B2B
+Industry: Creative Services
+Contact: Alex Thompson
+Email: athompson@designstudios.com
+Phone: (555) 901-2345
+Address: 369 Creative Circle, Portland, OR 97201
+Credit Limit: $45,000
+Account Manager: Lisa Martinez
+
+Customer: Office Solutions
+Customer ID: CUST-010
+Type: B2B
+Industry: Office Management
+Contact: Lisa Garcia
+Email: lgarcia@officesolutions.com
+Phone: (555) 012-3456
+Address: 741 Office Park, Miami, FL 33101
+Credit Limit: $55,000
+Account Manager: Mike Chen
+
+Customer: Bulk Electronics
+Customer ID: CUST-011
+Type: B2B
+Industry: Electronics Distribution
+Contact: James Miller
+Email: jmiller@bulkelectronics.com
+Phone: (555) 123-5678
+Address: 852 Distribution Way, Phoenix, AZ 85001
+Credit Limit: $90,000
+Account Manager: David Wilson
+
+Customer: Premium Offices
+Customer ID: CUST-012
+Type: B2B
+Industry: Premium Workspace
+Contact: Amanda White
+Email: awhite@premiumoffices.com
+Phone: (555) 234-6789
+Address: 963 Luxury Lane, Las Vegas, NV 89101
+Credit Limit: $120,000
+Account Manager: Sarah Johnson
+
+Customer: Gaming World
+Customer ID: CUST-013
+Type: B2B
+Industry: Gaming & Entertainment
+Contact: Kevin Lee
+Email: klee@gamingworld.com
+Phone: (555) 345-7890
+Address: 159 Gaming Ave, San Diego, CA 92101
+Credit Limit: $70,000
+Account Manager: Sarah Johnson
+
+Customer: Comfort Spaces
+Customer ID: CUST-014
+Type: B2B
+Industry: Interior Design
+Contact: Rachel Adams
+Email: radams@comfortspaces.com
+Phone: (555) 456-8901
+Address: 357 Comfort Blvd, Nashville, TN 37201
+Credit Limit: $35,000
+Account Manager: Lisa Martinez
+
+Customer: Wearable Tech Co
+Customer ID: CUST-015
+Type: B2B
+Industry: Wearable Technology
+Contact: Brian Johnson
+Email: bjohnson@wearabletech.com
+Phone: (555) 567-9012
+Address: 468 Wearable Way, Raleigh, NC 27601
+Credit Limit: $55,000
+Account Manager: Mike Chen

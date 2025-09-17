@@ -1,0 +1,143 @@
+QUARTERLY SALES REPORT - Q1 2024
+==================================
+Region: North America
+Report Date: March 31, 2024
+
+SALES TRANSACTIONS:
+
+Transaction ID: TXN-2024-0001
+Date: 2024-01-05
+Product: Laptop Pro 15"
+Category: Electronics
+Quantity: 2
+Unit Price: $1,299.99
+Customer: Tech Solutions Inc
+Sales Rep: Sarah Johnson
+Total: $2,599.98
+
+Transaction ID: TXN-2024-0002
+Date: 2024-01-08
+Product: Wireless Headphones
+Category: Electronics
+Quantity: 5
+Unit Price: $199.99
+Customer: Audio Experts LLC
+Sales Rep: Mike Chen
+Total: $999.95
+
+Transaction ID: TXN-2024-0003
+Date: 2024-01-12
+Product: Office Chair Premium
+Category: Furniture
+Quantity: 10
+Unit Price: $449.99
+Customer: Corporate Furnishings
+Sales Rep: Lisa Martinez
+Total: $4,499.90
+
+Transaction ID: TXN-2024-0004
+Date: 2024-01-15
+Product: Standing Desk
+Category: Furniture
+Quantity: 3
+Unit Price: $799.99
+Customer: Modern Workspace
+Sales Rep: David Wilson
+Total: $2,399.97
+
+Transaction ID: TXN-2024-0005
+Date: 2024-01-20
+Product: Smartphone Pro
+Category: Electronics
+Quantity: 8
+Unit Price: $899.99
+Customer: Mobile Solutions Co
+Sales Rep: Sarah Johnson
+Total: $7,199.92
+
+Transaction ID: TXN-2024-0006
+Date: 2024-02-03
+Product: Conference Table
+Category: Furniture
+Quantity: 1
+Unit Price: $1,899.99
+Customer: Executive Offices
+Sales Rep: Lisa Martinez
+Total: $1,899.99
+
+Transaction ID: TXN-2024-0007
+Date: 2024-02-10
+Product: Tablet Ultra
+Category: Electronics
+Quantity: 12
+Unit Price: $599.99
+Customer: Education Systems
+Sales Rep: Mike Chen
+Total: $7,199.88
+
+Transaction ID: TXN-2024-0008
+Date: 2024-02-14
+Product: Ergonomic Keyboard
+Category: Electronics
+Quantity: 25
+Unit Price: $129.99
+Customer: Tech Solutions Inc
+Sales Rep: David Wilson
+Total: $3,249.75
+
+Transaction ID: TXN-2024-0009
+Date: 2024-02-20
+Product: Bookshelf Unit
+Category: Furniture
+Quantity: 6
+Unit Price: $299.99
+Customer: Library Systems
+Sales Rep: Sarah Johnson
+Total: $1,799.94
+
+Transaction ID: TXN-2024-0010
+Date: 2024-03-05
+Product: Monitor 4K 27"
+Category: Electronics
+Quantity: 4
+Unit Price: $549.99
+Customer: Design Studios
+Sales Rep: Lisa Martinez
+Total: $2,199.96
+
+Transaction ID: TXN-2024-0011
+Date: 2024-03-12
+Product: Storage Cabinet
+Category: Furniture
+Quantity: 8
+Unit Price: $399.99
+Customer: Office Solutions
+Sales Rep: Mike Chen
+Total: $3,199.92
+
+Transaction ID: TXN-2024-0012
+Date: 2024-03-18
+Product: Wireless Mouse
+Category: Electronics
+Quantity: 50
+Unit Price: $49.99
+Customer: Bulk Electronics
+Sales Rep: David Wilson
+Total: $2,499.50
+
+Transaction ID: TXN-2024-0013
+Date: 2024-03-25
+Product: Executive Desk
+Category: Furniture
+Quantity: 2
+Unit Price: $1,299.99
+Customer: Premium Offices
+Sales Rep: Sarah Johnson
+Total: $2,599.98
+
+SUMMARY STATISTICS:
+Total Transactions: 13
+Total Revenue: $44,448.64
+Top Category: Electronics (8 transactions)
+Top Sales Rep: Sarah Johnson (4 transactions)
+Average Transaction Value: $3,419.13

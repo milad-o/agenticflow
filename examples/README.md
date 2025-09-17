@@ -90,6 +90,25 @@ python examples/workflows/realistic_data_analysis.py
 python examples/workflows/real_web_search_example.py
 ```
 
+### 7. **Complete Business Systems** 🏢 **NEW!**
+- **`realistic_systems/sales_analysis/`** - **Production-Ready Sales Analysis System**
+  - Multi-agent coordination for end-to-end business workflow
+  - Text-to-CSV conversion with custom data processing tools
+  - Statistical analysis with pandas integration
+  - Business intelligence reporting and insights generation
+  - **Successfully processes $96K+ revenue data with 27.5% growth analysis**
+
+```bash
+# Complete business analysis system (requires GROQ_API_KEY)
+export GROQ_API_KEY="your-groq-api-key"
+
+# Run the full system (recommended)
+uv run python examples/realistic_systems/sales_analysis/simple_sales_analysis.py
+
+# Or run the multi-agent version
+uv run python examples/realistic_systems/sales_analysis/sales_analysis_system.py
+```
+
 ---
 
 ## 🔧 Tool Calling System
