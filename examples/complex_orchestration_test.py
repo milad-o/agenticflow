@@ -21,8 +21,7 @@ import math
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
-import sys
-sys.path.append('/Users/miladolad/OneDrive/Work Projects/ma_system/agenticflow/src')
+# All imports are now handled by the package structure
 
 from agenticflow.orchestration.task_orchestrator import TaskOrchestrator
 from agenticflow.orchestration.task_management import RetryPolicy, TaskPriority
@@ -870,7 +869,9 @@ async def run_complex_orchestration():
                             
                             # Final report results
                             elif "report_title" in task_result:
-                                print(f"     📋 Components: {len(task_result.get('orchestration_metrics', {}).get('tasks_executed', 0))}")
+                                tasks_executed = task_result.get('orchestration_metrics', {}).get('tasks_executed', 0)
+                                components_count = len(tasks_executed) if isinstance(tasks_executed, (list, dict)) else tasks_executed
+                                print(f"     📋 Components: {components_count}")
                                 print(f"     🎯 System Ready: {task_result.get('system_ready', False)}")
                     
                     print()

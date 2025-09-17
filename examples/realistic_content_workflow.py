@@ -20,8 +20,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Any
 
-import sys
-sys.path.append('/Users/miladolad/OneDrive/Work Projects/ma_system/agenticflow/src')
+# All imports are now handled by the package structure
 
 from agenticflow.orchestration.task_orchestrator import TaskOrchestrator
 from agenticflow.orchestration.task_management import RetryPolicy, TaskPriority

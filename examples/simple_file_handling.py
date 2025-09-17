@@ -17,8 +17,7 @@ import os
 import random
 from typing import Dict, List, Any
 
-import sys
-sys.path.append('/Users/miladolad/OneDrive/Work Projects/ma_system/agenticflow/src')
+# All imports are now handled by the package structure
 
 from agenticflow.orchestration.task_orchestrator import TaskOrchestrator
 from agenticflow.orchestration.task_management import RetryPolicy, TaskPriority
@@ -29,7 +28,7 @@ class FileProcessor:
     
     def __init__(self):
         self.start_time = time.time()
-        self.base_dir = "/Users/miladolad/OneDrive/Work Projects/ma_system/agenticflow/temp_files"
+        self.base_dir = os.path.join(os.getcwd(), "temp_files")
         self.created_files = []
         
     def log_event(self, stage: str, details: Dict[str, Any]):
