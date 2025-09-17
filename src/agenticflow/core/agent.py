@@ -697,9 +697,93 @@ Please provide a final response that addresses the original task using these res
         if not self._tool_registry:
             return tool_calls
         
-        # Check for calculator usage
+        # Get all available tools
+        available_tools = self._tool_registry.list_tools()
+        
+        # Generic tool detection - look for explicit tool mentions
+        import re
+        for tool_name in available_tools:
+            # Pattern 1: "I will use the {tool_name} tool" or "use {tool_name}"
+            tool_mention_patterns = [
+                rf'(?:will\s+use\s+(?:the\s+)?`?{re.escape(tool_name)}`?(?:\s+tool)?)',
+                rf'(?:using\s+(?:the\s+)?`?{re.escape(tool_name)}`?(?:\s+tool)?)',
+                rf'(?:use\s+(?:the\s+)?`?{re.escape(tool_name)}`?(?:\s+tool)?)',
+                rf'(?:call\s+(?:the\s+)?`?{re.escape(tool_name)}`?(?:\s+tool)?)',
+                rf'(?:execute\s+(?:the\s+)?`?{re.escape(tool_name)}`?(?:\s+tool)?)',
+                rf'`{re.escape(tool_name)}`\s*(?:tool)?\s*(?:to|will|should)',
+            ]
+            
+            for pattern in tool_mention_patterns:
+                if re.search(pattern, response_lower):
+                    self.logger.debug(f"Detected implicit tool call: {tool_name}")
+                    tool_calls.append((tool_name, {}))
+                    break  # Only add once per tool
+        
+        # Specific tool detection with parameter extraction
+        
+        # Time-related requests
+        if any(tool in available_tools for tool in ['get_time', 'time', 'current_time']):
+            time_patterns = [
+                r'what\s+time\s+is\s+it',
+                r'current\s+time',
+                r'what\s*[\'\"]?s\s+the\s+time',
+                r'time\s+right\s+now',
+                r'what\s+is\s+the\s+current\s+time',
+            ]
+            
+            for pattern in time_patterns:
+                if re.search(pattern, response_lower):
+                    # Find the appropriate tool name
+                    for tool_name in ['get_time', 'time', 'current_time']:
+                        if tool_name in available_tools:
+                            tool_calls.append((tool_name, {}))
+                            break
+                    break
+        
+        # System information requests
+        if any(tool in available_tools for tool in ['system_info', 'system', 'platform']):
+            system_patterns = [
+                r'system\s+information',
+                r'what\s+system\s+am\s+i\s+(?:running\s+)?on',
+                r'platform\s+information',
+                r'system\s+details',
+                r'operating\s+system',
+            ]
+            
+            for pattern in system_patterns:
+                if re.search(pattern, response_lower):
+                    for tool_name in ['system_info', 'system', 'platform']:
+                        if tool_name in available_tools:
+                            tool_calls.append((tool_name, {}))
+                            break
+                    break
+        
+        # Math/calculation requests
+        if any(tool in available_tools for tool in ['math', 'precise_math', 'calculator', 'calculate']):
+            # Look for mathematical expressions
+            math_patterns = [
+                r'calculate\s+([0-9+\-*/\s().]+)',
+                r'what\s+is\s+([0-9+\-*/\s().]+)',
+                r'compute\s+([0-9+\-*/\s().]+)',
+                r'([0-9]+(?:\.[0-9]+)?\s*[+\-*/]\s*[0-9]+(?:\.[0-9]+)?(?:\s*[+\-*/]\s*[0-9]+(?:\.[0-9]+)?)*)',
+            ]
+            
+            for pattern in math_patterns:
+                matches = re.findall(pattern, response_lower)
+                for match in matches:
+                    if match.strip():
+                        expression = match.strip()
+                        # Find the appropriate tool name
+                        for tool_name in ['precise_math', 'math', 'calculator', 'calculate']:
+                            if tool_name in available_tools:
+                                tool_calls.append((tool_name, {'expression': expression}))
+                                break
+                        break  # Only take first match
+        
+        # Legacy specific tool patterns (backward compatibility)
+        
+        # Check for calculator usage (legacy)
         if self._tool_registry.has_tool("calculator"):
-            # Look for mathematical expressions or calculation requests
             calc_patterns = [
                 r'what\s+is\s+(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)',
                 r'calculate\s+(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)',
@@ -707,7 +791,6 @@ Please provide a final response that addresses the original task using these res
             ]
             
             for pattern in calc_patterns:
-                import re
                 matches = re.findall(pattern, response_lower)
                 for match in matches:
                     if len(match) == 3:
@@ -721,7 +804,7 @@ Please provide a final response that addresses the original task using these res
                             }))
                             break  # Only take the first match
         
-        # Check for weather requests
+        # Check for weather requests (legacy)
         if self._tool_registry.has_tool("weather"):
             weather_patterns = [
                 r'weather\s+(?:in\s+)?([a-zA-Z\s]+)',
@@ -730,7 +813,6 @@ Please provide a final response that addresses the original task using these res
             ]
             
             for pattern in weather_patterns:
-                import re
                 matches = re.findall(pattern, response_lower, re.IGNORECASE)
                 for city in matches:
                     city = city.strip().title()
@@ -738,7 +820,16 @@ Please provide a final response that addresses the original task using these res
                         tool_calls.append(('weather', {'city': city}))
                         break  # Only take the first match
         
-        return tool_calls
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_tool_calls = []
+        for tool_name, params in tool_calls:
+            tool_key = (tool_name, frozenset(params.items()) if params else frozenset())
+            if tool_key not in seen:
+                seen.add(tool_key)
+                unique_tool_calls.append((tool_name, params))
+        
+        return unique_tool_calls
     
     def _get_tool_usage_instructions(self) -> str:
         """Generate tool usage instructions for the system prompt."""
