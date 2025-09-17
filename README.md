@@ -17,11 +17,17 @@ AgenticFlow is a comprehensive, production-ready framework for building sophisti
 - **📝 Multiple Patterns**: Supports JSON tool calls, explicit mentions, and implicit detection
 - **⚡ Real-time Execution**: "What time is it?" → `get_time` tool → "2025-09-17 01:23:01"
 
-### ✅ **Memory System Overhaul (v0.1.1)**
+### ✅ **Memory System Overhaul (v0.1.2)**
 - **🔧 Circular Import Issues Resolved**: Complete memory architecture restructure
 - **🧠 Enhanced Backends**: Buffer, SQLite, PostgreSQL, and custom memory support
 - **💾 Cross-Session Persistence**: Agents remember across restarts with database backends
 - **🏗️ Clean Architecture**: Proper separation of interfaces and implementations
+
+### ✅ **NEW: Advanced Text Chunking & Vector Stores (v0.1.2)**
+- **📝 Modular Chunking System**: 5 strategies from simple fixed-size to AI-powered semantic chunking
+- **🧠 Vector Store Support**: FAISS, Chroma, Pinecone with unified interface and persistence
+- **🔍 Semantic Search**: Vector-enabled memory with automatic chunking and embedding generation
+- **⚡ Smart Chunking**: Automatic strategy selection based on content analysis
 
 ## ✨ Key Features
 
@@ -39,7 +45,10 @@ AgenticFlow is a comprehensive, production-ready framework for building sophisti
 - **Priority Queuing**: CRITICAL → HIGH → NORMAL → LOW execution ordering
 
 ### 🧠 **Intelligence & Memory**
-- **Advanced Memory Systems**: Buffer, retrieval-based, and hybrid memory with vector embeddings
+- **Advanced Memory Systems**: Buffer, vector-enabled, retrieval-based, and hybrid memory with embeddings
+- **Vector Stores**: FAISS, Chroma, Pinecone support with persistent and ephemeral storage
+- **Smart Text Chunking**: 5 strategies including semantic boundary detection and automatic selection
+- **Semantic Search**: Vector-based retrieval across conversation history and documents
 - **Self-Verification**: Agents validate their own outputs and decisions
 - **Context-Aware Processing**: Vector-based retrieval for long-term context storage
 - **Error Recovery**: Configurable strategies (retry, rephrase, escalate) with exponential backoff
@@ -117,6 +126,75 @@ async def main():
         await agent.stop()
 
 # Run the example
+asyncio.run(main())
+```
+
+### Vector-Enabled Memory with Semantic Search
+
+```python
+import asyncio
+from agenticflow.memory.vector_memory import VectorMemory, VectorMemoryConfig
+from agenticflow.vectorstores import VectorStoreFactory
+from agenticflow.text.chunking import ChunkingConfig, ChunkingStrategy
+from agenticflow.config.settings import MemoryConfig
+from langchain_core.messages import HumanMessage, AIMessage
+
+async def main():
+    # Create vector store configuration
+    vector_store_config = VectorStoreFactory.create_faiss_config(
+        collection_name="agent_memory",
+        persist_path="./agent_vectors.faiss",
+        embedding_dimension=1536  # OpenAI embedding dimension
+    )
+    
+    # Configure smart chunking
+    chunking_config = ChunkingConfig(
+        strategy=ChunkingStrategy.SEMANTIC,  # AI-powered semantic boundaries
+        chunk_size=1000,
+        chunk_overlap=200,
+        min_chunk_size=100
+    )
+    
+    # Create vector memory configuration
+    vector_memory_config = VectorMemoryConfig(
+        vector_store_config=vector_store_config,
+        chunking_config=chunking_config,
+        enable_chunking=True,
+        enable_semantic_search=True
+    )
+    
+    # Create memory with vector capabilities
+    memory_config = MemoryConfig(type="vector", max_messages=100)
+    vector_memory = VectorMemory(
+        config=memory_config,
+        vector_config=vector_memory_config,
+        embeddings=openai_embeddings  # Your embedding model
+    )
+    
+    # Add messages with automatic chunking and embedding
+    await vector_memory.add_message(HumanMessage(
+        content="I'm working on a machine learning project involving natural language processing and need help with transformer architectures."
+    ))
+    
+    await vector_memory.add_message(AIMessage(
+        content="I can help with transformers! They use self-attention mechanisms to process sequences in parallel, making them highly effective for NLP tasks like translation, summarization, and question answering."
+    ))
+    
+    # Semantic search across conversation history
+    results = await vector_memory.search(
+        query="transformer attention mechanisms",
+        limit=5,
+        similarity_threshold=0.7
+    )
+    
+    print(f"Found {len(results)} relevant messages:")
+    for result in results:
+        print(f"  Score: {result.metadata.get('similarity_score', 0):.3f}")
+        print(f"  Content: {result.content[:100]}...")
+    
+    # Memory persists across restarts!
+    await vector_memory.disconnect()
+
 asyncio.run(main())
 ```
 

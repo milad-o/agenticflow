@@ -89,12 +89,24 @@ async def demonstrate_custom_provider():
     # Extend the LLMProvider enum (in practice, you'd do this in settings.py)
     # LLMProvider.ANTHROPIC = "anthropic"  # This would be added to the enum
     
+    # NOTE: This would fail with current enum validation
+    # config = LLMProviderConfig(
+    #     provider="anthropic",  # This fails - not in enum yet
+    #     model="claude-3-sonnet-20240229",
+    #     temperature=0.7,
+    #     max_tokens=4096
+    # )
+    
+    # Instead, let's use an existing provider for the config demo
     config = LLMProviderConfig(
-        provider="anthropic",  # Would use LLMProvider.ANTHROPIC
-        model="claude-3-sonnet-20240229",
+        provider=LLMProvider.OPENAI,  # Using existing provider for demo
+        model="claude-3-sonnet-20240229",  # But with Claude model name
         temperature=0.7,
         max_tokens=4096
     )
+    
+    print("📝 Note: Using OPENAI provider enum for demo")
+    print("    In production, you'd add ANTHROPIC to the enum first")
     print(f"✅ Created config for model: {config.model}")
     print()
     

@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agenticflow"
-version = "0.1.1"
-description = "Production-ready AI agent framework with enhanced tool calling, comprehensive memory backends, and advanced multi-agent orchestration"
+version = "0.1.2"
+description = "Production-ready AI agent framework with enhanced tool calling, vector stores, smart text chunking, and advanced multi-agent orchestration"
 authors = [
     {name = "AgenticFlow Team"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
-keywords = ["ai", "agents", "langchain", "langgraph", "async", "automation", "tool-calling", "memory", "multi-agent", "orchestration", "llm"]
+keywords = ["ai", "agents", "langchain", "langgraph", "async", "automation", "tool-calling", "memory", "vector-stores", "chunking", "semantic-search", "multi-agent", "orchestration", "llm"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -46,6 +46,9 @@ dependencies = [
     # Vector Stores and Embeddings
     "faiss-cpu>=1.7.4",
     "numpy>=1.24.0",
+    # Optional vector store dependencies (graceful fallback)
+    # "chromadb>=0.4.0",  # Uncomment for Chroma support
+    # "pinecone-client>=3.0.0",  # Uncomment for Pinecone support
     # Logging and Utilities
     "structlog>=23.2.0",
     "typer>=0.9.0",
@@ -82,10 +85,17 @@ memory = [
     # PostgreSQL async support  
     "asyncpg>=0.30.0",
 ]
+vectorstores = [
+    # Additional vector store dependencies
+    "chromadb>=0.4.0",
+    "pinecone-client>=3.0.0",
+    "qdrant-client>=1.6.0",
+]
 all = [
     "agenticflow[dev]",
     "agenticflow[docs]", 
     "agenticflow[memory]",
+    "agenticflow[vectorstores]",
 ]
 memory-all = [
     "agenticflow[memory]",

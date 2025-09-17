@@ -19,6 +19,8 @@ python examples/direct_llm_tool_test.py
 ### 2. **Memory System Demos** ⭐
 - **`memory_demo.py`** - Comprehensive memory backends demo (Buffer, SQLite, PostgreSQL)
 - **`memory_backends_test.py`** - Memory backend testing and validation
+- **`memory_chunking_integration_test.py`** - Advanced chunking and memory integration
+- **`advanced_memory_chunking_demo.py`** - Enhanced memory with chunking, compression, and analytics
 
 ```bash
 # Demonstrate different memory backends
@@ -26,9 +28,24 @@ python examples/memory_demo.py
 
 # Test memory backend functionality
 python examples/memory_backends_test.py
+
+# Test chunking and enhanced memory integration
+python examples/memory_chunking_integration_test.py
 ```
 
-### 3. **MCP Integration** ⭐
+### 3. **Vector Stores & Semantic Search** ⭐ NEW!
+- **`vector_store_memory_demo.py`** - Comprehensive vector store demonstrations (FAISS, Chroma, In-memory)
+- **`advanced_memory_chunking_demo.py`** - Semantic chunking with embedding support
+
+```bash
+# Demonstrate vector stores and semantic search
+python examples/vector_store_memory_demo.py
+
+# Advanced memory with chunking and analytics
+python examples/advanced_memory_chunking_demo.py
+```
+
+### 4. **MCP Integration** ⭐
 - **`mcp_integration_example.py`** - Complete MCP server integration examples
 - **`validate_mcp_integration.py`** - MCP integration validation tests
 - **`real_web_search_example.py`** - Real web search using external MCP server
@@ -85,21 +102,31 @@ result = await agent.execute_task("What time is it right now?")
 
 ---
 
-## 🧠 Memory Backends
+## 🧠 Memory & Vector Storage Systems
 
-AgenticFlow supports multiple memory backends for different use cases:
+AgenticFlow provides comprehensive memory and vector storage capabilities:
 
-### **Available Backends:**
+### **Memory Backends:**
 | Backend | Speed | Persistence | Sessions | Search | Use Case |
 |---------|--------|-------------|----------|---------|----------|
 | **Buffer** | ⚡⚡⚡ | ❌ | ❌ | Basic | Development, Chat |
+| **Enhanced** | ⚡⚡ | ✅ | ✅ | Semantic | Advanced features |
+| **Vector** | ⚡⚡ | ✅ | ✅ | Semantic | AI-powered search |
 | **SQLite** | ⚡⚡ | ✅ | ✅ | Full-text | Personal, Local |
 | **PostgreSQL** | ⚡ | ✅ | ✅ | Advanced | Enterprise, Multi-user |
-| **Custom** | Varies | Varies | Varies | Custom | Specialized needs |
+
+### **Vector Store Backends:**
+| Backend | Type | Persistence | Scale | Use Case |
+|---------|------|-------------|-------|----------|
+| **In-Memory** | Ephemeral | ❌ | Small | Development, Testing |
+| **FAISS** | Local | ✅ | Large | Fast local search |
+| **Chroma** | Local/Remote | ✅ | Medium | Versatile embedding DB |
+| **Pinecone** | Cloud | ✅ | Massive | Managed enterprise |
+| **Qdrant** | Self-hosted | ✅ | Large | Advanced filtering |
 
 ### **Example Usage:**
 ```python
-# SQLite persistent memory
+# Traditional SQLite memory
 config = AgentConfig(
     name="assistant_agent",
     memory=MemoryConfig(
@@ -108,9 +135,61 @@ config = AgentConfig(
     )
 )
 
-agent = Agent(config)
-# Agent remembers across restarts!
+# Vector-enabled memory with chunking
+vector_config = VectorMemoryConfig(
+    vector_store_config=VectorStoreFactory.create_faiss_config(
+        persist_path="./agent_vectors.faiss",
+        embedding_dimension=1536
+    ),
+    chunking_config=ChunkingConfig(
+        strategy=ChunkingStrategy.SEMANTIC,
+        chunk_size=1000
+    )
+)
+
+vector_memory = VectorMemory(config, vector_config, embeddings)
+# Semantic search across conversation history!
 ```
+
+---
+
+## 🧩 Text Chunking System
+
+Advanced text chunking for handling long documents and enabling semantic search:
+
+### **Chunking Strategies:**
+| Strategy | Best For | Boundary | Use Case |
+|----------|----------|----------|----------|
+| **Fixed Size** | Uniform chunks | Character/Word | Simple processing |
+| **Sentence** | Natural breaks | Sentence | Readable chunks |
+| **Recursive** | Hierarchical | Paragraph → Sentence → Word | General purpose |
+| **Markdown** | Structured docs | Headers/Sections | Documentation |
+| **Semantic** | AI-powered | Meaning-based | Advanced search |
+
+### **Smart Chunking:**
+```python
+# Automatic strategy selection based on content analysis
+chunks = await chunking_manager.smart_chunk(
+    text,
+    auto_embeddings=True  # Generate embeddings automatically
+)
+
+# Manual strategy selection
+chunks = await chunk_text(
+    text,
+    strategy=ChunkingStrategy.SEMANTIC,
+    chunk_size=1000,
+    chunk_overlap=200
+)
+```
+
+### **Features:**
+- ✅ **5 Chunking Strategies** - From simple to AI-powered semantic
+- ✅ **Automatic Strategy Selection** - Analyzes content and suggests optimal approach
+- ✅ **Embedding Integration** - Seamless with vector stores
+- ✅ **Metadata Tracking** - Comprehensive chunk information and relationships
+- ✅ **Overlap Management** - Smart overlap to maintain context
+- ✅ **Boundary Detection** - Respects natural text boundaries
 
 ---
 

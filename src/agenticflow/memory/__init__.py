@@ -34,6 +34,23 @@ from .config import (
 # Import factory
 from .factory import EnhancedMemoryFactory
 
+# Import enhanced memory system
+from .enhanced import (
+    EnhancedMemory,
+    MemoryConfiguration,
+    MemoryStats,
+    MemoryCompressor,
+    MemoryLifecycleManager,
+    MemoryAnalytics,
+    create_enhanced_memory
+)
+
+# Import vector memory system
+from .vector_memory import (
+    VectorMemory,
+    VectorMemoryConfig
+)
+
 __all__ = [
     # Core memory classes
     'AsyncMemory',
@@ -57,5 +74,18 @@ __all__ = [
     'DatabaseConfig',
     
     # Factory
-    'EnhancedMemoryFactory'
+    'EnhancedMemoryFactory',
+    
+    # Enhanced memory system
+    'EnhancedMemory',
+    'MemoryConfiguration',
+    'MemoryStats',
+    'MemoryCompressor',
+    'MemoryLifecycleManager',
+    'MemoryAnalytics',
+    'create_enhanced_memory',
+    
+    # Vector memory system
+    'VectorMemory',
+    'VectorMemoryConfig'
 ]
