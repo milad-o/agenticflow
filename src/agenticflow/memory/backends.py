@@ -11,7 +11,7 @@ import sqlite3
 import time
 import uuid
 from abc import abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -60,7 +60,7 @@ class PersistentMemoryMixin:
             'content': message.content,
             'metadata': json.dumps(metadata or {}),
             'session_id': self._session_id,
-            'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
             'created_at': int(time.time())
         }
     

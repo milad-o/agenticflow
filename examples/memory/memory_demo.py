@@ -11,7 +11,7 @@ import os
 import sqlite3
 import tempfile
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
@@ -53,7 +53,7 @@ class BufferMemory(SimpleMemoryBackend):
             'id': msg_id,
             'message': message,
             'metadata': metadata or {},
-            'timestamp': datetime.utcnow()
+        'timestamp': datetime.now(timezone.utc)
         })
         
         # Trim if needed
@@ -115,7 +115,7 @@ class SQLiteMemory(SimpleMemoryBackend):
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (
             msg_id, self.session_id, msg_type, message.content,
-            json.dumps(metadata or {}), int(datetime.utcnow().timestamp())
+            json.dumps(metadata or {}), int(datetime.now(timezone.utc).timestamp())
         ))
         conn.commit()
         conn.close()

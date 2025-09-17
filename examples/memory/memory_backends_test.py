@@ -11,7 +11,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
@@ -45,7 +45,7 @@ class RedisLikeMemoryHandler:
             "content": message.content,
             "type": message.__class__.__name__.lower().replace("message", ""),
             "metadata": metadata or {},
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         print(f"📝 Added message {msg_id} to Redis-like storage")

@@ -361,8 +361,13 @@ class ChromaVectorStore(AsyncVectorStore):
         try:
             self.collection = self.client.get_collection(name=self.config.collection_name)
         except:
-            # Collection doesn't exist, create it
-            await self.create_collection()
+            # Collection doesn't exist, create it directly
+            distance_function = self._map_distance_metric(self.config.distance_metric)
+            self.collection = self.client.create_collection(
+                name=self.config.collection_name,
+                metadata={"hnsw:space": distance_function}
+            )
+            self.logger.debug(f"Created Chroma collection: {self.config.collection_name}")
     
     async def _get_collection(self, collection_name: str) -> None:
         """Get a specific collection."""
