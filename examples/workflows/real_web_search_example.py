@@ -20,15 +20,15 @@ async def main():
     print("This example shows AgenticFlow using a real external")
     print("MCP server to search the web via Google results.\n")
     
-    # Check if web search server exists
-    current_dir = Path(__file__).parent.parent
+    # Check if web search server exists (beside this example)
+    current_dir = Path(__file__).parent  # Same directory as this example
     web_search_path = current_dir / "web-search" / "build" / "index.js"
     
     if not web_search_path.exists():
         print("❌ Web search MCP server not found!")
         print(f"Expected at: {web_search_path}")
         print("\nTo set up:")
-        print("1. cd web-search")
+        print("1. cd examples/workflows/web-search")
         print("2. npm install")
         print("3. npm run build")
         return

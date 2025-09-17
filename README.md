@@ -1179,6 +1179,7 @@ The `examples/` directory contains comprehensive test suites and examples organi
 - **`workflows/realistic_content_workflow.py`**: Content creation and management workflow  
 - **`workflows/realistic_ecommerce_processing.py`**: E-commerce order processing workflow
 - **`workflows/real_web_search_example.py`**: Real web search using external MCP server
+- **`workflows/web-search/`**: Complete MCP web search server (Node.js) - provides Google search capability
 
 ### Running Examples
 
@@ -1209,6 +1210,9 @@ python examples/mcp/validate_mcp_integration.py
 
 # Realistic Workflows
 python examples/workflows/realistic_data_analysis.py
+
+# Web Search Example (requires Node.js MCP server setup)
+cd examples/workflows/web-search && npm install && npm run build && cd ../../..
 python examples/workflows/real_web_search_example.py
 ```
 
