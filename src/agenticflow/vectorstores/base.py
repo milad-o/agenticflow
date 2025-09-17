@@ -388,8 +388,11 @@ class EphemeralVectorStore(AsyncVectorStore):
             # Convert distance to similarity score (higher is better)
             if self.config.distance_metric == DistanceMetric.COSINE:
                 score = 1.0 - distance  # Convert distance back to similarity
+            elif self.config.distance_metric == DistanceMetric.DOT_PRODUCT:
+                # For dot product, negative values are distances, so invert
+                score = max(0.0, -distance)  # Convert negative distance to positive score
             else:
-                score = 1.0 / (1.0 + distance)  # Inverse relationship
+                score = 1.0 / (1.0 + abs(distance))  # Inverse relationship with abs to avoid division by zero
             
             # Apply score threshold
             if score_threshold and score < score_threshold:

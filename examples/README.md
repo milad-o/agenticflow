@@ -4,75 +4,91 @@ This directory contains comprehensive examples demonstrating the capabilities of
 
 ## 🚀 Quick Start Examples
 
-### 1. **Enhanced Tool Calling** ⭐
-- **`final_tool_calling_validation.py`** - Comprehensive tool calling system validation with 50% success rate
-- **`direct_llm_tool_test.py`** - Direct LLM tool integration tests with 100% success rate
+### 1. **Agent & Tool Calling** ⭐
+- **`agent/final_tool_calling_validation.py`** - Comprehensive tool calling system validation
+- **`agent/complex_orchestration_test.py`** - Advanced multi-agent workflow orchestration
+- **`tools/direct_llm_tool_test.py`** - Direct LLM tool integration tests
 
 ```bash
 # Test the enhanced tool calling system (requires Ollama with qwen2.5:7b)
-python examples/final_tool_calling_validation.py
+python examples/agent/final_tool_calling_validation.py
 
 # Test direct LLM tool integration  
-python examples/direct_llm_tool_test.py
+python examples/tools/direct_llm_tool_test.py
+
+# Advanced orchestration
+python examples/agent/complex_orchestration_test.py
 ```
 
-### 2. **Memory System Demos** ⭐
-- **`memory_demo.py`** - Comprehensive memory backends demo (Buffer, SQLite, PostgreSQL)
-- **`memory_backends_test.py`** - Memory backend testing and validation
-- **`memory_chunking_integration_test.py`** - Advanced chunking and memory integration
-- **`advanced_memory_chunking_demo.py`** - Enhanced memory with chunking, compression, and analytics
+### 2. **Memory Systems** ⭐
+- **`memory/memory_demo.py`** - Comprehensive memory backends demo (Buffer, SQLite, PostgreSQL)
+- **`memory/memory_backends_test.py`** - Memory backend testing and validation
+- **`memory/memory_chunking_integration_test.py`** - Advanced chunking and memory integration
+- **`memory/advanced_memory_chunking_demo.py`** - Enhanced memory with chunking and analytics
+- **`memory/test_vector_memory.py`** - Comprehensive vector memory testing suite
+- **`memory/vector_store_memory_demo.py`** - Vector-enabled memory demonstrations
 
 ```bash
 # Demonstrate different memory backends
-python examples/memory_demo.py
+python examples/memory/memory_demo.py
 
-# Test memory backend functionality
-python examples/memory_backends_test.py
+# Test comprehensive vector memory system
+python examples/memory/test_vector_memory.py
 
-# Test chunking and enhanced memory integration
-python examples/memory_chunking_integration_test.py
+# Vector store and memory integration
+python examples/memory/vector_store_memory_demo.py
 ```
 
-### 3. **Vector Stores & Semantic Search** ⭐ NEW!
-- **`vector_store_memory_demo.py`** - Comprehensive vector store demonstrations (FAISS, Chroma, In-memory)
-- **`advanced_memory_chunking_demo.py`** - Semantic chunking with embedding support
+### 3. **Vector Stores & Embeddings** ⭐
+- **`vector_stores/test_vector_stores.py`** - Vector store backend testing (FAISS, Chroma, In-memory)
+- **`vector_stores/rag_demo.py`** - Retrieval-Augmented Generation demonstration
+- **`embeddings/test_ollama_embeddings.py`** - Ollama embedding provider testing
+- **`embeddings/test_huggingface_embeddings.py`** - HuggingFace embedding provider testing
+- **`embeddings/embedding_providers_comparison.py`** - Compare different embedding providers
+- **`embeddings/factory_example.py`** - Embedding factory usage examples
 
 ```bash
-# Demonstrate vector stores and semantic search
-python examples/vector_store_memory_demo.py
+# Test vector stores
+python examples/vector_stores/test_vector_stores.py
 
-# Advanced memory with chunking and analytics
-python examples/advanced_memory_chunking_demo.py
+# RAG demo with embeddings
+python examples/vector_stores/rag_demo.py
+
+# Test embedding providers
+python examples/embeddings/test_ollama_embeddings.py
 ```
 
 ### 4. **MCP Integration** ⭐
-- **`mcp_integration_example.py`** - Complete MCP server integration examples
-- **`validate_mcp_integration.py`** - MCP integration validation tests
-- **`real_web_search_example.py`** - Real web search using external MCP server
+- **`mcp/mcp_integration_example.py`** - Complete MCP server integration examples
+- **`mcp/validate_mcp_integration.py`** - MCP integration validation tests
 
 ```bash
 # Run MCP integration examples (requires Ollama)
-python examples/mcp_integration_example.py
+python examples/mcp/mcp_integration_example.py
 
 # Validate MCP integration
-python examples/validate_mcp_integration.py
+python examples/mcp/validate_mcp_integration.py
 ```
 
----
-
-## 📊 Advanced Examples
-
-### **Complex Orchestration**
-- **`complex_orchestration_test.py`** - Advanced multi-agent workflow orchestration with parallel execution, dependency management, and comprehensive validation
+### 5. **LLM Providers** ⭐
+- **`llm_providers/custom_provider_example.py`** - Custom LLM provider implementation
 
 ```bash
-python examples/complex_orchestration_test.py
+# Custom provider example
+python examples/llm_providers/custom_provider_example.py
 ```
 
-### **Realistic Workflows**
-- **`realistic_data_analysis.py`** - Data analysis workflow demonstration
-- **`realistic_content_workflow.py`** - Content creation and management workflow  
-- **`realistic_ecommerce_processing.py`** - E-commerce order processing workflow
+### 6. **Realistic Workflows** ⭐
+- **`workflows/realistic_data_analysis.py`** - Data analysis workflow demonstration
+- **`workflows/realistic_content_workflow.py`** - Content creation and management workflow  
+- **`workflows/realistic_ecommerce_processing.py`** - E-commerce order processing workflow
+- **`workflows/real_web_search_example.py`** - Real web search using external MCP server
+
+```bash
+# Run workflow examples
+python examples/workflows/realistic_data_analysis.py
+python examples/workflows/real_web_search_example.py
+```
 
 ---
 
@@ -255,23 +271,27 @@ pip install agenticflow[all]     # Everything included
 ### **Quick Tests:**
 ```bash
 # Basic functionality
-python examples/final_tool_calling_validation.py
+python examples/agent/final_tool_calling_validation.py
 
 # Memory systems
-python examples/memory_demo.py
+python examples/memory/memory_demo.py
+
+# Vector memory comprehensive test
+python examples/memory/test_vector_memory.py
 
 # MCP integration
-python examples/mcp_integration_example.py
+python examples/mcp/mcp_integration_example.py
 ```
 
 ### **Comprehensive Testing:**
 ```bash
 # Run all major examples
 examples=(
-    "final_tool_calling_validation.py"
-    "memory_demo.py" 
-    "mcp_integration_example.py"
-    "complex_orchestration_test.py"
+    "agent/final_tool_calling_validation.py"
+    "memory/memory_demo.py" 
+    "memory/test_vector_memory.py"
+    "mcp/mcp_integration_example.py"
+    "agent/complex_orchestration_test.py"
 )
 
 for example in "${examples[@]}"; do

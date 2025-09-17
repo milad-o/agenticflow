@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agenticflow"
-version = "0.1.2"
-description = "Production-ready AI agent framework with enhanced tool calling, vector stores, smart text chunking, and advanced multi-agent orchestration"
+version = "0.1.3"
+description = "Production-ready AI agent framework with comprehensive vector memory, embeddings, RAG capabilities, and advanced multi-agent orchestration"
 authors = [
     {name = "AgenticFlow Team"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
-keywords = ["ai", "agents", "langchain", "langgraph", "async", "automation", "tool-calling", "memory", "vector-stores", "chunking", "semantic-search", "multi-agent", "orchestration", "llm"]
+keywords = ["ai", "agents", "langchain", "langgraph", "async", "automation", "tool-calling", "memory", "vector-stores", "embeddings", "rag", "chunking", "semantic-search", "multi-agent", "orchestration", "llm"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -46,6 +46,9 @@ dependencies = [
     # Vector Stores and Embeddings
     "faiss-cpu>=1.7.4",
     "numpy>=1.24.0",
+    # Text chunking and processing
+    "tiktoken>=0.5.0",
+    "sentence-transformers>=2.2.0",
     # Optional vector store dependencies (graceful fallback)
     # "chromadb>=0.4.0",  # Uncomment for Chroma support
     # "pinecone-client>=3.0.0",  # Uncomment for Pinecone support

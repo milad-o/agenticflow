@@ -19,11 +19,11 @@ from ..vectorstores import (
     VectorStoreType,
     get_vector_store
 )
-from ..text.chunking import (
-    ChunkingManager,
-    ChunkingConfig,
-    TextChunk,
-    get_chunking_manager
+from ..text.splitters import (
+    SplitterManager,
+    SplitterConfig,
+    TextFragment,
+    get_splitter_manager
 )
 from .core import AsyncMemory, MemoryDocument, MemoryError
 
@@ -36,8 +36,8 @@ class VectorMemoryConfig:
     def __init__(
         self,
         vector_store_config: VectorStoreConfig,
-        chunking_config: Optional[ChunkingConfig] = None,
-        enable_chunking: bool = True,
+        splitter_config: Optional[SplitterConfig] = None,
+        enable_splitting: bool = True,
         enable_semantic_search: bool = True,
         enable_hybrid_search: bool = True,
         chunk_overlap_threshold: float = 0.8,
@@ -46,8 +46,8 @@ class VectorMemoryConfig:
         max_retrievals: int = 5
     ):
         self.vector_store_config = vector_store_config
-        self.chunking_config = chunking_config or ChunkingConfig()
-        self.enable_chunking = enable_chunking
+        self.splitter_config = splitter_config or SplitterConfig()
+        self.enable_splitting = enable_splitting
         self.enable_semantic_search = enable_semantic_search
         self.enable_hybrid_search = enable_hybrid_search
         self.chunk_overlap_threshold = chunk_overlap_threshold
@@ -71,7 +71,7 @@ class VectorMemory(AsyncMemory):
         
         # Components
         self.vector_store: Optional[AsyncVectorStore] = None
-        self.chunking_manager: Optional[ChunkingManager] = None
+        self.splitter_manager: Optional[SplitterManager] = None
         
         # Internal storage for non-chunked access
         self.messages: List[MemoryDocument] = []
@@ -81,14 +81,11 @@ class VectorMemory(AsyncMemory):
         self._initialize_components()
     
     def _initialize_components(self):
-        """Initialize vector store and chunking components."""
+        """Initialize vector store and splitting components."""
         try:
-            # Initialize chunking manager if enabled
-            if self.vector_config.enable_chunking and self.embeddings:
-                self.chunking_manager = ChunkingManager(
-                    config=self.vector_config.chunking_config,
-                    embeddings=self.embeddings
-                )
+            # Initialize splitter manager if enabled
+            if self.vector_config.enable_splitting and self.embeddings:
+                self.splitter_manager = get_splitter_manager()
             
             self.logger.info("Vector memory components initialized")
         
@@ -151,7 +148,7 @@ class VectorMemory(AsyncMemory):
         doc_id: str,
         metadata: Optional[Dict[str, Any]] = None
     ):
-        """Process message for vector storage with chunking."""
+        """Process message for vector storage with text splitting."""
         vector_store = await self._ensure_vector_store()
         content = message.content
         
@@ -165,40 +162,49 @@ class VectorMemory(AsyncMemory):
         
         vector_documents = []
         
-        if self.vector_config.enable_chunking and self.chunking_manager:
-            # Chunk the message if it's long enough
-            min_chunk_size = self.vector_config.chunking_config.min_chunk_size
+        if self.vector_config.enable_splitting and self.splitter_manager:
+            # Split the message if it's long enough
+            min_chunk_size = self.vector_config.splitter_config.min_chunk_size
             
             if len(content) > min_chunk_size:
                 try:
-                    chunks = await self.chunking_manager.chunk_with_embeddings(
+                    # Split text into fragments
+                    fragments = await self.splitter_manager.split_text(
                         content,
-                        text_id=doc_id,
+                        source_id=doc_id,
                         metadata=base_metadata
                     )
                     
-                    # Convert chunks to vector documents
-                    for chunk in chunks[:self.vector_config.max_chunks_per_message]:
-                        chunk_metadata = {
+                    # Convert fragments to vector documents
+                    for fragment in fragments[:self.vector_config.max_chunks_per_message]:
+                        # Generate embedding for fragment if needed
+                        if self.embeddings:
+                            fragment_embedding = await self.embeddings.aembed_query(fragment.content)
+                        else:
+                            fragment_embedding = []
+                        
+                        fragment_metadata = {
                             **base_metadata,
-                            "chunk_id": chunk.metadata.chunk_id,
-                            "chunk_index": chunk.metadata.chunk_index,
-                            "total_chunks": chunk.metadata.total_chunks,
-                            "is_chunk": True
+                            "fragment_id": fragment.fragment_id,
+                            "fragment_index": fragment.fragment_index,
+                            "total_fragments": fragment.total_fragments,
+                            "is_fragment": True,
+                            "boundary_type": fragment.boundary_type.value,
+                            "content_type": fragment.content_type.value
                         }
                         
                         vector_doc = VectorStoreDocument(
-                            id=chunk.metadata.chunk_id,
-                            content=chunk.content,
-                            embedding=chunk.embedding or [],
-                            metadata=chunk_metadata
+                            id=fragment.fragment_id,
+                            content=fragment.content,
+                            embedding=fragment_embedding,
+                            metadata=fragment_metadata
                         )
                         vector_documents.append(vector_doc)
                     
-                    self.logger.debug(f"Created {len(vector_documents)} chunk embeddings for message {doc_id}")
+                    self.logger.debug(f"Created {len(vector_documents)} fragment embeddings for message {doc_id}")
                 
                 except Exception as e:
-                    self.logger.warning(f"Chunking failed for message {doc_id}: {e}")
+                    self.logger.warning(f"Text splitting failed for message {doc_id}: {e}")
         
         # Always add the full message as well (if we have embeddings)
         if self.embeddings:
@@ -305,7 +311,7 @@ class VectorMemory(AsyncMemory):
                 
                 # Find original message content
                 original_content = result.document.content
-                if result.document.metadata.get("is_chunk", False):
+                if result.document.metadata.get("is_fragment", False):
                     # Try to find full message content
                     for msg_doc in self.messages:
                         if msg_doc.id == message_id:

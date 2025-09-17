@@ -1142,20 +1142,36 @@ if __name__ == "__main__":
 
 ## 🧪 Examples & Testing
 
-The `examples/` directory contains comprehensive test suites and examples:
+The `examples/` directory contains comprehensive test suites and examples organized by category:
 
-### Available Examples
-- **`test_simple_success.py`**: Basic orchestration validation
-- **`test_complex_deps_only.py`**: Complex dependency patterns and performance testing  
-- **`test_orchestration_only.py`**: Full orchestration system validation
-- **`test_system_comprehensive.py`**: End-to-end system integration tests
-- **🆕 `mcp_integration_example.py`**: Comprehensive MCP server integration examples
-- **🆕 `validate_mcp_integration.py`**: MCP integration validation tests
-- **🆕 `memory_demo.py`**: Memory backends demonstration (Buffer, SQLite, PostgreSQL)
-- **🆕 `real_web_search_example.py`**: Real web search using external MCP server
-- **🆕 `final_tool_calling_validation.py`**: Comprehensive tool calling system validation
-- **🆕 `direct_llm_tool_test.py`**: Direct LLM tool calling tests (100% success rate)
-- **🆕 `standalone_tool_test.py`**: Standalone tool detection validation
+### 🚀 **Agent & Tool Calling Examples**
+- **`agent/final_tool_calling_validation.py`**: Comprehensive tool calling system validation
+- **`agent/complex_orchestration_test.py`**: Advanced multi-agent workflow orchestration
+- **`tools/direct_llm_tool_test.py`**: Direct LLM tool integration tests
+
+### 🧠 **Memory System Examples**
+- **`memory/memory_demo.py`**: Memory backends demonstration (Buffer, SQLite, PostgreSQL)
+- **`memory/test_vector_memory.py`**: Comprehensive vector memory testing suite
+- **`memory/vector_store_memory_demo.py`**: Vector-enabled memory demonstrations
+- **`memory/advanced_memory_chunking_demo.py`**: Enhanced memory with chunking and analytics
+- **`memory/memory_backends_test.py`**: Memory backend testing and validation
+
+### 🔍 **Vector Stores & Embeddings Examples**
+- **`vector_stores/test_vector_stores.py`**: Vector store backend testing (FAISS, Chroma, In-memory)
+- **`vector_stores/rag_demo.py`**: Retrieval-Augmented Generation demonstration
+- **`embeddings/test_ollama_embeddings.py`**: Ollama embedding provider testing
+- **`embeddings/test_huggingface_embeddings.py`**: HuggingFace embedding provider testing
+- **`embeddings/embedding_providers_comparison.py`**: Compare different embedding providers
+
+### 🔌 **MCP Integration Examples**
+- **`mcp/mcp_integration_example.py`**: Comprehensive MCP server integration examples
+- **`mcp/validate_mcp_integration.py`**: MCP integration validation tests
+
+### 🏭 **Realistic Workflow Examples**
+- **`workflows/realistic_data_analysis.py`**: Data analysis workflow demonstration
+- **`workflows/realistic_content_workflow.py`**: Content creation and management workflow  
+- **`workflows/realistic_ecommerce_processing.py`**: E-commerce order processing workflow
+- **`workflows/real_web_search_example.py`**: Real web search using external MCP server
 
 ### Running Examples
 
@@ -1164,33 +1180,29 @@ The `examples/` directory contains comprehensive test suites and examples:
 export OPENAI_API_KEY="your-openai-api-key"
 export GROQ_API_KEY="your-groq-api-key"
 
-# Run basic orchestration test
+# Agent and Tool Calling Examples
 cd agenticflow
-python examples/test_simple_success.py
+python examples/agent/final_tool_calling_validation.py
+python examples/agent/complex_orchestration_test.py
+python examples/tools/direct_llm_tool_test.py
 
-# Run complex workflow with dependencies
-python examples/test_complex_deps_only.py  
+# Memory System Examples
+python examples/memory/memory_demo.py
+python examples/memory/test_vector_memory.py
+python examples/memory/vector_store_memory_demo.py
 
-# Run comprehensive system tests
-python examples/test_system_comprehensive.py
+# Vector Stores and Embeddings
+python examples/vector_stores/test_vector_stores.py
+python examples/vector_stores/rag_demo.py
+python examples/embeddings/test_ollama_embeddings.py
 
-# Run MCP integration examples (requires Ollama with granite3.2:8b model)
-python examples/mcp_integration_example.py
+# MCP Integration (requires Ollama with granite3.2:8b model)
+python examples/mcp/mcp_integration_example.py
+python examples/mcp/validate_mcp_integration.py
 
-# Test enhanced tool calling system
-python examples/final_tool_calling_validation.py
-
-# Test direct LLM tool integration
-python examples/direct_llm_tool_test.py
-
-# Validate MCP integration
-python examples/validate_mcp_integration.py
-
-# Test different memory backends
-python examples/memory_demo.py
-
-# Real web search with external MCP server
-python examples/real_web_search_example.py
+# Realistic Workflows
+python examples/workflows/realistic_data_analysis.py
+python examples/workflows/real_web_search_example.py
 ```
 
 ### Test Results

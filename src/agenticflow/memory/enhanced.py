@@ -1,7 +1,7 @@
 """
-Enhanced memory systems with advanced chunking, compression, and long-term management.
+Enhanced memory systems with advanced text splitting, compression, and long-term management.
 
-Provides intelligent memory management with automatic chunking, embedding-based
+Provides intelligent memory management with automatic text splitting, embedding-based
 retrieval, memory compression, lifecycle management, and advanced analytics.
 """
 
@@ -21,9 +21,9 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, System
 
 from .core import AsyncMemory, MemoryDocument, MemoryError
 from ..config.settings import MemoryConfig
-from ..text.chunking import (
-    ChunkingManager, ChunkingConfig, ChunkingStrategy, 
-    TextChunk, get_chunking_manager
+from ..text.splitters import (
+    SplitterManager, SplitterConfig, SplitterType, 
+    TextFragment, get_splitter_manager
 )
 from ..llm_providers import get_llm_manager
 
@@ -66,9 +66,9 @@ class MemoryConfiguration:
     max_total_tokens: Optional[int] = None
     max_memory_mb: Optional[float] = None
     
-    # Chunking settings
-    enable_chunking: bool = True
-    chunking_strategy: ChunkingStrategy = ChunkingStrategy.SEMANTIC
+    # Text splitting settings
+    enable_splitting: bool = True
+    splitter_type: SplitterType = SplitterType.SEMANTIC
     chunk_size: int = 1000
     chunk_overlap: int = 200
     min_chunk_size: int = 100
@@ -301,7 +301,7 @@ class MemoryAnalytics:
     def calculate_memory_stats(
         self,
         messages: List[MemoryDocument],
-        chunks: List[TextChunk]
+        fragments: List[TextFragment]
     ) -> MemoryStats:
         """Calculate comprehensive memory statistics."""
         if not messages:
@@ -321,12 +321,12 @@ class MemoryAnalytics:
         cache_hit_rate = self.cache_hits / (self.cache_hits + self.cache_misses) if (self.cache_hits + self.cache_misses) > 0 else 0
         
         # Embedding coverage
-        embedded_count = sum(1 for chunk in chunks if chunk.embedding is not None)
-        embedding_coverage = embedded_count / len(chunks) if chunks else 0
+        embedded_count = sum(1 for fragment in fragments if fragment.embedding is not None)
+        embedding_coverage = embedded_count / len(fragments) if fragments else 0
         
         return MemoryStats(
             total_messages=len(messages),
-            total_chunks=len(chunks),
+            total_chunks=len(fragments),
             total_characters=total_chars,
             total_tokens=int(total_tokens),
             memory_size_mb=total_chars / (1024 * 1024),
@@ -369,7 +369,7 @@ class MemoryAnalytics:
         performance_factors = [
             max(0.0, 1.0 - stats.average_search_time / 1000),  # Search speed
             stats.cache_hit_rate,  # Cache efficiency
-            min(1.0, stats.total_chunks / max(1, stats.total_messages))  # Chunking efficiency
+            min(1.0, stats.total_chunks / max(1, stats.total_messages))  # Splitting efficiency
         ]
         insights["performance_score"] = sum(performance_factors) / len(performance_factors)
         
@@ -379,7 +379,7 @@ class MemoryAnalytics:
 
 
 class EnhancedMemory(AsyncMemory):
-    """Enhanced memory system with chunking, compression, and lifecycle management."""
+    """Enhanced memory system with text splitting, compression, and lifecycle management."""
     
     def __init__(
         self,
@@ -393,14 +393,14 @@ class EnhancedMemory(AsyncMemory):
         self.embeddings = embeddings
         
         # Core components
-        self.chunking_manager = None
+        self.splitter_manager = None
         self.compressor = None
         self.lifecycle_manager = MemoryLifecycleManager(self.enhanced_config)
         self.analytics = MemoryAnalytics()
         
         # Storage
         self.messages: List[MemoryDocument] = []
-        self.chunks: List[TextChunk] = []
+        self.fragments: List[TextFragment] = []
         self.search_cache: Dict[str, List[MemoryDocument]] = {}
         
         # Performance tracking
@@ -413,16 +413,16 @@ class EnhancedMemory(AsyncMemory):
     async def _initialize_components(self):
         """Initialize memory components."""
         try:
-            # Initialize chunking
-            if self.enhanced_config.enable_chunking:
-                chunking_config = ChunkingConfig(
-                    strategy=self.enhanced_config.chunking_strategy,
+            # Initialize text splitting
+            if self.enhanced_config.enable_splitting:
+                splitter_config = SplitterConfig(
+                    splitter_type=self.enhanced_config.splitter_type,
                     chunk_size=self.enhanced_config.chunk_size,
                     chunk_overlap=self.enhanced_config.chunk_overlap,
                     min_chunk_size=self.enhanced_config.min_chunk_size,
                     max_chunk_size=self.enhanced_config.max_chunk_size
                 )
-                self.chunking_manager = get_chunking_manager(chunking_config, self.embeddings)
+                self.splitter_manager = get_splitter_manager()
             
             # Initialize compression
             if self.enhanced_config.enable_compression:
@@ -450,18 +450,18 @@ class EnhancedMemory(AsyncMemory):
         # Add to messages
         self.messages.append(doc)
         
-        # Chunk the message if enabled and content is long enough
-        if (self.enhanced_config.enable_chunking and 
-            self.chunking_manager and 
+        # Split the message if enabled and content is long enough
+        if (self.enhanced_config.enable_splitting and 
+            self.splitter_manager and 
             len(message.content) > self.enhanced_config.min_chunk_size):
             
-            chunks = await self.chunking_manager.chunk_with_embeddings(
+            fragments = await self.splitter_manager.split_text(
                 message.content,
-                text_id=doc_id,
+                source_id=doc_id,
                 metadata={"source_message_id": doc_id, "message_type": type(message).__name__}
             )
-            self.chunks.extend(chunks)
-            self.logger.debug(f"Created {len(chunks)} chunks for message {doc_id}")
+            self.fragments.extend(fragments)
+            self.logger.debug(f"Created {len(fragments)} fragments for message {doc_id}")
         
         # Generate embedding for the full message if enabled
         if self.enhanced_config.generate_embeddings and self.embeddings:
@@ -531,31 +531,31 @@ class EnhancedMemory(AsyncMemory):
         results = []
         
         try:
-            # Search in chunks if available and embeddings enabled
-            if self.chunks and self.embeddings:
+            # Search in fragments if available and embeddings enabled
+            if self.fragments and self.embeddings:
                 query_embedding = await self.embeddings.aembed_query(query)
                 
-                # Calculate similarities with chunks
-                chunk_similarities = []
-                for chunk in self.chunks:
-                    if chunk.embedding:
-                        similarity = self._cosine_similarity(query_embedding, chunk.embedding)
+                # Calculate similarities with fragments
+                fragment_similarities = []
+                for fragment in self.fragments:
+                    if fragment.embedding:
+                        similarity = self._cosine_similarity(query_embedding, fragment.embedding)
                         if similarity >= similarity_threshold:
-                            chunk_similarities.append((chunk, similarity))
+                            fragment_similarities.append((fragment, similarity))
                 
                 # Sort by similarity and get top results
-                chunk_similarities.sort(key=lambda x: x[1], reverse=True)
+                fragment_similarities.sort(key=lambda x: x[1], reverse=True)
                 
-                # Convert chunks to memory documents
-                for chunk, similarity in chunk_similarities[:limit]:
+                # Convert fragments to memory documents
+                for fragment, similarity in fragment_similarities[:limit]:
                     doc = MemoryDocument(
-                        id=chunk.metadata.chunk_id,
-                        content=chunk.content,
+                        id=fragment.fragment_id,
+                        content=fragment.content,
                         metadata={
-                            **(chunk.metadata.custom_metadata or {}),
+                            **(fragment.metadata or {}),
                             "similarity_score": similarity,
-                            "chunk_index": chunk.metadata.chunk_index,
-                            "source_text_id": chunk.metadata.source_text_id
+                            "fragment_index": fragment.fragment_index,
+                            "source_id": fragment.source_id
                         },
                         timestamp=time.time()
                     )
@@ -679,12 +679,12 @@ class EnhancedMemory(AsyncMemory):
             # Clear old cache entries
             self.search_cache.clear()
             
-            # Remove old chunks for archived messages
+            # Remove old fragments for archived messages
             if self.enhanced_config.enable_archiving:
                 archived_msg_ids = {doc.id for doc in archived} if 'archived' in locals() else set()
-                self.chunks = [
-                    chunk for chunk in self.chunks 
-                    if chunk.metadata.source_text_id not in archived_msg_ids
+                self.fragments = [
+                    fragment for fragment in self.fragments 
+                    if fragment.source_id not in archived_msg_ids
                 ]
             
             self.last_cleanup = time.time()
@@ -695,7 +695,7 @@ class EnhancedMemory(AsyncMemory):
     
     async def get_memory_stats(self) -> MemoryStats:
         """Get comprehensive memory statistics."""
-        return self.analytics.calculate_memory_stats(self.messages, self.chunks)
+        return self.analytics.calculate_memory_stats(self.messages, self.fragments)
     
     async def get_memory_insights(self) -> Dict[str, Any]:
         """Get memory insights and recommendations."""
@@ -705,7 +705,7 @@ class EnhancedMemory(AsyncMemory):
     async def clear(self):
         """Clear all memory."""
         self.messages.clear()
-        self.chunks.clear()
+        self.fragments.clear()
         self.search_cache.clear()
         self.logger.info("Cleared enhanced memory")
     
@@ -717,7 +717,7 @@ class EnhancedMemory(AsyncMemory):
         # Save messages
         messages_data = {
             "messages": [msg.to_dict() for msg in self.messages],
-            "chunks": [chunk.to_dict() for chunk in self.chunks],
+            "fragments": [fragment.to_dict() for fragment in self.fragments],
             "config": asdict(self.enhanced_config),
             "timestamp": time.time()
         }

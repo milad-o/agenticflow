@@ -33,6 +33,22 @@ try:
 except ImportError:
     ChromaVectorStore = None
 
+# LangChain integration (if available)
+try:
+    from .langchain_adapter import (
+        LangChainVectorStoreAdapter,
+        create_langchain_adapter,
+        create_chroma_adapter,
+        create_faiss_adapter,
+        create_pinecone_adapter
+    )
+except ImportError:
+    LangChainVectorStoreAdapter = None
+    create_langchain_adapter = None
+    create_chroma_adapter = None
+    create_faiss_adapter = None
+    create_pinecone_adapter = None
+
 __all__ = [
     # Core types
     'AsyncVectorStore',
@@ -53,6 +69,13 @@ __all__ = [
     # Specific implementations (if available)
     'FAISSVectorStore',
     'ChromaVectorStore',
+    
+    # LangChain integration (if available)
+    'LangChainVectorStoreAdapter',
+    'create_langchain_adapter',
+    'create_chroma_adapter',
+    'create_faiss_adapter',
+    'create_pinecone_adapter',
     
     # Factory and management
     'VectorStoreFactory',
