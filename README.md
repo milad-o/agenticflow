@@ -1209,6 +1209,13 @@ The `examples/` directory contains comprehensive test suites and examples organi
   - **Validated results**: Successfully processes $96K+ revenue data with 27.5% growth analysis
   - **Two execution modes**: Full multi-agent system and simplified rate-limit-friendly version
 
+### 🛠️ **Utility Scripts**
+- **`scripts/test_installation.py`**: Installation verification script
+  - **Comprehensive diagnostics** for troubleshooting installation issues
+  - **Tests all core imports** and optional dependencies
+  - **Validates agent creation** and basic functionality
+  - **User-friendly output** with troubleshooting guidance
+
 ### Running Examples
 
 ```bash
@@ -1243,6 +1250,10 @@ python examples/workflows/realistic_data_analysis.py
 # Realistic sales analysis system - processes real business data
 export GROQ_API_KEY="your-groq-api-key"  # Get free key at console.groq.com
 python examples/realistic_systems/sales_analysis/simple_sales_analysis.py
+
+# Utility Scripts
+# Test your AgenticFlow installation
+python scripts/test_installation.py
 
 # Web Search Example (requires Node.js MCP server setup)
 cd examples/workflows/web-search && npm install && npm run build && cd ../../..

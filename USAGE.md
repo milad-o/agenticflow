@@ -22,7 +22,10 @@ uv add "git+https://github.com/milad-o/agenticflow.git"
 ### Verify Installation
 ```bash
 # Download and run the test script
-wget https://raw.githubusercontent.com/milad-o/agenticflow/main/test_installation.py
+curl -s https://raw.githubusercontent.com/milad-o/agenticflow/main/scripts/test_installation.py | python
+
+# Or download and run locally
+wget https://raw.githubusercontent.com/milad-o/agenticflow/main/scripts/test_installation.py
 python test_installation.py
 
 # Or test basic import
@@ -447,6 +450,9 @@ uv run python examples/realistic_systems/sales_analysis/simple_sales_analysis.py
 
 # Test installation  
 python -c "from agenticflow import Agent; print('AgenticFlow installed!')"
+
+# Or run comprehensive installation test
+curl -s https://raw.githubusercontent.com/milad-o/agenticflow/main/scripts/test_installation.py | python
 ```
 
 ---
