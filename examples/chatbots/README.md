@@ -77,6 +77,32 @@ Performance benchmarking suite for RAG chatbots:
 uv run python examples/chatbots/performance_test.py
 ```
 
+### 🤖👤 Human-in-the-Loop (HITL) Systems
+**Files:** `human_in_loop_supervisor.py`, `simple_hitl_demo.py`
+
+Demonstrates practical HITL systems where humans can interrupt and guide AI work:
+
+- **Real-time Interruption**: Stop agents mid-task
+- **Status Queries**: Ask about progress anytime
+- **Plan Modification**: Change tasks and priorities dynamically
+- **Interactive Control**: Like Claude's system where you can modify plans
+
+```bash
+# Full HITL supervisor with task management
+uv run python examples/chatbots/human_in_loop_supervisor.py
+
+# Simple HITL demo showing core concepts
+uv run python examples/chatbots/simple_hitl_demo.py
+```
+
+**Key HITL Features:**
+- ✅ Interrupt agents during task execution
+- ✅ Query status and progress in real-time
+- ✅ Modify task descriptions and priorities
+- ✅ Add new tasks to the queue
+- ✅ Resume or completely change direction
+- ✅ Ask supervisor questions about current work
+
 ## 🎨 Architecture Patterns
 
 ### 1. Natural Supervision via .as_tool()
