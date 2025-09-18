@@ -176,6 +176,10 @@ temp_files/
 *.tmp
 test_*.txt
 
+# Knowledge cache directories
+.knowledge_cache_*
+agenticflow_cache_*
+
 # LLM Provider API Keys (if stored locally)
 .env.local
 api_keys.txt
@@ -200,6 +204,10 @@ uv.lock.backup
 chroma_db/
 vector_store/
 embeddings_cache/
+
+# Chatbot-specific vector storage
+examples/chatbots/chatbot_vectors/
+examples/chatbots/chatbot_conversation_memory/
 
 # MCP related
 mcp_servers/

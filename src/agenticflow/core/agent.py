@@ -1046,6 +1046,20 @@ Use tools whenever they can help you provide more accurate or current informatio
         
         self.logger.info(f"Registered LangChain tool: {langchain_tool.name}")
     
+    def register_async_tool(self, async_tool: 'AsyncTool') -> None:
+        """Register an AsyncTool object for this agent."""
+        if not self._tool_registry:
+            self._tool_registry = ToolRegistry()
+        
+        self._tool_registry.register_tool(async_tool)
+        
+        # Store reference for easy access
+        if not hasattr(self, '_tools'):
+            self._tools = {}
+        self._tools[async_tool.name] = async_tool
+        
+        self.logger.info(f"Registered AsyncTool: {async_tool.name}")
+    
     def get_available_tools(self) -> List[str]:
         """Get list of available tools for this agent."""
         if not self._tool_registry:
@@ -1118,3 +1132,99 @@ Use tools whenever they can help you provide more accurate or current informatio
         """Set a custom tool selector for controlled execution."""
         self._tool_selector = tool_selector
         self.logger.info(f"Set custom tool selector: {tool_selector.__class__.__name__}")
+    
+    def as_tool(
+        self, 
+        name: Optional[str] = None, 
+        description: Optional[str] = None,
+        parameters_schema: Optional[Dict[str, Any]] = None
+    ) -> 'AsyncTool':
+        """Convert this agent into a tool for delegation patterns.
+        
+        Args:
+            name: Tool name (defaults to agent_{agent_name})
+            description: Tool description (defaults to delegation description)
+            parameters_schema: Custom parameters schema (defaults to task parameter)
+            
+        Returns:
+            AsyncTool that delegates to this agent
+        """
+        from ..tools.base_tool import AsyncTool, ToolResult, ToolType
+        
+        # Default values
+        tool_name = name or f"agent_{self.name.lower().replace(' ', '_')}"
+        tool_description = description or f"Delegate tasks to {self.name} agent"
+        
+        # Default parameters schema - simple task parameter
+        if parameters_schema is None:
+            parameters_schema = {
+                "type": "object",
+                "properties": {
+                    "task": {
+                        "type": "string",
+                        "description": "Task to delegate to the agent"
+                    },
+                    "context": {
+                        "type": "object",
+                        "description": "Additional context for the task",
+                        "default": {}
+                    }
+                },
+                "required": ["task"]
+            }
+        
+        # Create the agent tool
+        class AgentTool(AsyncTool):
+            def __init__(self, agent_instance):
+                super().__init__(tool_name, tool_description, ToolType.CUSTOM)
+                self.agent = agent_instance
+                self._parameters = parameters_schema
+            
+            @property
+            def parameters(self) -> Dict[str, Any]:
+                return self._parameters
+            
+            async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
+                """Execute by delegating to the agent."""
+                import time
+                start_time = time.time()
+                
+                try:
+                    await self.validate_parameters(parameters)
+                    
+                    task = parameters.get("task")
+                    context = parameters.get("context", {})
+                    
+                    # Execute task via agent
+                    result = await self.agent.execute_task(task, context)
+                    
+                    execution_time = time.time() - start_time
+                    self.logger.info(f"Agent tool '{self.name}' executed successfully in {execution_time:.2f}s")
+                    
+                    return ToolResult.success_result(
+                        result=result,
+                        metadata={
+                            "tool_type": "agent",
+                            "agent_id": self.agent.id,
+                            "agent_name": self.agent.name
+                        },
+                        execution_time=execution_time
+                    )
+                    
+                except Exception as e:
+                    execution_time = time.time() - start_time
+                    error_msg = f"Agent tool execution failed: {e}"
+                    self.logger.error(error_msg)
+                    
+                    return ToolResult.error_result(
+                        error=error_msg,
+                        metadata={
+                            "tool_type": "agent",
+                            "agent_id": self.agent.id,
+                            "agent_name": self.agent.name,
+                            "exception": str(type(e).__name__)
+                        },
+                        execution_time=execution_time
+                    )
+        
+        return AgentTool(self)

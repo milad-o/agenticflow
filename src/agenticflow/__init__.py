@@ -14,8 +14,18 @@ from .core.supervisor import SupervisorAgent
 from .core.task_manager import TaskManager, TaskPriority
 from .workflows.multi_agent import MultiAgentSystem
 
+# Import chatbot module components
+from .chatbots import (
+    RAGAgent,
+    InteractiveChatbot,
+    ChatbotConfig,
+    KnowledgeMode,
+    CitationStyle
+)
+
 # Import implemented components
 __all__ = [
+    # Core components
     "Agent",
     "SupervisorAgent",
     "TaskManager",
@@ -23,4 +33,11 @@ __all__ = [
     "MultiAgentSystem",
     "AgenticFlowConfig",
     "LLMProviderConfig",
+    
+    # Chatbot components
+    "RAGAgent",
+    "InteractiveChatbot",
+    "ChatbotConfig",
+    "KnowledgeMode",
+    "CitationStyle",
 ]

@@ -70,43 +70,52 @@ async def main():
 asyncio.run(main())
 ```
 
-### Multi-Agent System
+### Multi-Agent System with .as_tool()
 ```python
-from agenticflow.workflows.multi_agent import MultiAgentSystem
-from agenticflow.workflows.topologies import TopologyType
+from agenticflow import RAGAgent, Agent
+from agenticflow.chatbots import ChatbotConfig
 
-# Create specialized agents
+# Create specialist agents
 researcher = Agent(researcher_config)  
 writer = Agent(writer_config)
-supervisor = Agent(supervisor_config)
 
-# Coordinate them
-system = MultiAgentSystem(
-    supervisor=supervisor,
-    agents=[researcher, writer],
-    topology=TopologyType.STAR
-)
+# Create RAGAgent supervisor
+supervisor = RAGAgent(ChatbotConfig(
+    name="Project Manager",
+    llm=llm_config,
+    instructions="Coordinate specialists for complex tasks"
+))
 
-await system.start()
-result = await system.execute_task("Research and write about renewable energy")
+# Convert agents to tools and register
+research_tool = researcher.as_tool("research", "Delegate research tasks")
+writing_tool = writer.as_tool("writing", "Delegate writing tasks")
+
+supervisor.register_async_tool(research_tool)
+supervisor.register_async_tool(writing_tool)
+
+# Natural supervision through tool usage!
+result = await supervisor.execute_task("Research and write about renewable energy")
 ```
 
 ## 🎯 Real-World Examples
 
-### 🤖💬 **Interactive RAG Chatbot** 🆕✨
-**Production-ready conversational AI** with enhanced interactive features and custom knowledge support
+### 🤖💬 **RAGAgent & Multi-Agent Coordination** 🆕✨
+**Natural agent supervision** with the new `.as_tool()` API for clean multi-agent systems
 ```bash
-# Interactive science & nature chatbot
-uv run python examples/chatbots/interactive_rag_chatbot.py
+# RAGAgent natural supervision demo
+uv run python examples/chatbots/rag_supervision_example.py
 
-# Automated demonstration
-uv run python examples/chatbots/test_chatbot_interaction.py
+# Multi-agent coordination patterns
+uv run python examples/chatbots/simple_rag_with_tools.py
+
+# .as_tool() method testing
+uv run python examples/chatbots/test_as_tool_method.py
 ```
 **🎆 New Features**: 
-- **Interactive Commands**: `help`, `topics`, `examples`, `search`, `context`, `history`, `add-knowledge`
-- **Custom Knowledge**: Add domain-specific content via `~/.agenticflow/knowledge/`
-- **Hybrid Retrieval**: Semantic + keyword search with 32+ knowledge chunks
-- **Multi-Provider Support**: Groq, OpenAI, Ollama with automatic fallback
+- **Natural Supervision**: RAGAgent coordinates specialists via `.as_tool()` delegation
+- **Clean Architecture**: No complex inheritance, just composition patterns
+- **Hybrid Intelligence**: Knowledge base + traditional tools + agent tools
+- **Production Ready**: Works with existing workflow orchestration systems
 
 ### 🏢 **Complete Business Systems** ⭐
 **Production-ready sales analysis** processing $96K+ revenue with multi-agent coordination
@@ -158,7 +167,7 @@ uv run python examples/tools/final_tool_calling_validation.py
 ### 📂 **Feature Documentation**
 | **System** | **Guide** | **Examples** | **API** |
 |------------|-----------|--------------|----------|
-| **Chatbots** | [RAG Conversations](examples/chatbots/README.md) | [Interactive AI](examples/chatbots/) | Custom Knowledge, Commands |
+| **Chatbots** | [Multi-Agent RAG](examples/chatbots/README.md) | [Natural Supervision](examples/chatbots/) | .as_tool() API, Delegation |
 | **Tools** | [Tool Integration](examples/tools/README.md) | [Natural Language](examples/tools/) | LLM-Powered, Validation |
 | **Orchestration** | [Task Management](examples/orchestration/README.md) | [Complex Workflows](examples/orchestration/) | DAG, Parallel, Sequential |
 | **Retrievers** | [Advanced Search](examples/retrievers/README.md) | [15+ Types](examples/retrievers/) | Text, Semantic, Composite |
