@@ -19,7 +19,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from ..communication.a2a_handler import A2AHandler, MessageType
+from ..orchestration.a2a_handler import A2AHandler, MessageType
 from ..config.settings import AgentConfig, ExecutionMode, ErrorRecoveryStrategy
 from ..llm_providers import LLMProviderFactory, get_llm_manager
 from ..memory import AsyncMemory, MemoryFactory

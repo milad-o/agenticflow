@@ -19,6 +19,9 @@ from .task_orchestrator import (
     CoordinationManager, CoordinationEvent, CoordinationEventType,
     StreamSubscription, ConnectedCoordinator
 )
+from .a2a_handler import (
+    A2AHandler, A2AMessage, MessageType, MessagePriority
+)
 
 __all__ = [
     # Tool orchestration
@@ -32,5 +35,7 @@ __all__ = [
     # Main orchestration engine with embedded interactive control
     "TaskOrchestrator", "InteractiveTaskNode", "WorkflowStatus",
     "CoordinationManager", "CoordinationEvent", "CoordinationEventType",
-    "StreamSubscription", "ConnectedCoordinator"
+    "StreamSubscription", "ConnectedCoordinator",
+    # Agent-to-agent communication (part of orchestration)
+    "A2AHandler", "A2AMessage", "MessageType", "MessagePriority"
 ]

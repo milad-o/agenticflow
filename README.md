@@ -205,6 +205,7 @@ agenticflow/
 │   └── Features: Cross-session persistence, semantic search
 ├── ⚡ Embedded Task Orchestration
 │   ├── Unified TaskOrchestrator: Built-in interactive control and streaming
+│   ├── Agent-to-Agent Communication: Embedded A2A messaging for coordination
 │   ├── Real-time coordination: Live progress updates, task interruption
 │   └── Event-driven architecture: Comprehensive coordination system
 ├── 🤖 Multi-Agent Coordination

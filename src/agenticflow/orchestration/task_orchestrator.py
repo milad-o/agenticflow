@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 import uuid
 
 import structlog
-from ..communication.a2a_handler import A2AHandler, A2AMessage, MessageType
+from .a2a_handler import A2AHandler, A2AMessage, MessageType
 from .task_management import TaskNode, TaskState, TaskResult, TaskError, TaskExecutor, RetryPolicy, TaskPriority
 from .task_dag import TaskDAG
 # Configuration is now integrated directly into TaskOrchestrator

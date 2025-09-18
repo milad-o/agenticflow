@@ -15,10 +15,10 @@ AgenticFlow has been successfully integrated into a unified orchestration system
    - Progress monitoring and retry policies
    - Coordinator registration and management
 
-2. **A2A Communication** (`communication/a2a_handler.py`)
-   - Agent-to-agent messaging protocol
+2. **A2A Communication** (`orchestration/a2a_handler.py`)
+   - Agent-to-agent messaging protocol (now part of orchestration)
    - Request/response patterns, timeouts, retries
-   - In-memory message bus
+   - In-memory message bus integrated with TaskOrchestrator
    - Message types: DIRECT, BROADCAST, REQUEST, RESPONSE, NOTIFICATION
 
 3. **Multi-Agent Topologies** (`workflows/topologies.py`)
@@ -29,11 +29,11 @@ AgenticFlow has been successfully integrated into a unified orchestration system
 ## Current Integrated Architecture
 
 ### Layer 1: Communication Foundation
-**Module**: `communication/` (Enhanced)
-- **A2A Protocol**: Low-level messaging between agents
+**Module**: `orchestration/` (Integrated)
+- **A2A Protocol**: Low-level messaging between agents (now part of orchestration)
 - **Event Bus**: Centralized event routing and subscriptions
 - **Stream Management**: Real-time data streaming capabilities
-- **Message Routing**: Topology-aware message routing
+- **Message Routing**: Topology-aware message routing integrated with TaskOrchestrator
 
 ```python
 # Enhanced A2A with streaming and events

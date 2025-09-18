@@ -15,7 +15,7 @@ from ..core.agent import Agent
 from ..core.supervisor import SupervisorAgent
 from ..core.task_manager import TaskManager, TaskPriority
 from ..config.settings import AgenticFlowConfig, get_config
-from ..communication.a2a_handler import A2AHandler, MessageType
+from ..orchestration.a2a_handler import A2AHandler, MessageType
 from .topologies import (
     BaseTopology, StarTopology, PeerToPeerTopology, 
     HierarchicalTopology, PipelineTopology, CustomTopology,
