@@ -47,20 +47,30 @@ AgenticFlow is a comprehensive, production-ready framework for building sophisti
 - **🆕 Azure OpenAI Support**: Enterprise-grade Azure OpenAI Service integration
 - **🧹 Code Quality Improvements**: Enhanced task orchestration and tool integration
 
+### 🎯 **Major Architecture Integration (v1.0.0)** 
+- **⚡ Embedded Interactive Control**: Interactive features fully integrated into TaskOrchestrator
+- **🔄 Unified Orchestration**: Single TaskOrchestrator with embedded real-time streaming
+- **🎛️ Simplified API**: Clean, intuitive interface with embedded coordination capabilities
+- **🏗️ A2A Integration**: Agent-to-agent communication moved to orchestration module
+- **📚 Complete Documentation Refresh**: Updated examples and architecture docs
+- **✅ Production Ready**: Enterprise-grade orchestration with comprehensive testing
+
 ## ✨ Key Features
 
 ### 🚀 **Multi-Agent Architecture**
 - **Flexible Topologies**: Star, Peer-to-Peer, Hierarchical, Pipeline, and Custom communication patterns
-- **Agent-to-Agent Communication**: Official A2A Protocol implementation for structured messaging
+- **Agent-to-Agent Communication**: A2A Protocol integrated within orchestration for structured messaging
 - **Per-Agent Tool Registration**: Isolated tool environments with decorator-based registration
 - **Dynamic Topology Management**: Real-time topology reconfiguration and agent coordination
 
 ### ⚙️ **Advanced Task Orchestration**
+- **Embedded Interactive Control**: Built-in real-time streaming, coordination, and task interruption
 - **DAG-based Workflows**: Complex dependency management with automatic validation
 - **Parallel Execution**: Configurable concurrency with intelligent load balancing
 - **Sophisticated Retry Logic**: Exponential backoff, jitter, and category-based retry policies  
 - **Real-time Monitoring**: Progress tracking, performance metrics, and deadlock detection
 - **Priority Queuing**: CRITICAL → HIGH → NORMAL → LOW execution ordering
+- **Unified Architecture**: Single TaskOrchestrator handles all orchestration and coordination
 
 ### 🧠 **Intelligence & Memory**
 - **Advanced Memory Systems**: Buffer, vector-enabled, retrieval-based, and hybrid memory with embeddings
@@ -293,6 +303,61 @@ async def main():
         await agent.stop()
 
 # Run with enhanced tool calling
+asyncio.run(main())
+```
+
+### Embedded Interactive Control & Streaming Example
+
+```python
+import asyncio
+from agenticflow.orchestration.task_orchestrator import TaskOrchestrator
+
+async def sample_task(name: str, duration: float = 1.0):
+    """Sample interruptible task"""
+    for i in range(int(duration * 10)):
+        await asyncio.sleep(0.1)
+        # Task can be interrupted during execution
+    return f"Completed {name}"
+
+async def main():
+    # Create orchestrator with embedded interactive control
+    orchestrator = TaskOrchestrator(
+        max_concurrent_tasks=3,
+        enable_streaming=True,      # Enable real-time streaming
+        enable_coordination=True,   # Enable coordinator connections
+        stream_interval=0.5         # Update every 500ms
+    )
+    
+    # Connect a coordinator for real-time monitoring
+    await orchestrator.connect_coordinator(
+        coordinator_id="human_monitor",
+        coordinator_type="human",
+        capabilities={"streaming": True, "interruption": True}
+    )
+    
+    # Add interruptible tasks
+    orchestrator.add_function_task(
+        "long_task", "Long Running Task", 
+        sample_task, 
+        args=("long_task", 3.0),
+        interruptible=True  # Can be interrupted
+    )
+    
+    # Create stream subscription for real-time updates
+    subscription = orchestrator.create_stream_subscription(
+        coordinator_id="human_monitor",
+        event_types={"task_started", "task_progress", "task_completed"}
+    )
+    
+    # Execute with real-time streaming
+    async for update in orchestrator.execute_workflow_with_streaming():
+        if update.get("type") == "status_update":
+            progress = update.get("data", {}).get("progress_percentage", 0)
+            print(f"\r🔄 Progress: {progress:.1f}%", end="")
+        elif update.get("type") == "workflow_completed":
+            print("\n✅ Workflow completed with embedded interactive control!")
+            break
+
 asyncio.run(main())
 ```
 
@@ -614,13 +679,15 @@ config = AgentConfig(
 - **Agent**: Base agent with async execution, tool integration, and memory
 - **AgentConfig**: Type-safe configuration with Pydantic validation
 - **Memory Systems**: Buffer, retrieval, and hybrid memory with embeddings
-- **A2A Communication**: Official Agent-to-Agent Protocol implementation
+- **A2A Communication**: Agent-to-Agent communication integrated in orchestration
 
 #### 2. **Task Orchestration** (`src/agenticflow/orchestration/`)
-- **TaskOrchestrator**: Main orchestration engine with DAG management
-- **TaskNode**: Individual tasks with state tracking and dependencies
+- **TaskOrchestrator**: Unified orchestration engine with embedded interactive control
+- **InteractiveTaskNode**: Enhanced tasks with streaming and interruption capabilities
 - **TaskDAG**: Directed Acyclic Graph for dependency management
-- **WorkflowStatus**: Real-time progress monitoring and metrics
+- **WorkflowStatus**: Real-time progress monitoring with streaming capabilities
+- **CoordinationManager**: Built-in coordinator connections and real-time communication
+- **A2AHandler**: Agent-to-agent communication integrated within orchestration
 
 #### 3. **Multi-Agent Topologies** (`src/agenticflow/workflows/`)
 - **BaseTopology**: Abstract base for all topology types
@@ -1265,6 +1332,10 @@ export GROQ_API_KEY="your-groq-api-key"
 cd agenticflow
 python examples/chatbots/interactive_rag_chatbot.py
 python examples/tools/final_tool_calling_validation.py
+
+# NEW: Embedded Interactive Orchestration Examples
+python examples/orchestration/task_orchestrator_demo.py
+python examples/orchestration/simple_streaming_example.py
 python examples/orchestration/complex_orchestration_test.py
 python examples/tools/direct_llm_tool_test.py
 
@@ -1360,6 +1431,10 @@ from agenticflow.orchestration.task_management import RetryPolicy
 orchestrator = TaskOrchestrator(
     max_concurrent_tasks=8,                   # Parallel execution limit
     default_timeout=60.0,                     # Task timeout in seconds
+    enable_streaming=True,                    # Enable real-time streaming
+    enable_coordination=True,                 # Enable coordinator connections
+    stream_interval=1.0,                      # Streaming update interval
+    coordination_timeout=60,                  # Coordination timeout
     default_retry_policy=RetryPolicy(         # Default retry behavior
         max_attempts=3,
         initial_delay=1.0,
@@ -1376,7 +1451,7 @@ orchestrator = TaskOrchestrator(
 - **Task Throughput**: 65+ tasks/second with concurrent execution
 - **Memory Usage**: <100MB for moderate workflows (20 tasks)
 - **Startup Time**: <500ms for agent initialization
-- **Communication Latency**: <10ms for A2A message passing
+- **Communication Latency**: <10ms for orchestration-integrated A2A messaging
 - **Scalability**: Tested with 50+ agents in hierarchical topologies
 
 ### Optimization Features
@@ -1441,7 +1516,7 @@ spec:
 - [x] ⚙️ Type-safe configuration with Pydantic
 - [x] 🤖 LLM providers (OpenAI, Groq, Ollama) with failover
 - [x] 🧠 Advanced memory systems with vector embeddings
-- [x] 📡 A2A communication protocol implementation
+- [x] 📡 A2A communication integrated within orchestration
 - [x] 🎆 Base Agent class with async execution
 - [x] 🛠️ Comprehensive tool integration (LangChain, custom functions)
 - [x] 🆕 **Full MCP Integration**: Model Context Protocol support with multi-server management
@@ -1453,6 +1528,9 @@ spec:
 - [x] 📈 Real-time progress monitoring and metrics
 - [x] 🎛️ Priority-based task queuing
 - [x] 🚫 Graceful cancellation and deadlock detection
+- [x] ✨ **NEW**: Embedded interactive control with real-time streaming
+- [x] 🔗 **NEW**: Integrated A2A communication within orchestration
+- [x] 🎯 **NEW**: Unified architecture - single TaskOrchestrator for all coordination
 
 **Multi-Agent Topologies**:
 - [x] ⭐ Star topology (coordinator + workers)
@@ -1552,7 +1630,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - Built with [LangChain](https://github.com/langchain-ai/langchain) and [LangGraph](https://github.com/langchain-ai/langgraph)
-- Uses [A2A Protocol](https://github.com/a2aproject/a2a-python) for agent communication  
+- Includes integrated A2A communication within orchestration layer
 - Powered by modern Python async patterns and best practices
 - Thanks to the open-source community for inspiration and contributions
 
