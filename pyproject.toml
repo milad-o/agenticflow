@@ -5,14 +5,14 @@ build-backend = "hatchling.build"
 [project]
 name = "agenticflow"
 version = "0.1.4"
-description = "Next-generation AI agent framework with advanced retrieval systems, smart memory architecture, MCP integration, and production-ready orchestration"
+description = "Next-generation AI agent framework with interactive RAG chatbots, advanced retrieval systems, smart memory architecture, MCP integration, and production-ready orchestration"
 authors = [
     {name = "AgenticFlow Team"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
-keywords = ["ai", "agents", "langchain", "langgraph", "async", "automation", "tool-calling", "memory", "vector-stores", "embeddings", "rag", "chunking", "semantic-search", "retrievers", "mcp", "multi-agent", "orchestration", "llm", "production-ready"]
+keywords = ["ai", "agents", "chatbot", "conversational-ai", "rag-chatbot", "langchain", "langgraph", "async", "automation", "tool-calling", "memory", "vector-stores", "embeddings", "rag", "chunking", "semantic-search", "retrievers", "mcp", "multi-agent", "orchestration", "llm", "production-ready"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

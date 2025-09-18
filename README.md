@@ -20,6 +20,7 @@
 📈 **Performance Optimizations** - 50% tool calling improvement, 65+ tasks/second throughput  
 📚 **Comprehensive Documentation** - Complete examples with step-by-step guides for all features  
 🏢 **Business-Ready Systems** - End-to-end applications processing real revenue data  
+🤖💬 **Interactive RAG Chatbot** - Production conversational AI with knowledge base retrieval
 
 ## ✨ Core Features
 
@@ -91,6 +92,17 @@ result = await system.execute_task("Research and write about renewable energy")
 ```
 
 ## 🎯 Real-World Examples
+
+### 🤖💬 **Interactive RAG Chatbot** 🆕✨
+**Production-ready conversational AI** with knowledge base and semantic search
+```bash
+# Interactive chat experience
+uv run python examples/agent/interactive_rag_chatbot.py
+
+# Automated demonstration
+uv run python examples/agent/test_chatbot_interaction.py
+```
+**Features**: RAG with vector search, multi-turn conversations, comprehensive AgenticFlow knowledge base
 
 ### 🏢 **Complete Business Systems** ⭐
 **Production-ready sales analysis** processing $96K+ revenue with multi-agent coordination
