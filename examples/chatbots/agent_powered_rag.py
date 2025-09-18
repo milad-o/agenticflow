@@ -13,7 +13,7 @@ Features:
 - Smart retriever selection based on query type
 
 Usage:
-    python examples/agent/agent_powered_rag.py
+    python examples/chatbots/agent_powered_rag.py
 """
 
 import asyncio
@@ -21,15 +21,16 @@ import os
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
-from agenticflow import Agent, AgentConfig
-from agenticflow.llm_providers import LLMProviderConfig, LLMProvider
+from agenticflow import Agent
+from agenticflow.config.settings import AgentConfig, LLMProviderConfig, LLMProvider
 from langchain_openai import OpenAIEmbeddings
 from langchain_ollama import OllamaEmbeddings
 from agenticflow.memory import VectorMemory
 from agenticflow.memory.vector_memory import VectorMemoryConfig
 from agenticflow.config.settings import MemoryConfig
 from agenticflow.vectorstores.factory import VectorStoreFactory
-from agenticflow.text import split_text, ChunkingStrategy
+from agenticflow.text.splitters.manager import split_text
+from agenticflow.text import SplitterType
 from agenticflow.retrievers import (
     HybridRetriever, BM25Retriever, create_from_memory,
     EnsembleRetriever, KeywordRetriever
@@ -196,7 +197,7 @@ class AgentPoweredRAG:
         for i, doc in enumerate(self.documents):
             chunks = await split_text(
                 doc.strip(),
-                splitter_type=ChunkingStrategy.RECURSIVE,
+                splitter_type=SplitterType.RECURSIVE,
                 chunk_size=400,
                 chunk_overlap=100
             )

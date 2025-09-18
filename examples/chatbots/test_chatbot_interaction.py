@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Test script to demonstrate the interactive RAG chatbot
-This simulates a conversation to show how the chatbot works
+Test script to demonstrate the interactive Science & Nature chatbot
+This simulates a conversation to show how the chatbot works with science topics
 """
 
 import asyncio
@@ -17,7 +17,7 @@ from interactive_rag_chatbot import InteractiveRAGChatbot
 
 async def simulate_chatbot_conversation():
     """Simulate a conversation with the chatbot."""
-    print("🤖 AGENTICFLOW INTERACTIVE RAG CHATBOT DEMONSTRATION")
+    print("🔬 INTERACTIVE SCIENCE & NATURE CHATBOT DEMONSTRATION")
     print("=" * 65)
     
     # Initialize the chatbot
@@ -33,11 +33,11 @@ async def simulate_chatbot_conversation():
         
         # Simulate a conversation
         test_questions = [
-            "What is AgenticFlow?",
-            "How do retrievers work in AgenticFlow?",
-            "Can you tell me more about the memory systems?",
-            "What are the different multi-agent topologies?",
-            "How does this compare to other AI frameworks?"
+            "What are some fascinating facts about ocean life?",
+            "Tell me about space exploration and our solar system",
+            "How do animals adapt to their environments?",
+            "What are the fundamental forces of nature?",
+            "Explain how photosynthesis works in plants"
         ]
         
         for i, question in enumerate(test_questions, 1):

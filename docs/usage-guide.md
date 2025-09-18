@@ -695,7 +695,8 @@ uv add "git+https://github.com/milad-o/agenticflow.git[all]"
 # Run examples (after cloning the repo)
 git clone https://github.com/milad-o/agenticflow.git
 cd agenticflow
-uv run python examples/agent/final_tool_calling_validation.py
+uv run python examples/tools/final_tool_calling_validation.py
+uv run python examples/chatbots/interactive_rag_chatbot.py
 uv run python examples/realistic_systems/sales_analysis/simple_sales_analysis.py
 
 # Test installation  

@@ -94,15 +94,19 @@ result = await system.execute_task("Research and write about renewable energy")
 ## 🎯 Real-World Examples
 
 ### 🤖💬 **Interactive RAG Chatbot** 🆕✨
-**Production-ready conversational AI** with knowledge base and semantic search
+**Production-ready conversational AI** with enhanced interactive features and custom knowledge support
 ```bash
-# Interactive chat experience
-uv run python examples/agent/interactive_rag_chatbot.py
+# Interactive science & nature chatbot
+uv run python examples/chatbots/interactive_rag_chatbot.py
 
 # Automated demonstration
-uv run python examples/agent/test_chatbot_interaction.py
+uv run python examples/chatbots/test_chatbot_interaction.py
 ```
-**Features**: RAG with vector search, multi-turn conversations, comprehensive AgenticFlow knowledge base
+**🎆 New Features**: 
+- **Interactive Commands**: `help`, `topics`, `examples`, `search`, `context`, `history`, `add-knowledge`
+- **Custom Knowledge**: Add domain-specific content via `~/.agenticflow/knowledge/`
+- **Hybrid Retrieval**: Semantic + keyword search with 32+ knowledge chunks
+- **Multi-Provider Support**: Groq, OpenAI, Ollama with automatic fallback
 
 ### 🏢 **Complete Business Systems** ⭐
 **Production-ready sales analysis** processing $96K+ revenue with multi-agent coordination
@@ -138,7 +142,7 @@ uv run python examples/workflows/realistic_data_analysis.py
 ### 🛠️ **Tool Calling System**
 **Enhanced natural language detection** with 50% success improvement
 ```bash
-uv run python examples/agent/final_tool_calling_validation.py
+uv run python examples/tools/final_tool_calling_validation.py
 ```
 
 ## 📚 Documentation Hub
@@ -146,16 +150,19 @@ uv run python examples/agent/final_tool_calling_validation.py
 ### 🚀 **Quick Start Paths**
 | **Beginner** | **Advanced** | **Production** |
 |--------------|--------------|----------------|
-| [**Agent Basics**](examples/agent/) | [**Retriever Systems**](examples/retrievers/) | [**Business Systems**](examples/realistic_systems/) |
-| [**Memory Systems**](examples/memory/) | [**MCP Integration**](examples/mcp/) | [**Performance Testing**](examples/performance/) |
-| [**Basic Workflows**](examples/workflows/) | [**Vector Stores**](examples/vector_stores/) | [**Production Deployment**](docs/) |
+| [**Chatbots**](examples/chatbots/) | [**Retriever Systems**](examples/retrievers/) | [**Business Systems**](examples/realistic_systems/) |
+| [**Tools**](examples/tools/) | [**MCP Integration**](examples/mcp/) | [**Performance Testing**](examples/performance/) |
+| [**Orchestration**](examples/orchestration/) | [**Vector Stores**](examples/vector_stores/) | [**Production Deployment**](docs/) |
+| [**Memory Systems**](examples/memory/) | [**Workflows**](examples/workflows/) |  |
 
 ### 📂 **Feature Documentation**
 | **System** | **Guide** | **Examples** | **API** |
 |------------|-----------|--------------|----------|
+| **Chatbots** | [RAG Conversations](examples/chatbots/README.md) | [Interactive AI](examples/chatbots/) | Custom Knowledge, Commands |
+| **Tools** | [Tool Integration](examples/tools/README.md) | [Natural Language](examples/tools/) | LLM-Powered, Validation |
+| **Orchestration** | [Task Management](examples/orchestration/README.md) | [Complex Workflows](examples/orchestration/) | DAG, Parallel, Sequential |
 | **Retrievers** | [Advanced Search](examples/retrievers/README.md) | [15+ Types](examples/retrievers/) | Text, Semantic, Composite |
 | **Memory** | [Smart Persistence](examples/memory/README.md) | [Vector Search](examples/memory/) | Buffer, SQLite, Vector |
-| **Agents** | [Core System](examples/agent/README.md) | [Tool Integration](examples/agent/) | Async, Supervisor |
 | **Workflows** | [Multi-Agent](examples/workflows/README.md) | [Topologies](examples/workflows/) | Star, P2P, Hierarchical |
 | **MCP** | [Tool Protocol](examples/mcp/README.md) | [Multi-Server](examples/mcp/) | Secure, Extensible |
 | **Embeddings** | [Provider Comparison](examples/embeddings/README.md) | [Quality Analysis](examples/embeddings/) | OpenAI, Ollama, HF |

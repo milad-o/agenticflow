@@ -1208,9 +1208,10 @@ if __name__ == "__main__":
 
 The `examples/` directory contains comprehensive test suites and examples organized by category:
 
-### 🚀 **Agent & Tool Calling Examples**
-- **`agent/final_tool_calling_validation.py`**: Comprehensive tool calling system validation
-- **`agent/complex_orchestration_test.py`**: Advanced multi-agent workflow orchestration
+### 🚀 **Chatbot & Tool Calling Examples**
+- **`chatbots/interactive_rag_chatbot.py`**: Interactive RAG chatbot with custom knowledge support
+- **`tools/final_tool_calling_validation.py`**: Comprehensive tool calling system validation
+- **`orchestration/complex_orchestration_test.py`**: Advanced multi-agent workflow orchestration
 - **`tools/direct_llm_tool_test.py`**: Direct LLM tool integration tests
 
 ### 🧠 **Memory System Examples**
@@ -1260,10 +1261,11 @@ The `examples/` directory contains comprehensive test suites and examples organi
 export OPENAI_API_KEY="your-openai-api-key"
 export GROQ_API_KEY="your-groq-api-key"
 
-# Agent and Tool Calling Examples
+# Chatbot and Tool Calling Examples
 cd agenticflow
-python examples/agent/final_tool_calling_validation.py
-python examples/agent/complex_orchestration_test.py
+python examples/chatbots/interactive_rag_chatbot.py
+python examples/tools/final_tool_calling_validation.py
+python examples/orchestration/complex_orchestration_test.py
 python examples/tools/direct_llm_tool_test.py
 
 # Memory System Examples

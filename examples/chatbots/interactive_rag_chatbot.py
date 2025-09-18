@@ -16,7 +16,7 @@ Features:
 - Multiple conversation modes
 
 Usage:
-    python examples/agent/interactive_rag_chatbot.py
+    python examples/chatbots/interactive_rag_chatbot.py
 """
 
 import asyncio
@@ -25,6 +25,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from agenticflow import Agent, LLMProviderConfig
 from agenticflow.config.settings import AgentConfig, LLMProvider
@@ -82,15 +86,48 @@ class InteractiveRAGChatbot:
         raise RuntimeError("❌ No embedding provider available. Please install Ollama or set OPENAI_API_KEY.")
     
     async def load_knowledge_base(self) -> None:
-        """Load knowledge base documents."""
-        print("📚 Loading knowledge base...")
+        """Load knowledge base documents from external files, including custom topics."""
+        print("📚 Loading knowledge base from external documents...")
         
-        # Always load AgenticFlow comprehensive knowledge base first
-        print("  📝 Loading AgenticFlow comprehensive knowledge base...")
-        self.documents = self.create_comprehensive_knowledge_base()
-        print(f"  ✅ Core AgenticFlow knowledge loaded: {len(self.documents)} documents")
+        self.documents = []
+        self.knowledge_docs = {}  # Track document sources
         
-        # Additionally load any sample docs if available
+        # 1. Load from built-in knowledge_base directory
+        knowledge_base_path = Path(__file__).parent / "knowledge_base"
+        if knowledge_base_path.exists() and knowledge_base_path.is_dir():
+            text_files = list(knowledge_base_path.glob("*.txt"))
+            print(f"  🔍 Found {len(text_files)} built-in knowledge documents")
+            
+            for file_path in sorted(text_files):
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read().strip()
+                        if content:  # Only add non-empty files
+                            self.documents.append(content)
+                            self.knowledge_docs[file_path.name] = content
+                            print(f"  📄 Loaded: {file_path.name} ({len(content)} chars)")
+                except Exception as e:
+                    print(f"  ⚠️ Error loading {file_path}: {e}")
+        
+        # 2. Load from user's custom knowledge directory
+        custom_knowledge_path = Path.home() / ".agenticflow" / "knowledge"
+        if custom_knowledge_path.exists() and custom_knowledge_path.is_dir():
+            custom_text_files = list(custom_knowledge_path.glob("*.txt"))
+            if custom_text_files:
+                print(f"  🏠 Found {len(custom_text_files)} custom knowledge documents")
+                
+                for file_path in sorted(custom_text_files):
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            content = f.read().strip()
+                            if content:  # Only add non-empty files
+                                self.documents.append(content)
+                                self.knowledge_docs[f"[custom] {file_path.name}"] = content
+                                print(f"  🏠 Custom loaded: {file_path.name} ({len(content)} chars)")
+                    except Exception as e:
+                        print(f"  ⚠️ Error loading custom {file_path}: {e}")
+        
+        # 3. Load from examples/retrievers/sample_docs (compatibility)
         sample_docs_path = Path("examples/retrievers/sample_docs")
         if sample_docs_path.exists() and sample_docs_path.is_dir():
             text_files = list(sample_docs_path.glob("*.txt"))
@@ -100,230 +137,26 @@ class InteractiveRAGChatbot:
                         content = f.read().strip()
                         if content:  # Only add non-empty files
                             self.documents.append(content)
+                            self.knowledge_docs[f"[compat] {file_path.name}"] = content
                             print(f"  📄 Additional doc loaded: {file_path.name} ({len(content)} chars)")
                 except Exception as e:
                     print(f"  ⚠️ Error loading {file_path}: {e}")
         
-        print(f"📖 Knowledge base ready: {len(self.documents)} total documents")
-    
-    def create_comprehensive_knowledge_base(self) -> List[str]:
-        """Create a comprehensive knowledge base covering multiple topics."""
-        return [
-            # AgenticFlow Framework
-            """
-            AgenticFlow: Next-Generation AI Agent Framework
-            
-            AgenticFlow is a comprehensive, production-ready framework for building sophisticated multi-agent AI systems. 
-            It provides advanced orchestration, memory management, and retrieval capabilities.
-            
-            Key Features:
-            - Multi-Agent Topologies: Star, Peer-to-Peer, Hierarchical, Pipeline, Mesh, and Custom configurations
-            - Advanced Memory Systems: Buffer, SQLite, PostgreSQL, and Vector memory with cross-session persistence
-            - Intelligent Retrievers: 15+ retriever types including text-based, semantic, and composite approaches
-            - MCP Integration: Model Context Protocol for secure external tool access
-            - Production Ready: Enterprise-grade error handling, monitoring, and scalability
-            - Async-First Architecture: Built for high performance and concurrent operations
-            
-            The framework supports multiple LLM providers (OpenAI, Groq, Ollama, Azure) with automatic failover
-            and comprehensive embedding support for semantic search and RAG applications.
-            """,
-            
-            # Retriever System Deep Dive
-            """
-            AgenticFlow Retriever System: Advanced Search and Retrieval
-            
-            The retriever system provides multiple strategies for finding relevant information:
-            
-            Text-Based Retrievers:
-            - KeywordRetriever: Fast exact keyword matching for precise term searches
-            - BM25Retriever: Statistical ranking algorithm, excellent for document search
-            - FuzzyRetriever: Handles typos and approximate matches with similarity scoring
-            - RegexRetriever: Pattern-based retrieval for structured data extraction
-            - FullTextRetriever: Comprehensive text search with advanced scoring
-            
-            Semantic Retrievers:
-            - SemanticRetriever: Vector similarity search using embeddings
-            - CosineRetriever: Cosine similarity for semantic matching
-            - EuclideanRetriever: Euclidean distance-based similarity
-            - DotProductRetriever: Dot product similarity for high-dimensional spaces
-            - ManhattanRetriever: Manhattan distance for specialized use cases
-            
-            Composite Retrievers:
-            - EnsembleRetriever: Combines multiple retrievers with weighted scoring
-            - HybridRetriever: Blends text and semantic approaches for balanced results
-            - ContextualRetriever: Context-aware retrieval with surrounding information
-            - FusionRetriever: Advanced fusion techniques for optimal results
-            
-            Each retriever can be optimized for specific use cases and query types, with performance
-            metrics showing 500+ queries/second throughput and 98%+ accuracy for relevant results.
-            """,
-            
-            # Memory and Vector Systems
-            """
-            Memory Systems in AgenticFlow: Persistent and Semantic Storage
-            
-            AgenticFlow provides multiple memory backends for different use cases:
-            
-            Buffer Memory:
-            - In-memory storage for fast access
-            - No persistence between sessions
-            - Ideal for temporary conversations and development
-            - Supports up to 10,000 messages with automatic trimming
-            
-            SQLite Memory:
-            - Local database with file persistence
-            - Session management and cross-session continuity
-            - Perfect for development and small-scale applications
-            - ACID compliance and transaction safety
-            
-            PostgreSQL Memory:
-            - Enterprise-grade database backend
-            - Full SQL capabilities and advanced indexing
-            - Scalable for production deployments
-            - Support for multiple concurrent users
-            
-            Vector Memory:
-            - Semantic search capabilities with embeddings
-            - Multiple vector store backends: FAISS, Chroma, Pinecone, Qdrant
-            - Smart text chunking with 5 different strategies
-            - Cross-session persistence with semantic search
-            - Supports embeddings from OpenAI, Ollama, and HuggingFace
-            
-            Vector stores support similarity search, document ranking, and semantic clustering
-            with performance metrics of 1000+ operations/second and <50ms query latency.
-            """,
-            
-            # Multi-Agent Orchestration
-            """
-            Multi-Agent Orchestration: Topologies and Coordination Patterns
-            
-            AgenticFlow supports various multi-agent coordination patterns:
-            
-            Star Topology:
-            - Central supervisor coordinates all worker agents
-            - Clear hierarchy with centralized decision making
-            - Excellent for task delegation and resource management
-            - Scales well up to 50+ worker agents
-            
-            Peer-to-Peer Topology:
-            - Agents communicate directly with each other
-            - Distributed decision making and collaborative work
-            - Self-organizing systems with emergent behavior
-            - Ideal for collaborative problem-solving tasks
-            
-            Hierarchical Topology:
-            - Tree-like structure with multiple management levels
-            - Scalable organizational patterns
-            - Clear command chains and responsibility zones
-            - Supports complex organizational structures
-            
-            Pipeline Topology:
-            - Sequential processing with data flow between agents
-            - Each agent specializes in specific processing steps
-            - Feedback loops and error correction mechanisms
-            - Perfect for data processing and transformation workflows
-            
-            Mesh Topology:
-            - Partial connectivity between selected agents
-            - Flexible communication patterns
-            - Load balancing and redundancy
-            - Fault tolerance and graceful degradation
-            
-            Custom Topology:
-            - User-defined communication patterns
-            - Flexible agent relationships
-            - Domain-specific optimizations
-            - Advanced coordination strategies
-            
-            Performance metrics show support for 20+ concurrent agents with <2s coordination latency
-            and 95%+ success rates in complex multi-agent workflows.
-            """,
-            
-            # AI and Machine Learning Concepts
-            """
-            Artificial Intelligence and Machine Learning Fundamentals
-            
-            Machine Learning Overview:
-            Machine learning is a subset of AI that enables computers to learn patterns from data
-            without explicit programming. It includes three main paradigms:
-            
-            Supervised Learning:
-            - Learns from labeled training data
-            - Predicts outcomes for new inputs
-            - Examples: classification, regression, image recognition
-            - Algorithms: linear regression, random forests, neural networks
-            
-            Unsupervised Learning:
-            - Discovers patterns in unlabeled data
-            - Finds hidden structures and relationships
-            - Examples: clustering, dimensionality reduction, anomaly detection
-            - Algorithms: k-means, PCA, autoencoders
-            
-            Reinforcement Learning:
-            - Learns through interaction with environment
-            - Uses rewards and penalties to improve decisions
-            - Examples: game playing, robotics, autonomous systems
-            - Algorithms: Q-learning, policy gradients, actor-critic methods
-            
-            Deep Learning:
-            Deep learning uses neural networks with multiple layers to model complex patterns:
-            - Convolutional Neural Networks (CNNs) for image processing
-            - Recurrent Neural Networks (RNNs) for sequential data
-            - Transformers for natural language processing
-            - Generative models for content creation
-            
-            Natural Language Processing (NLP):
-            - Text understanding and generation
-            - Sentiment analysis and emotion detection
-            - Machine translation between languages
-            - Question answering and conversational AI
-            - Modern approaches use transformer architectures like BERT, GPT, and T5
-            """,
-            
-            # Programming and Software Development
-            """
-            Python Programming: Best Practices and Modern Development
-            
-            Python Fundamentals:
-            Python is a versatile, high-level programming language known for readability and simplicity.
-            
-            Core Features:
-            - Dynamic typing with optional type hints
-            - Automatic memory management and garbage collection
-            - Rich standard library and ecosystem
-            - Cross-platform compatibility
-            - Multiple programming paradigms: procedural, object-oriented, functional
-            
-            Data Types and Structures:
-            - Primitive types: int, float, str, bool
-            - Collections: list, tuple, dict, set
-            - Advanced: namedtuple, dataclass, enum
-            - Type hints for better code documentation
-            
-            Best Practices:
-            - Follow PEP 8 style guidelines for consistent formatting
-            - Use virtual environments for dependency management
-            - Write comprehensive docstrings and comments
-            - Implement proper error handling with try-except blocks
-            - Use context managers for resource management
-            - Write unit tests with pytest or unittest
-            
-            Modern Python Development:
-            - Async programming with asyncio for concurrent operations
-            - Type checking with mypy for better code quality
-            - Package management with pip, poetry, or uv
-            - Code formatting with black and isort
-            - Linting with flake8, pylint, or ruff
-            - Version control with git and collaborative workflows
-            
-            Popular Libraries and Frameworks:
-            - Data Science: NumPy, pandas, matplotlib, scikit-learn
-            - Web Development: Django, Flask, FastAPI
-            - AI/ML: TensorFlow, PyTorch, transformers
-            - GUI: tkinter, PyQt, Kivy
-            - Testing: pytest, hypothesis
-            """,
-        ]
+        # 4. Show instructions for custom knowledge if none found
+        if not any(key.startswith("[custom]") for key in self.knowledge_docs.keys()):
+            print(f"\n💡 To add custom knowledge:")
+            print(f"   1. Create directory: {custom_knowledge_path}")
+            print(f"   2. Add .txt files with your domain-specific content")
+            print(f"   3. Restart the chatbot to load your custom knowledge")
+            print(f"   🌟 The chatbot will automatically include your custom topics!")
+        
+        # Fallback if no documents loaded
+        if not self.documents:
+            print("  📝 Creating basic fallback knowledge...")
+            self.documents = ["This is a science chatbot with knowledge about nature, space, and the natural world."]
+            self.knowledge_docs["fallback.txt"] = self.documents[0]
+        
+        print(f"📚 Knowledge base ready: {len(self.documents)} total documents")
     
     async def setup_memories(self) -> None:
         """Setup both vector memory for RAG and conversation memory."""
@@ -405,7 +238,9 @@ class InteractiveRAGChatbot:
         """Setup intelligent hybrid retriever."""
         if not self.vector_memory:
             print("  ⚠️ No vector memory - using text-only retrieval")
-            self.retriever = BM25Retriever([chunk.content for chunk in self.chunks])
+            # Create a simple text data source for BM25
+            text_data_source = self._create_text_data_source()
+            self.retriever = BM25Retriever(text_data_source)
             return
         
         print("🔍 Setting up intelligent retriever...")
@@ -417,23 +252,45 @@ class InteractiveRAGChatbot:
             if hasattr(self.chunks[0], 'content'):
                 print(f"  📝 First chunk content: {self.chunks[0].content[:100]}...")
         
-        text_data = [chunk.content for chunk in self.chunks]
-        print(f"  📝 Text data for BM25: {len(text_data)} items")
+        print(f"  📝 Text data for BM25: {len(self.chunks)} chunks")
         
         semantic_retriever = create_from_memory(self.vector_memory)
         
-        # Temporarily use only semantic retriever to debug
-        print("  ⚠️ Using semantic-only retriever for debugging")
-        self.retriever = semantic_retriever
+        # Create a text data source for BM25 retriever
+        text_data_source = self._create_text_data_source()
+        sparse_retriever = BM25Retriever(text_data_source)
         
-        # TODO: Re-enable hybrid once we fix BM25 issue
-        # sparse_retriever = BM25Retriever(text_data)
-        # self.retriever = HybridRetriever(
-        #     dense_retriever=semantic_retriever,
-        #     sparse_retriever=sparse_retriever
-        # )
+        # Create hybrid retriever combining semantic and BM25
+        self.retriever = HybridRetriever(
+            dense_retriever=semantic_retriever,
+            sparse_retriever=sparse_retriever
+        )
         
         print("  ✅ Hybrid retriever ready (text + semantic)")
+    
+    def _create_text_data_source(self):
+        """Create a simple data source wrapper for text-based retrievers."""
+        from agenticflow.memory.core import MemoryDocument
+        import time
+        
+        class TextDataSource:
+            def __init__(self, chunks):
+                # Convert text fragments to MemoryDocument objects
+                self.documents = []
+                for i, chunk in enumerate(chunks):
+                    doc = MemoryDocument(
+                        id=f"chunk_{i}",
+                        content=chunk.content if hasattr(chunk, 'content') else str(chunk),
+                        metadata=getattr(chunk, 'metadata', {}),
+                        timestamp=time.time()
+                    )
+                    self.documents.append(doc)
+            
+            async def search(self, query: str, limit: int = 10):
+                # Simple keyword search for BM25 retriever
+                return self.documents[:limit]
+        
+        return TextDataSource(self.chunks)
     
     async def setup_chatbot_agent(self) -> None:
         """Setup the conversational agent."""
@@ -456,31 +313,38 @@ class InteractiveRAGChatbot:
             )
             provider_name = "OpenAI"
         else:
-            try:
+            # Try available Ollama models
+            ollama_models = ["granite3.2:8b", "qwen2.5:7b", "llama3.2", "llama2"]
+            for model in ollama_models:
+                try:
+                    llm_config = LLMProviderConfig(
+                        provider=LLMProvider.OLLAMA,
+                        model=model
+                    )
+                    provider_name = f"Ollama ({model})"
+                    break
+                except Exception:
+                    continue
+            else:
+                # Ultimate fallback to Groq if no Ollama models work
                 llm_config = LLMProviderConfig(
-                    provider=LLMProvider.OLLAMA,
-                    model="llama3.2"
+                    provider=LLMProvider.GROQ,
+                    model="llama-3.1-8b-instant"
                 )
-                provider_name = "Ollama (local)"
-            except Exception:
-                llm_config = LLMProviderConfig(
-                    provider=LLMProvider.OLLAMA,
-                    model="llama2"
-                )
-                provider_name = "Ollama (local)"
+                provider_name = "Groq (fallback)"
         
         # Configure agent with conversation and RAG capabilities
         config = AgentConfig(
-            name="rag_chatbot",
-            instructions="""You are an intelligent, helpful AI assistant with access to a comprehensive knowledge base about AgenticFlow, AI/ML, and programming.
+            name="science_chatbot",
+            instructions="""You are an intelligent, helpful AI assistant with access to a comprehensive knowledge base about nature, space, and science.
 
 Your personality and behavior:
 - Be conversational, friendly, and engaging
-- Show enthusiasm about helping users learn
+- Show enthusiasm about helping users learn about the natural world
 - Ask clarifying questions when needed
 - Reference specific information from the knowledge base when relevant
 - Maintain context across multiple conversation turns
-- Provide practical examples and use cases
+- Provide practical examples and fascinating facts
 
 When answering questions:
 1. Use the retrieved context to provide accurate, detailed information
@@ -488,8 +352,9 @@ When answering questions:
 3. For follow-up questions, consider the previous conversation context
 4. Suggest related topics the user might be interested in
 5. Be concise but thorough - aim for helpful, not overwhelming responses
+6. Share interesting facts and examples that make science come alive
 
-Remember: You have access to detailed information about AgenticFlow's features, AI/ML concepts, and programming best practices. Use this knowledge to provide valuable, practical assistance.""",
+Remember: You have access to detailed information about ocean life, space exploration, wildlife behavior, earth sciences, physics, chemistry, and biology. Use this knowledge to inspire curiosity and provide educational, engaging responses.""",
             llm=llm_config,
             memory=MemoryConfig(max_messages=20)  # Keep conversation context
         )
@@ -618,31 +483,40 @@ Remember: You have access to detailed information about AgenticFlow's features, 
     def display_welcome(self):
         """Display welcome message and instructions."""
         print("\n" + "=" * 60)
-        print("🤖 AgenticFlow Interactive RAG Chatbot")
+        print("🔬 Interactive Science & Nature Chatbot")
         print("=" * 60)
         print("Welcome! I'm your AI assistant with knowledge about:")
-        print("  • AgenticFlow framework and features")
-        print("  • AI/ML concepts and best practices")
-        print("  • Python programming and development")
-        print("  • Multi-agent systems and orchestration")
+        print("  • 🌊 Ocean life and marine biology")
+        print("  • 🚀 Space exploration and astronomy")
+        print("  • 🦁 Wildlife behavior and animal adaptations")
+        print("  • 🌍 Earth sciences and geology")
+        print("  • ⚛️ Physics and chemistry fundamentals")
+        print("  • 🌱 Biology and life sciences")
         print()
         print("💡 What I can do:")
-        print("  ✅ Answer questions about any of these topics")
+        print("  ✅ Answer questions about the natural world")
         print("  ✅ Handle follow-up questions and conversations")
-        print("  ✅ Provide detailed explanations with examples")
+        print("  ✅ Provide detailed explanations with fascinating facts")
         print("  ✅ Suggest related topics you might find interesting")
         print()
         print("🎯 Example questions you can ask:")
-        print("  • 'What is AgenticFlow and what can it do?'")
-        print("  • 'How do retrievers work in AgenticFlow?'")
-        print("  • 'Explain machine learning in simple terms'")
-        print("  • 'What are Python best practices?'")
-        print("  • 'How do multi-agent systems coordinate?'")
+        print("  • 'What are some fascinating facts about ocean life?'")
+        print("  • 'Tell me about space exploration and our solar system'")
+        print("  • 'How do animals adapt to their environments?'")
+        print("  • 'What are the fundamental forces of nature?'")
+        print("  • 'Explain how photosynthesis works in plants'")
         print()
         print("💬 Commands:")
         print("  • Type 'quit', 'exit', or 'bye' to end the conversation")
         print("  • Type 'help' to see this message again")
         print("  • Type 'clear' to clear conversation history")
+        print("  • Type 'stats' to show session statistics")
+        print("  • Type 'topics' to see available knowledge topics")
+        print("  • Type 'examples' to see example questions")
+        print("  • Type 'search <query>' to search knowledge base directly")
+        print("  • Type 'context' to see current retrieved context")
+        print("  • Type 'history' to show conversation history")
+        print("  • Type 'add-knowledge' to get instructions for adding custom topics")
         print("=" * 60)
         print()
     
@@ -655,6 +529,173 @@ Remember: You have access to detailed information about AgenticFlow's features, 
         print(f"  💬 Exchanges: {num_exchanges}")
         print(f"  🧠 Knowledge chunks: {len(self.chunks)}")
         print(f"  🔍 Last context items: {context_items}")
+        print(f"  📚 Knowledge documents loaded: {len(self.knowledge_docs)}")
+        if hasattr(self, 'vector_memory') and self.vector_memory:
+            print(f"  🗂️ Vector memory status: Active")
+        print(f"  🔄 Chat session: {'Active' if self.conversation_active else 'Ended'}")
+    
+    def display_topics(self):
+        """Display available knowledge topics."""
+        print("\n📚 Available Knowledge Topics:")
+        if self.knowledge_docs:
+            for doc_name, content in self.knowledge_docs.items():
+                # Extract topic from filename
+                topic = doc_name.replace('.txt', '').replace('_', ' ').title()
+                char_count = len(content)
+                print(f"  • {topic} ({char_count:,} characters)")
+        else:
+            print("  No knowledge documents loaded")
+        
+        print("\n🎯 You can ask questions about any of these topics!")
+    
+    def display_examples(self):
+        """Display example questions categorized by topic."""
+        examples = {
+            "🌊 Ocean & Marine Life": [
+                "What are some fascinating facts about ocean life?",
+                "Tell me about bioluminescence in marine animals",
+                "How do coral reefs support biodiversity?"
+            ],
+            "🚀 Space & Astronomy": [
+                "Tell me about space exploration and our solar system",
+                "What makes black holes so mysterious?",
+                "How do we search for life on other planets?"
+            ],
+            "🦁 Wildlife & Animals": [
+                "How do animals adapt to their environments?",
+                "What are some amazing migration patterns?",
+                "How do animals communicate with each other?"
+            ],
+            "⚛️ Physics & Chemistry": [
+                "What are the fundamental forces of nature?",
+                "How do chemical reactions work?",
+                "Explain quantum physics in simple terms"
+            ],
+            "🌱 Biology & Life Sciences": [
+                "Explain how photosynthesis works in plants",
+                "How does evolution shape life on Earth?",
+                "What makes DNA so important?"
+            ]
+        }
+        
+        print("\n🎯 Example Questions by Topic:")
+        for topic, questions in examples.items():
+            print(f"\n{topic}:")
+            for question in questions:
+                print(f"  • {question}")
+        print("\n💡 Feel free to ask variations or follow-up questions!")
+    
+    async def direct_search(self, query: str):
+        """Perform direct knowledge base search."""
+        print(f"\n🔍 Searching knowledge base for: '{query}'")
+        
+        if not self.retriever:
+            print("❌ Retriever not initialized")
+            return
+        
+        try:
+            results = await self.retrieve_context(query, max_context=5)
+            if results:
+                print(f"\n📄 Found {len(results)} relevant results:")
+                print("-" * 50)
+                for i, result in enumerate(results, 1):
+                    preview = result[:200] + "..." if len(result) > 200 else result
+                    print(f"\n{i}. {preview}")
+                print("-" * 50)
+            else:
+                print("❌ No results found for your query")
+                print("💡 Try different keywords or ask a question instead")
+        except Exception as e:
+            print(f"❌ Search failed: {e}")
+    
+    def display_context(self):
+        """Display current retrieved context."""
+        if not self.current_context:
+            print("\n📄 No context currently retrieved")
+            print("💡 Context is loaded when you ask questions")
+            return
+        
+        print(f"\n📄 Current Context ({len(self.current_context)} items):")
+        print("-" * 50)
+        for i, context in enumerate(self.current_context, 1):
+            preview = context[:150] + "..." if len(context) > 150 else context
+            print(f"\n{i}. {preview}")
+        print("-" * 50)
+    
+    def display_history(self):
+        """Display conversation history."""
+        if not self.conversation_history:
+            print("\n💭 No conversation history yet")
+            print("💡 Start asking questions to build history")
+            return
+        
+        print(f"\n💭 Conversation History ({len(self.conversation_history)} messages):")
+        print("-" * 50)
+        
+        for i, entry in enumerate(self.conversation_history):
+            role_emoji = "👤" if entry["role"] == "user" else "🤖"
+            role_name = "You" if entry["role"] == "user" else "Assistant"
+            content = entry["content"]
+            
+            # Truncate long messages for readability
+            if len(content) > 100:
+                content = content[:100] + "..."
+            
+            print(f"\n{i+1}. {role_emoji} {role_name}: {content}")
+        
+        print("-" * 50)
+        print(f"💡 Showing last {len(self.conversation_history)} messages")
+    
+    def show_add_knowledge_instructions(self):
+        """Show detailed instructions for adding custom knowledge."""
+        custom_knowledge_path = Path.home() / ".agenticflow" / "knowledge"
+        
+        print("\n📚 HOW TO ADD CUSTOM KNOWLEDGE")
+        print("=" * 50)
+        
+        print(f"\n📁 1. Create the custom knowledge directory:")
+        print(f"   mkdir -p {custom_knowledge_path}")
+        
+        print(f"\n📝 2. Create .txt files with your content:")
+        print(f"   # Example: medical knowledge")
+        print(f"   echo 'Medical knowledge content...' > {custom_knowledge_path}/medical_guide.txt")
+        print(f"   ")
+        print(f"   # Example: company knowledge")
+        print(f"   echo 'Company policies and procedures...' > {custom_knowledge_path}/company_handbook.txt")
+        
+        print(f"\n💻 3. Example Python script to create knowledge:")
+        print(f"   ```python")
+        print(f"   from pathlib import Path")
+        print(f"   ")
+        print(f"   # Create knowledge directory")
+        print(f"   knowledge_dir = Path.home() / '.agenticflow' / 'knowledge'")
+        print(f"   knowledge_dir.mkdir(parents=True, exist_ok=True)")
+        print(f"   ")
+        print(f"   # Add your content")
+        print(f"   content = '''Your domain-specific knowledge here...'''")
+        print(f"   (knowledge_dir / 'my_topic.txt').write_text(content)")
+        print(f"   ```")
+        
+        print(f"\n🔄 4. Restart the chatbot to load your custom knowledge")
+        print(f"   The chatbot will automatically detect and index your files")
+        
+        print(f"\n🎆 5. Example custom knowledge topics:")
+        print(f"   • Technical documentation (APIs, code guides)")
+        print(f"   • Business knowledge (policies, procedures)")
+        print(f"   • Educational content (courses, textbooks)")
+        print(f"   • Research papers and articles")
+        print(f"   • Product manuals and guides")
+        print(f"   • Legal documents and regulations")
+        
+        print(f"\n📊 6. Tips for effective knowledge files:")
+        print(f"   • Use descriptive filenames (e.g., 'python_best_practices.txt')")
+        print(f"   • Keep content well-structured with headers and sections")
+        print(f"   • Include examples and specific details")
+        print(f"   • Use plain text format for best compatibility")
+        print(f"   • Each file can be 1KB to 1MB (optimal: 10-100KB)")
+        
+        print(f"\n🌟 Once added, you can ask questions about your custom topics!")
+        print("=" * 50)
     
     async def interactive_chat(self):
         """Main interactive chat loop."""
@@ -682,13 +723,42 @@ Remember: You have access to detailed information about AgenticFlow's features, 
                 
                 elif user_input.lower() == 'clear':
                     self.conversation_history.clear()
+                    self.current_context.clear()  # Also clear current context
                     if self.conversation_memory:
                         await self.conversation_memory.clear()
-                    print("🧹 Conversation history cleared!")
+                    print("🧹 Conversation history and context cleared!")
                     continue
                 
                 elif user_input.lower() == 'stats':
                     self.display_stats()
+                    continue
+                
+                elif user_input.lower() == 'topics':
+                    self.display_topics()
+                    continue
+                
+                elif user_input.lower() == 'examples':
+                    self.display_examples()
+                    continue
+                
+                elif user_input.lower() == 'context':
+                    self.display_context()
+                    continue
+                
+                elif user_input.lower() == 'history':
+                    self.display_history()
+                    continue
+                
+                elif user_input.lower().startswith('search '):
+                    search_query = user_input[7:].strip()  # Remove 'search ' prefix
+                    if search_query:
+                        await self.direct_search(search_query)
+                    else:
+                        print("❌ Please provide a search query. Example: search ocean life")
+                    continue
+                
+                elif user_input.lower() == 'add-knowledge':
+                    self.show_add_knowledge_instructions()
                     continue
                 
                 # Generate and display response
@@ -711,7 +781,7 @@ Remember: You have access to detailed information about AgenticFlow's features, 
     
     async def initialize_chatbot(self) -> None:
         """Initialize the complete chatbot system."""
-        print("🚀 Initializing AgenticFlow Interactive RAG Chatbot")
+        print("🚀 Initializing Interactive Science & Nature Chatbot")
         print("=" * 55)
         
         try:
@@ -745,8 +815,8 @@ async def main():
     await chatbot.run_chatbot()
 
 if __name__ == "__main__":
-    print("🤖 AgenticFlow Interactive RAG Chatbot")
-    print("This chatbot provides interactive conversations with knowledge base integration")
+    print("🔬 Interactive Science & Nature Chatbot")
+    print("This chatbot provides interactive conversations about science, nature, and space")
     print()
     print("Setup Requirements:")
     print("  🔹 For embeddings: OPENAI_API_KEY or Ollama with 'nomic-embed-text'")

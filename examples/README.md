@@ -7,9 +7,11 @@ This directory contains comprehensive examples demonstrating the full capabiliti
 Choose your learning path based on what you want to explore:
 
 ### 🧭 **For Beginners**: Start Here
-1. **[Agent Basics](./agent/)** - Simple agent creation and usage
-2. **[Memory Systems](./memory/)** - Conversation persistence  
-3. **[Basic Workflows](./workflows/)** - Multi-agent coordination
+1. **[Chatbots](./chatbots/)** - Conversational AI with RAG
+2. **[Tools](./tools/)** - Tool integration and calling
+3. **[Orchestration](./orchestration/)** - Task orchestration
+4. **[Memory Systems](./memory/)** - Conversation persistence  
+5. **[Basic Workflows](./workflows/)** - Multi-agent coordination
 
 ### 🔬 **For Advanced Users**: Deep Dive
 1. **[Retriever Systems](./retrievers/)** - Advanced search and retrieval
@@ -25,48 +27,28 @@ Choose your learning path based on what you want to explore:
 
 ## 📁 Directory Structure
 
-### 🤖 [Agent Examples](./agent/) 
-**Core agent functionality and configuration**
+### 🤖💬 [Chatbots](./chatbots/) 🌟
+**Conversational AI with RAG (Retrieval-Augmented Generation)**
 
-- **[`basic_agent_usage.py`](./agent/basic_agent_usage.py)** - Simple agent setup
-- **[`complex_orchestration_test.py`](./agent/complex_orchestration_test.py)** - Advanced orchestration
-- **[`final_tool_calling_validation.py`](./agent/final_tool_calling_validation.py)** - Tool integration
-- **[`supervisor_agent_demo.py`](./agent/supervisor_agent_demo.py)** - Task decomposition
-- **[`interactive_rag_chatbot.py`](./agent/interactive_rag_chatbot.py)** 🆕✨ - **RAG Chatbot with Knowledge Base**
+- **[`interactive_rag_chatbot.py`](./chatbots/interactive_rag_chatbot.py)** ✨ - **Interactive Science & Nature Chatbot**
+- **[`test_chatbot_interaction.py`](./chatbots/test_chatbot_interaction.py)** - Automated chatbot testing
+- **[`agent_powered_rag.py`](./chatbots/agent_powered_rag.py)** - Legacy RAG implementation
 
 ```bash
-# Quick start with agents
-uv run python examples/agent/basic_agent_usage.py
-
-# 🌟 NEW: Interactive RAG Chatbot
-uv run python examples/agent/interactive_rag_chatbot.py
-uv run python examples/agent/test_chatbot_interaction.py
-```
-
-**Key Features**: Async execution, tool integration, memory management, performance optimization
-
-**🆕 RAG Features**: Semantic search, knowledge retrieval, multi-turn conversations, vector memory
-
----
-
-### 🤖💬 [Interactive RAG Chatbot](./agent/interactive_rag_chatbot.py) 🌟
-**Production-ready conversational AI with knowledge base**
-
-```bash
-# Interactive chat with knowledge base
-uv run python examples/agent/interactive_rag_chatbot.py
+# 🌟 Interactive Science & Nature Chatbot
+uv run python examples/chatbots/interactive_rag_chatbot.py
 
 # Run automated test suite
-uv run python examples/agent/test_chatbot_interaction.py
+uv run python examples/chatbots/test_chatbot_interaction.py
 ```
 
-**🎯 Most Advanced Example** - Combines multiple AgenticFlow features:
-- **🔍 RAG (Retrieval-Augmented Generation)** with semantic search
-- **📚 Comprehensive Knowledge Base** (AgenticFlow, AI/ML, Programming)
-- **🧠 Vector Memory Integration** (FAISS) for intelligent retrieval
-- **💬 Multi-turn Conversations** with context awareness
-- **⚡ Multiple Providers** (OpenAI, Groq, Ollama)
-- **🛠️ Production Features** (error handling, logging, statistics)
+**🎯 Featured: Interactive Science & Nature Chatbot** - Production-ready RAG system:
+- **🔍 Hybrid Retrieval**: Semantic search + keyword search (BM25)
+- **📚 External Knowledge Base**: 5+ scientific documents (ocean, space, physics, biology)
+- **🧠 Vector Memory Integration**: FAISS with 768-dimensional embeddings
+- **💬 Multi-turn Conversations**: Context-aware dialogue with memory
+- **⚡ Multiple Providers**: Groq, OpenAI, Ollama with automatic fallback
+- **🛠️ Production Features**: Error handling, logging, conversation stats
 
 **Interactive Features:**
 ```bash
@@ -78,12 +60,43 @@ quit     # Exit the chatbot
 ```
 
 **Example questions to try:**
-- "What is AgenticFlow?"
-- "How do retrievers work in AgenticFlow?"
-- "Explain different multi-agent topologies"
-- "What are the memory systems available?"
+- "What are some fascinating facts about ocean life?"
+- "Tell me about space exploration and our solar system"
+- "How do animals adapt to their environments?"
+- "What are the fundamental forces of nature?"
+- "Explain how photosynthesis works in plants"
 
-**Performance:** 22+ knowledge chunks indexed, <100ms semantic search, 10+ questions/minute
+**Performance:** 32+ knowledge chunks indexed, <100ms hybrid search, 10+ questions/minute
+
+---
+
+### 🛠️ [Tools](./tools/)
+**Tool integration and calling validation**
+
+- **[`final_tool_calling_validation.py`](./tools/final_tool_calling_validation.py)** - Comprehensive tool calling tests
+- **[`tool_decorator_demo.py`](./tools/tool_decorator_demo.py)** - Tool decorator patterns
+- **[`direct_llm_tool_test.py`](./tools/direct_llm_tool_test.py)** - Direct LLM tool integration
+
+```bash
+# Test comprehensive tool calling
+uv run python examples/tools/final_tool_calling_validation.py
+```
+
+**Tool Features**: Natural language detection, explicit mentions, parameter extraction, multi-tool execution
+
+---
+
+### 🎭 [Orchestration](./orchestration/)
+**Task orchestration and workflow management**
+
+- **[`complex_orchestration_test.py`](./orchestration/complex_orchestration_test.py)** - Advanced parallel/sequential workflows
+
+```bash
+# Test complex orchestration patterns
+uv run python examples/orchestration/complex_orchestration_test.py
+```
+
+**Orchestration Features**: Parallel execution, dependency management, task DAGs, performance monitoring
 
 ---
 
@@ -328,14 +341,14 @@ uv sync --all-extras
 
 ### Basic Functionality Test
 ```bash
-# Test core agent functionality
-uv run python examples/agent/basic_agent_usage.py
+# Test interactive chatbot functionality
+uv run python examples/chatbots/test_chatbot_interaction.py
 
 # Test memory systems
 uv run python examples/memory/memory_demo.py
 
 # Test tool integration
-uv run python examples/agent/final_tool_calling_validation.py
+uv run python examples/tools/final_tool_calling_validation.py
 ```
 
 ### Advanced Features Test
