@@ -41,16 +41,24 @@ def test_task_priority_enum():
 
 def test_add_simple_task():
     """Test adding a simple task without execution."""
+    from agenticflow.orchestration.task_management import FunctionTaskExecutor
+    
     orchestrator = TaskOrchestrator()
     
     def simple_func():
         return "test"
     
+    executor = FunctionTaskExecutor(simple_func)
+    
     # This should not raise an exception
-    task_id = orchestrator.add_function_task("test", "Test Task", simple_func)
-    assert task_id is not None
-    assert task_id == "test"
-    assert "test" in orchestrator.tasks
+    task = orchestrator.add_interactive_task(
+        task_id="test", 
+        name="Test Task", 
+        executor=executor
+    )
+    assert task is not None
+    assert task.task_id == "test"
+    assert task.name == "Test Task"
 
 
 def test_framework_components_exist():

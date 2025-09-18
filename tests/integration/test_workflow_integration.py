@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 
 from agenticflow.orchestration.task_orchestrator import TaskOrchestrator
-from agenticflow.orchestration.task_management import RetryPolicy, TaskPriority
+from agenticflow.orchestration.task_management import FunctionTaskExecutor, RetryPolicy, TaskPriority
 from agenticflow.tools.registry import ToolRegistry
 
 
@@ -72,12 +72,33 @@ class TestWorkflowIntegration:
         # Set up orchestrator
         orchestrator = TaskOrchestrator(max_concurrent_tasks=3)
         
-        orchestrator.add_function_task("generate", "Generate Data", generate_data, args=(50,))
-        orchestrator.add_function_task("process", "Process Data", process_data, dependencies=["generate"])
-        orchestrator.add_function_task("save", "Save Results", save_results, dependencies=["process"])
+        orchestrator.add_interactive_task(
+            task_id="generate",
+            name="Generate Data",
+            executor=FunctionTaskExecutor(generate_data, 50)
+        )
+        orchestrator.add_interactive_task(
+            task_id="process",
+            name="Process Data",
+            executor=FunctionTaskExecutor(process_data),
+            dependencies=["generate"]
+        )
+        orchestrator.add_interactive_task(
+            task_id="save",
+            name="Save Results",
+            executor=FunctionTaskExecutor(save_results),
+            dependencies=["process"]
+        )
         
-        # Execute workflow
-        result = await orchestrator.execute_workflow()
+        # Execute workflow with streaming
+        result = None
+        async for update in orchestrator.execute_workflow_with_streaming():
+            if update.get("type") == "workflow_completed":
+                result = {
+                    "success_rate": 100.0 if update.get("status", {}).get("is_complete", False) and update.get("status", {}).get("failed_tasks", 0) == 0 else 0.0,
+                    "status": update.get("status", {})
+                }
+                break
         
         # Verify workflow completion
         assert result["success_rate"] == 100.0
@@ -162,23 +183,30 @@ class TestWorkflowIntegration:
         orchestrator = TaskOrchestrator(max_concurrent_tasks=5)
         
         # Parallel computation tasks
-        orchestrator.add_function_task("fib_10", "Fibonacci 10", compute_fibonacci, args=(10,))
-        orchestrator.add_function_task("fib_15", "Fibonacci 15", compute_fibonacci, args=(15,))
-        orchestrator.add_function_task("fact_8", "Factorial 8", compute_factorial, args=(8,))
-        orchestrator.add_function_task("prime_17", "Prime Check 17", compute_prime_check, args=(17,))
-        orchestrator.add_function_task("prime_25", "Prime Check 25", compute_prime_check, args=(25,))
+        orchestrator.add_interactive_task("fib_10", "Fibonacci 10", FunctionTaskExecutor(compute_fibonacci, 10))
+        orchestrator.add_interactive_task("fib_15", "Fibonacci 15", FunctionTaskExecutor(compute_fibonacci, 15))
+        orchestrator.add_interactive_task("fact_8", "Factorial 8", FunctionTaskExecutor(compute_factorial, 8))
+        orchestrator.add_interactive_task("prime_17", "Prime Check 17", FunctionTaskExecutor(compute_prime_check, 17))
+        orchestrator.add_interactive_task("prime_25", "Prime Check 25", FunctionTaskExecutor(compute_prime_check, 25))
         
         # Aggregation task depends on all computations
-        orchestrator.add_function_task(
-            "aggregate", 
-            "Aggregate Results", 
-            aggregate_results,
+        orchestrator.add_interactive_task(
+            task_id="aggregate",
+            name="Aggregate Results",
+            executor=FunctionTaskExecutor(aggregate_results),
             dependencies=["fib_10", "fib_15", "fact_8", "prime_17", "prime_25"]
         )
         
         # Execute with timing
         start_time = time.time()
-        result = await orchestrator.execute_workflow()
+        result = None
+        async for update in orchestrator.execute_workflow_with_streaming():
+            if update.get("type") == "workflow_completed":
+                result = {
+                    "success_rate": 100.0 if update.get("status", {}).get("is_complete", False) and update.get("status", {}).get("failed_tasks", 0) == 0 else 0.0,
+                    "status": update.get("status", {})
+                }
+                break
         execution_time = time.time() - start_time
         
         # Verify parallel execution

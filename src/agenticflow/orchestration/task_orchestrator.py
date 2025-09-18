@@ -1,31 +1,117 @@
 """
-Task Orchestrator for AgenticFlow
+AgenticFlow Task Orchestrator - Integrated Coordination Engine
+===========================================================
 
-Coordinates complex workflows with dependencies, parallel execution,
-real-time status tracking, and sophisticated error recovery.
+This module provides AgenticFlow's core orchestration capabilities:
+- Real-time streaming and progress updates
+- Interactive task control and interruption
+- Multi-agent coordination and communication
+- Advanced workflow management with DAGs
+- Event-driven architecture with unified messaging
+
+This is the primary orchestration interface for AgenticFlow.
 """
 
 import asyncio
 import time
-from collections import defaultdict
-from typing import Dict, List, Set, Optional, Callable, Any
-from datetime import datetime
-import structlog
+import threading
+import weakref
+from typing import Dict, List, Set, Optional, Any, Callable, AsyncGenerator, Union
+from datetime import datetime, timezone
+from enum import Enum
+from dataclasses import dataclass, field
+import uuid
 
-from .task_management import (
-    TaskNode, TaskState, TaskResult, TaskError, TaskExecutor, 
-    FunctionTaskExecutor, ErrorCategory, RetryPolicy
-)
-from .task_dag import TaskDAG, CyclicDependencyError
-from ..visualization.mixins import WorkflowVisualizationMixin
+import structlog
+from ..communication.a2a_handler import A2AHandler, A2AMessage, MessageType
+from .task_management import TaskNode, TaskState, TaskResult, TaskError, TaskExecutor, RetryPolicy, TaskPriority
+from .task_dag import TaskDAG
+# Configuration is now integrated directly into TaskOrchestrator
 
 logger = structlog.get_logger(__name__)
 
 
+class CoordinationEventType(Enum):
+    """Types of coordination events."""
+    TASK_STARTED = "task_started"
+    TASK_PROGRESS = "task_progress"
+    TASK_COMPLETED = "task_completed"
+    TASK_FAILED = "task_failed"
+    TASK_INTERRUPTED = "task_interrupted"
+    COORDINATOR_CONNECTED = "coordinator_connected"
+    COORDINATOR_DISCONNECTED = "coordinator_disconnected"
+    REAL_TIME_UPDATE = "real_time_update"
+    AGENT_COORDINATION = "agent_coordination"
+    WORKFLOW_STATUS = "workflow_status"
+
+
+@dataclass
+class CoordinationEvent:
+    """Event data for coordination system."""
+    event_type: CoordinationEventType
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    task_id: Optional[str] = None
+    agent_id: Optional[str] = None
+    coordinator_id: Optional[str] = None
+    data: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class StreamSubscription:
+    """Stream subscription for real-time updates."""
+    subscriber_id: str
+    task_id: Optional[str] = None
+    agent_id: Optional[str] = None
+    event_types: Set[CoordinationEventType] = field(default_factory=set)
+    filters: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    active: bool = True
+
+
+@dataclass
+class ConnectedCoordinator:
+    """Information about connected coordinators."""
+    coordinator_id: str
+    coordinator_type: str  # "human", "agent", "supervisor", "system"
+    connected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_activity: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    subscriptions: Set[str] = field(default_factory=set)
+    capabilities: Dict[str, bool] = field(default_factory=dict)
+
+
+class InteractiveTaskNode(TaskNode):
+    """Enhanced TaskNode with interactive capabilities."""
+    
+    def __init__(self, *args, **kwargs):
+        # Extract our custom parameters before calling super()
+        self.streaming_enabled = kwargs.pop('streaming_enabled', True)
+        self.interruptible = kwargs.pop('interruptible', True)
+        
+        # Initialize parent class
+        super().__init__(*args, **kwargs)
+        
+        # Add our enhancements
+        self.interrupt_flag = threading.Event()
+        self.coordination_data: Dict[str, Any] = {}
+        self.subscribers: Set[str] = set()
+        self.last_stream_update = datetime.now(timezone.utc)
+    
+    def is_interrupted(self) -> bool:
+        """Check if task is interrupted."""
+        return self.interrupt_flag.is_set()
+    
+    def interrupt(self, reason: str = "User interrupt") -> None:
+        """Interrupt the task."""
+        if self.interruptible:
+            self.interrupt_flag.set()
+            self.context["interrupt_reason"] = reason
+
+
 class WorkflowStatus:
-    """Real-time status tracking for workflow execution."""
+    """Workflow status with streaming and coordination capabilities."""
     
     def __init__(self):
+        # Core status tracking
         self.started_at: Optional[datetime] = None
         self.completed_at: Optional[datetime] = None
         self.total_tasks = 0
@@ -34,18 +120,25 @@ class WorkflowStatus:
         self.running_tasks = 0
         self.pending_tasks = 0
         self.cancelled_tasks = 0
+        self.interrupted_tasks = 0
         
         # Real-time tracking
         self.active_workers: Dict[str, asyncio.Task] = {}
         self.task_states: Dict[str, TaskState] = {}
         self.progress_callbacks: List[Callable] = []
+        self.stream_subscribers: Dict[str, StreamSubscription] = {}
+        
+        # Coordination tracking
+        self.coordination_actions = 0
+        self.agent_interactions = 0
+        self.coordinator_queries = 0
     
     def update_from_dag(self, dag: TaskDAG) -> None:
-        """Update status from current DAG state."""
+        """Update status from DAG with enhanced tracking."""
         self.total_tasks = len(dag.tasks)
         
-        # Count by state
-        state_counts = defaultdict(int)
+        # Count by state with enhanced states
+        state_counts = {state: 0 for state in TaskState}
         for task in dag.tasks.values():
             state_counts[task.state] += 1
             self.task_states[task.task_id] = task.state
@@ -55,23 +148,27 @@ class WorkflowStatus:
         self.running_tasks = state_counts[TaskState.RUNNING]
         self.pending_tasks = state_counts[TaskState.PENDING] + state_counts[TaskState.READY]
         self.cancelled_tasks = state_counts[TaskState.CANCELLED]
+        # Count interrupted tasks if they exist
+        if hasattr(TaskState, 'INTERRUPTED'):
+            self.interrupted_tasks = state_counts.get(TaskState.INTERRUPTED, 0)
     
     def get_progress_percentage(self) -> float:
-        """Get overall progress as percentage."""
+        """Get overall progress percentage."""
         if self.total_tasks == 0:
             return 100.0
         return (self.completed_tasks / self.total_tasks) * 100.0
     
     def is_complete(self) -> bool:
-        """Check if workflow is complete (all tasks finished)."""
-        return (self.completed_tasks + self.failed_tasks + self.cancelled_tasks) >= self.total_tasks
+        """Check if workflow is complete."""
+        return (self.completed_tasks + self.failed_tasks + 
+                self.cancelled_tasks + self.interrupted_tasks) >= self.total_tasks
     
     def add_progress_callback(self, callback: Callable) -> None:
         """Add callback for progress updates."""
         self.progress_callbacks.append(callback)
     
     async def notify_progress(self) -> None:
-        """Notify all registered callbacks of progress."""
+        """Notify all registered callbacks."""
         for callback in self.progress_callbacks:
             try:
                 if asyncio.iscoroutinefunction(callback):
@@ -82,7 +179,7 @@ class WorkflowStatus:
                 logger.warning(f"Progress callback failed: {e}")
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert status to dictionary."""
+        """Convert status to dictionary with enhanced info."""
         return {
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
@@ -92,82 +189,317 @@ class WorkflowStatus:
             "running_tasks": self.running_tasks,
             "pending_tasks": self.pending_tasks,
             "cancelled_tasks": self.cancelled_tasks,
+            "interrupted_tasks": self.interrupted_tasks,
             "progress_percentage": self.get_progress_percentage(),
             "is_complete": self.is_complete(),
-            "active_workers": len(self.active_workers)
+            "active_workers": len(self.active_workers),
+            "coordination_actions": self.coordination_actions,
+            "agent_interactions": self.agent_interactions,
+            "coordinator_queries": self.coordinator_queries,
+            "stream_subscribers": len(self.stream_subscribers)
         }
 
 
-class TaskOrchestrator(WorkflowVisualizationMixin):
-    """
-    Orchestrates complex workflows with sophisticated task management.
+class CoordinationManager:
+    """Handles multi-agent coordination and communication."""
     
-    Features:
-    - Dependency-aware execution
-    - Parallel task execution with configurable concurrency
-    - Real-time status tracking and progress monitoring
-    - Sophisticated retry and error recovery
-    - Graceful shutdown and cancellation
-    - Performance monitoring and optimization
+    def __init__(self, orchestrator_id: str):
+        self.orchestrator_id = orchestrator_id
+        self.connected_coordinators: Dict[str, ConnectedCoordinator] = {}
+        self.stream_subscriptions: Dict[str, StreamSubscription] = {}
+        self.event_handlers: Dict[CoordinationEventType, List[Callable]] = {}
+        self.coordination_locks: Dict[str, asyncio.Lock] = {}
+        self.stream_queues: Dict[str, asyncio.Queue] = {}
+        self._background_tasks: Set[asyncio.Task] = set()
+    
+    def register_event_handler(self, event_type: CoordinationEventType, handler: Callable):
+        """Register event handler."""
+        if event_type not in self.event_handlers:
+            self.event_handlers[event_type] = []
+        self.event_handlers[event_type].append(handler)
+    
+    async def emit_event(self, event: CoordinationEvent):
+        """Emit coordination event."""
+        handlers = self.event_handlers.get(event.event_type, [])
+        for handler in handlers:
+            try:
+                if asyncio.iscoroutinefunction(handler):
+                    await handler(event)
+                else:
+                    handler(event)
+            except Exception as e:
+                logger.warning(f"Event handler failed: {e}")
+    
+    async def connect_coordinator(self, coordinator_id: str, coordinator_type: str, 
+                                capabilities: Dict[str, bool] = None) -> bool:
+        """Connect a coordinator to the system."""
+        coordinator = ConnectedCoordinator(
+            coordinator_id=coordinator_id,
+            coordinator_type=coordinator_type,
+            capabilities=capabilities or {}
+        )
+        
+        self.connected_coordinators[coordinator_id] = coordinator
+        self.stream_queues[coordinator_id] = asyncio.Queue()
+        
+        await self.emit_event(CoordinationEvent(
+            event_type=CoordinationEventType.COORDINATOR_CONNECTED,
+            coordinator_id=coordinator_id,
+            data={"coordinator_type": coordinator_type, "capabilities": capabilities}
+        ))
+        
+        return True
+    
+    async def disconnect_coordinator(self, coordinator_id: str) -> bool:
+        """Disconnect a coordinator."""
+        if coordinator_id not in self.connected_coordinators:
+            return False
+        
+        # Remove subscriptions
+        to_remove = [sub_id for sub_id, sub in self.stream_subscriptions.items() 
+                    if sub.subscriber_id == coordinator_id]
+        for sub_id in to_remove:
+            del self.stream_subscriptions[sub_id]
+        
+        del self.connected_coordinators[coordinator_id]
+        self.stream_queues.pop(coordinator_id, None)
+        
+        await self.emit_event(CoordinationEvent(
+            event_type=CoordinationEventType.COORDINATOR_DISCONNECTED,
+            coordinator_id=coordinator_id
+        ))
+        
+        return True
+    
+    def create_stream_subscription(self, subscriber_id: str, 
+                                 event_types: Set[CoordinationEventType] = None,
+                                 task_id: str = None, agent_id: str = None,
+                                 filters: Dict[str, Any] = None) -> str:
+        """Create stream subscription."""
+        subscription_id = str(uuid.uuid4())
+        subscription = StreamSubscription(
+            subscriber_id=subscriber_id,
+            task_id=task_id,
+            agent_id=agent_id,
+            event_types=event_types or set(),
+            filters=filters or {}
+        )
+        
+        self.stream_subscriptions[subscription_id] = subscription
+        
+        if subscriber_id in self.connected_coordinators:
+            self.connected_coordinators[subscriber_id].subscriptions.add(subscription_id)
+        
+        return subscription_id
+    
+    async def send_real_time_update(self, update_data: Dict[str, Any], 
+                                   task_id: str = None, agent_id: str = None):
+        """Send real-time update to subscribers."""
+        event = CoordinationEvent(
+            event_type=CoordinationEventType.REAL_TIME_UPDATE,
+            task_id=task_id,
+            agent_id=agent_id,
+            data=update_data
+        )
+        
+        # Send to matching subscriptions
+        for subscription in self.stream_subscriptions.values():
+            if self._matches_subscription(event, subscription):
+                coordinator_id = subscription.subscriber_id
+                if coordinator_id in self.stream_queues:
+                    try:
+                        await self.stream_queues[coordinator_id].put(event)
+                    except Exception as e:
+                        logger.warning(f"Failed to queue update for {coordinator_id}: {e}")
+        
+        await self.emit_event(event)
+    
+    def _matches_subscription(self, event: CoordinationEvent, subscription: StreamSubscription) -> bool:
+        """Check if event matches subscription."""
+        if subscription.event_types and event.event_type not in subscription.event_types:
+            return False
+        
+        if subscription.task_id and event.task_id != subscription.task_id:
+            return False
+        
+        if subscription.agent_id and event.agent_id != subscription.agent_id:
+            return False
+        
+        # Apply additional filters
+        for filter_key, filter_value in subscription.filters.items():
+            if event.data.get(filter_key) != filter_value:
+                return False
+        
+        return True
+    
+    async def stream_task_updates(self, coordinator_id: str) -> AsyncGenerator[Dict[str, Any], None]:
+        """Stream task updates to coordinator."""
+        if coordinator_id not in self.stream_queues:
+            return
+        
+        queue = self.stream_queues[coordinator_id]
+        
+        try:
+            while True:
+                try:
+                    # Wait for update with timeout for heartbeat
+                    event = await asyncio.wait_for(queue.get(), timeout=5.0)
+                    
+                    yield {
+                        "type": event.event_type.value,
+                        "timestamp": event.timestamp.isoformat(),
+                        "task_id": event.task_id,
+                        "agent_id": event.agent_id,
+                        "coordinator_id": event.coordinator_id,
+                        "data": event.data
+                    }
+                    
+                except asyncio.TimeoutError:
+                    # Send heartbeat
+                    yield {
+                        "type": "heartbeat",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "coordinator_id": coordinator_id
+                    }
+                    
+        except asyncio.CancelledError:
+            logger.info(f"Stream cancelled for coordinator {coordinator_id}")
+        except Exception as e:
+            logger.error(f"Stream error for coordinator {coordinator_id}: {e}")
+    
+    async def coordinate_task(self, task_id: str, coordinator_id: str, 
+                            coordination_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle task coordination request."""
+        if task_id not in self.coordination_locks:
+            self.coordination_locks[task_id] = asyncio.Lock()
+        
+        async with self.coordination_locks[task_id]:
+            try:
+                await self.emit_event(CoordinationEvent(
+                    event_type=CoordinationEventType.AGENT_COORDINATION,
+                    task_id=task_id,
+                    coordinator_id=coordinator_id,
+                    data=coordination_data
+                ))
+                
+                return {"success": True, "coordination_id": str(uuid.uuid4())}
+                
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+
+class TaskOrchestrator:
+    """
+    AgenticFlow Task Orchestrator with integrated capabilities.
+    
+    This is the core orchestration engine that combines:
+    - Complex workflow execution with DAGs
+    - Real-time streaming and progress updates  
+    - Interactive task control and interruption
+    - Multi-agent coordination and communication
+    - Event-driven architecture
     """
     
-    def __init__(
-        self,
-        max_concurrent_tasks: int = 10,
-        default_timeout: Optional[float] = None,
-        default_retry_policy: Optional[RetryPolicy] = None
-    ):
+    def __init__(self, max_concurrent_tasks: int = 10,
+                 default_timeout: Optional[float] = None,
+                 default_retry_policy: Optional[RetryPolicy] = None,
+                 enable_streaming: bool = True,
+                 enable_coordination: bool = True,
+                 stream_interval: float = 0.5,
+                 coordination_timeout: int = 60):
+        
+        self.orchestrator_id = str(uuid.uuid4())
         self.max_concurrent_tasks = max_concurrent_tasks
         self.default_timeout = default_timeout
         self.default_retry_policy = default_retry_policy or RetryPolicy()
+        
+        # Integrated coordination configuration
+        self.stream_interval = stream_interval
+        self.coordination_timeout = coordination_timeout
         
         # Core components
         self.dag = TaskDAG()
         self.status = WorkflowStatus()
         self.executors: Dict[str, TaskExecutor] = {}
         
+        # Enhanced coordination
+        self.coordination = CoordinationManager(self.orchestrator_id)
+        self.communication: Optional[A2AHandler] = None
+        
         # Execution state
         self.running = False
         self.cancellation_requested = False
         self.semaphore = asyncio.Semaphore(max_concurrent_tasks)
         
-        # Tracking
+        # Enhanced tracking
         self.completed_tasks: Set[str] = set()
         self.failed_tasks: Set[str] = set()
+        self.interrupted_tasks: Set[str] = set()
         self.retry_queue: asyncio.Queue = asyncio.Queue()
         
-        self.logger = logger.bind(component="task_orchestrator")
+        # Streaming and coordination
+        self.enable_streaming = enable_streaming
+        self.enable_coordination = enable_coordination
+        self._background_tasks: Set[asyncio.Task] = set()
+        
+        # Agent registry
+        self._registered_agents: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
+        
+        self.logger = logger.bind(component="enhanced_orchestrator", 
+                                orchestrator_id=self.orchestrator_id)
+        
+        # Setup event handlers
+        self._setup_event_handlers()
     
-    @property
-    def task_dag(self) -> TaskDAG:
-        """Access to the internal DAG for compatibility."""
-        return self.dag
+    def _setup_event_handlers(self):
+        """Setup event handlers for coordination."""
+        self.coordination.register_event_handler(
+            CoordinationEventType.TASK_STARTED, 
+            self._handle_task_started_event
+        )
+        self.coordination.register_event_handler(
+            CoordinationEventType.TASK_COMPLETED,
+            self._handle_task_completed_event
+        )
     
-    @property
-    def tasks(self) -> Dict[str, TaskNode]:
-        """Access to tasks for compatibility."""
-        return self.dag.tasks
+    async def _handle_task_started_event(self, event: CoordinationEvent):
+        """Handle task started event."""
+        self.status.agent_interactions += 1
+        self.logger.info(f"Task started: {event.task_id}")
     
-    def add_task(
-        self,
-        task_id: str,
-        name: str,
-        executor: TaskExecutor,
-        dependencies: Optional[List[str]] = None,
-        **task_kwargs
-    ) -> TaskNode:
-        """Add a task to the workflow."""
-        # Create task node
-        task = TaskNode(
+    async def _handle_task_completed_event(self, event: CoordinationEvent):
+        """Handle task completed event."""
+        self.status.coordination_actions += 1
+        self.logger.info(f"Task completed: {event.task_id}")
+    
+    def register_agent(self, agent_id: str, agent_ref: Any) -> None:
+        """Register an agent with the orchestrator."""
+        self._registered_agents[agent_id] = agent_ref
+        self.logger.info(f"Registered agent: {agent_id}")
+    
+    def add_interactive_task(self, task_id: str, name: str, executor: TaskExecutor,
+                           dependencies: Optional[List[str]] = None,
+                           streaming_enabled: bool = True,
+                           interruptible: bool = True,
+                           **task_kwargs) -> InteractiveTaskNode:
+        """Add an interactive task to the workflow."""
+        
+        task = InteractiveTaskNode(
             task_id=task_id,
             name=name,
             timeout=task_kwargs.get('timeout', self.default_timeout),
             retry_policy=task_kwargs.get('retry_policy', self.default_retry_policy),
-            **{k: v for k, v in task_kwargs.items() if k not in ['timeout', 'retry_policy']}
+            streaming_enabled=streaming_enabled,
+            interruptible=interruptible,
+            **{k: v for k, v in task_kwargs.items() 
+               if k not in ['timeout', 'retry_policy', 'streaming_enabled', 'interruptible']}
         )
         
         # Add to DAG
         self.dag.add_task(task)
+        
+        # Update status to reflect new task
+        self.status.update_from_dag(self.dag)
         
         # Store executor
         self.executors[task_id] = executor
@@ -179,32 +511,17 @@ class TaskOrchestrator(WorkflowVisualizationMixin):
                     raise ValueError(f"Dependency task '{dep_id}' does not exist")
                 self.dag.add_dependency(task_id, dep_id)
         
-        self.logger.debug(f"Added task '{task_id}' with {len(dependencies or [])} dependencies")
+        self.logger.debug(f"Added interactive task '{task_id}' with {len(dependencies or [])} dependencies")
         return task
     
-    def add_function_task(
-        self,
-        task_id: str,
-        name: str,
-        func: Callable,
-        args: tuple = (),
-        kwargs: Optional[Dict[str, Any]] = None,
-        dependencies: Optional[List[str]] = None,
-        **task_kwargs
-    ) -> str:
-        """Add a function-based task to the workflow."""
-        executor = FunctionTaskExecutor(func, *args, **(kwargs or {}))
-        self.add_task(task_id, name, executor, dependencies, **task_kwargs)
-        return task_id
-    
-    async def execute_workflow(self) -> Dict[str, Any]:
-        """Execute the entire workflow."""
+    async def execute_workflow_with_streaming(self) -> AsyncGenerator[Dict[str, Any], None]:
+        """Execute workflow with real-time streaming."""
         if self.running:
             raise RuntimeError("Workflow is already running")
         
         self.running = True
         self.cancellation_requested = False
-        self.status.started_at = datetime.now()
+        self.status.started_at = datetime.now(timezone.utc)
         
         try:
             # Validate DAG
@@ -212,225 +529,358 @@ class TaskOrchestrator(WorkflowVisualizationMixin):
             if not is_valid:
                 raise ValueError(f"Invalid workflow DAG: {issues}")
             
-            self.logger.info(f"Starting workflow execution with {len(self.dag.tasks)} tasks")
+            self.logger.info(f"Starting enhanced workflow with {len(self.dag.tasks)} tasks")
             
-            # Start monitoring and retry workers
-            monitor_task = asyncio.create_task(self._monitor_workflow())
+            # Start background tasks
+            if self.enable_streaming:
+                monitor_task = asyncio.create_task(self._stream_workflow_progress())
+                self._background_tasks.add(monitor_task)
+            
             retry_task = asyncio.create_task(self._retry_worker())
+            self._background_tasks.add(retry_task)
             
-            # Continuous execution loop that handles retries
-            await self._execute_workflow_continuously()
-            
-            # Clean up
-            monitor_task.cancel()
-            retry_task.cancel()
-            
-            try:
-                await monitor_task
-            except asyncio.CancelledError:
-                pass
-            
-            try:
-                await retry_task
-            except asyncio.CancelledError:
-                pass
-            
-            self.status.completed_at = datetime.now()
-            
-            # Update final status counts
+            # Execute with streaming
+            async for update in self._execute_workflow_with_coordination():
+                yield update
+                
+            self.status.completed_at = datetime.now(timezone.utc)
             self.status.update_from_dag(self.dag)
             
-            return self._generate_workflow_result()
-        
+            yield {
+                "type": "workflow_completed",
+                "status": self.status.to_dict(),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            
+        except Exception as e:
+            yield {
+                "type": "workflow_error",
+                "error": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            raise
         finally:
+            await self._cleanup_background_tasks()
             self.running = False
     
-    async def _execute_workflow_continuously(self) -> None:
-        """Continuously execute tasks as they become ready, including retries."""
+    async def _execute_workflow_with_coordination(self) -> AsyncGenerator[Dict[str, Any], None]:
+        """Execute workflow with coordination capabilities."""
         active_tasks = set()
         
         while not self.cancellation_requested:
             # Update status
             self.status.update_from_dag(self.dag)
             
-            # Check if workflow is complete
+            # Stream status update
+            if self.enable_streaming:
+                await self.coordination.send_real_time_update({
+                    "update_type": "workflow_status",
+                    "status": self.status.to_dict(),
+                    "active_tasks": len(active_tasks)
+                })
+                
+                yield {
+                    "type": "status_update",
+                    "data": self.status.to_dict(),
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+            
+            # Check completion
             if self.status.is_complete():
-                self.logger.info("Workflow completed")
+                self.logger.info("Enhanced workflow completed")
                 break
             
-            # Get ready tasks (properly sorted by priority)
+            # Get ready tasks
             ready_tasks = self.dag.get_ready_tasks(self.completed_tasks)
             
-            # Start new tasks if we have capacity
+            # Start new tasks with coordination
             for task in ready_tasks:
                 if len(active_tasks) >= self.max_concurrent_tasks:
                     break
                 if task.task_id not in active_tasks:
                     active_tasks.add(task.task_id)
-                    asyncio.create_task(self._execute_and_cleanup_task(task, active_tasks))
+                    
+                    # Emit task started event
+                    await self.coordination.emit_event(CoordinationEvent(
+                        event_type=CoordinationEventType.TASK_STARTED,
+                        task_id=task.task_id,
+                        data={"name": task.name, "description": task.description}
+                    ))
+                    
+                    asyncio.create_task(self._execute_interactive_task(task, active_tasks))
             
-            # If no active tasks and no ready tasks, check for deadlock
-            if not active_tasks and not ready_tasks:
-                pending_tasks = [t for t in self.dag.tasks.values() if t.state in {TaskState.PENDING, TaskState.RETRYING}]
-                if pending_tasks:
-                    self.logger.warning(f"Possible deadlock: {len(pending_tasks)} pending tasks but none ready")
-                    resolved = await self._diagnose_deadlock()
-                    # If deadlock resolution didn't help, break to avoid infinite loop
-                    if not resolved and not any(t.state == TaskState.PENDING for t in self.dag.tasks.values()):
-                        self.logger.warning("Breaking execution loop - deadlock detected")
-                        break
-            
-            # Brief sleep to prevent busy waiting
             await asyncio.sleep(0.1)
         
-        # Wait for remaining active tasks to complete
+        # Wait for remaining tasks
         while active_tasks and not self.cancellation_requested:
             await asyncio.sleep(0.1)
     
-    async def _execute_and_cleanup_task(self, task: TaskNode, active_tasks: set) -> None:
-        """Execute a task and clean up from active set when done."""
+    async def _execute_interactive_task(self, task: InteractiveTaskNode, active_tasks: set):
+        """Execute an interactive task with full coordination."""
         try:
-            await self._execute_single_task(task)
-        finally:
-            active_tasks.discard(task.task_id)
-    
-    async def _execute_dag(self) -> None:
-        """Execute the DAG using level-by-level parallel execution."""
-        try:
-            execution_levels = self.dag.get_execution_levels()
-            self.logger.info(f"Executing {len(execution_levels)} levels with max parallelism of "
-                           f"{max(len(level) for level in execution_levels)}")
-            
-            for level_num, task_ids in enumerate(execution_levels):
+            async with self.semaphore:
                 if self.cancellation_requested:
-                    break
+                    await task.set_state(TaskState.CANCELLED)
+                    return
                 
-                self.logger.debug(f"Starting execution level {level_num + 1} with {len(task_ids)} tasks")
+                await task.set_state(TaskState.RUNNING)
+                self.status.active_workers[task.task_id] = asyncio.current_task()
                 
-                # Start all tasks in this level
-                level_tasks = []
-                for task_id in task_ids:
-                    if self.cancellation_requested:
-                        break
-                    
-                    task = self.dag.tasks[task_id]
-                    if task.state == TaskState.PENDING:
-                        level_tasks.append(asyncio.create_task(self._execute_single_task(task)))
-                
-                # Wait for all tasks in this level to complete
-                if level_tasks:
-                    await asyncio.gather(*level_tasks, return_exceptions=True)
-                
-                self.logger.debug(f"Completed execution level {level_num + 1}")
-        
-        except Exception as e:
-            self.logger.error(f"DAG execution failed: {e}")
-            await self._cancel_remaining_tasks()
-            raise
-    
-    async def _execute_single_task(self, task: TaskNode) -> None:
-        """Execute a single task with full error handling and retry logic."""
-        async with self.semaphore:  # Limit concurrency
-            if self.cancellation_requested:
-                await task.set_state(TaskState.CANCELLED)
-                return
-            
-            await task.set_state(TaskState.RUNNING)
-            self.status.active_workers[task.task_id] = asyncio.current_task()
-            
-            try:
                 # Check if ready to run
                 if not task.is_ready(self.completed_tasks):
                     await task.set_state(TaskState.BLOCKED)
-                    self.logger.warning(f"Task {task.task_id} not ready to run")
                     return
                 
-                # Execute with timeout
                 executor = self.executors[task.task_id]
-                execution_context = self._build_execution_context(task)
                 
-                if task.timeout:
-                    result = await asyncio.wait_for(
-                        executor.execute(task, execution_context),
-                        timeout=task.timeout
+                # Execute with streaming progress
+                start_time = time.time()
+                
+                try:
+                    # Stream start event
+                    if task.streaming_enabled:
+                        await self.coordination.send_real_time_update({
+                            "update_type": "task_execution_started",
+                            "task_name": task.name,
+                            "started_at": start_time
+                        }, task.task_id)
+                    
+                    # Execute task with interruption checking
+                    result = await self._execute_with_interruption_check(
+                        executor, task, start_time
                     )
-                else:
-                    result = await executor.execute(task, execution_context)
+                    
+                    # Handle result
+                    task.attempts += 1
+                    task.result = result
+                    
+                    if result.success:
+                        await task.set_state(TaskState.COMPLETED)
+                        self.completed_tasks.add(task.task_id)
+                        
+                        # Emit completion event
+                        await self.coordination.emit_event(CoordinationEvent(
+                            event_type=CoordinationEventType.TASK_COMPLETED,
+                            task_id=task.task_id,
+                            data={"result": result.to_dict()}
+                        ))
+                        
+                    else:
+                        await self._handle_task_failure(task, result.error)
                 
-                # Handle result
-                task.attempts += 1
-                task.result = result
+                except asyncio.CancelledError:
+                    if task.is_interrupted():
+                        await task.set_state(TaskState.CANCELLED)
+                        self.interrupted_tasks.add(task.task_id)
+                        
+                        await self.coordination.emit_event(CoordinationEvent(
+                            event_type=CoordinationEventType.TASK_INTERRUPTED,
+                            task_id=task.task_id,
+                            data={"reason": task.context.get("interrupt_reason", "Unknown")}
+                        ))
+                    else:
+                        await task.set_state(TaskState.CANCELLED)
                 
-                if result.success:
-                    await task.set_state(TaskState.COMPLETED)
-                    self.completed_tasks.add(task.task_id)
-                    self.logger.info(f"Task {task.task_id} completed successfully")
-                else:
-                    await self._handle_task_failure(task, result.error)
-            
-            except asyncio.TimeoutError:
-                await self._handle_task_timeout(task)
-            except asyncio.CancelledError:
-                await task.set_state(TaskState.CANCELLED)
-                self.logger.info(f"Task {task.task_id} was cancelled")
-            except Exception as e:
-                error = TaskError(
-                    error_type=type(e).__name__,
-                    message=str(e),
-                    category=ErrorCategory.FATAL,
-                    timestamp=datetime.now()
-                )
-                await self._handle_task_failure(task, error)
-            
-            finally:
-                self.status.active_workers.pop(task.task_id, None)
+        finally:
+            active_tasks.discard(task.task_id)
+            self.status.active_workers.pop(task.task_id, None)
     
-    async def _handle_task_failure(self, task: TaskNode, error: Optional[TaskError]) -> None:
+    async def _execute_with_interruption_check(self, executor: TaskExecutor, 
+                                             task: InteractiveTaskNode, 
+                                             start_time: float) -> TaskResult:
+        """Execute task with interruption checking."""
+        execution_context = self._build_execution_context(task)
+        
+        # Create execution task
+        execution_task = asyncio.create_task(executor.execute(task, execution_context))
+        
+        # Monitor for interruption
+        while not execution_task.done():
+            if task.is_interrupted():
+                execution_task.cancel()
+                try:
+                    await execution_task
+                except asyncio.CancelledError:
+                    pass
+                
+                from .task_management import ErrorCategory
+                return TaskResult(
+                    task_id=task.task_id,
+                    success=False,
+                    error=TaskError(
+                        error_type="InterruptedError",
+                        message="Task was interrupted",
+                        category=ErrorCategory.LOGIC,
+                        timestamp=datetime.now(timezone.utc)
+                    ),
+                    execution_time=time.time() - start_time
+                )
+            
+            # Stream progress if enabled
+            if task.streaming_enabled:
+                progress = min(0.9, (time.time() - start_time) / 10.0)  # Estimate progress
+                await self.coordination.send_real_time_update({
+                    "update_type": "task_progress",
+                    "progress": progress,
+                    "elapsed_time": time.time() - start_time
+                }, task.task_id)
+            
+            await asyncio.sleep(0.5)  # Check every 500ms
+        
+        return await execution_task
+    
+    async def interrupt_task(self, task_id: str, reason: str = "User interrupt") -> bool:
+        """Interrupt a specific task."""
+        if task_id not in self.dag.tasks:
+            return False
+        
+        task = self.dag.tasks[task_id]
+        if isinstance(task, InteractiveTaskNode):
+            task.interrupt(reason)
+            
+            await self.coordination.emit_event(CoordinationEvent(
+                event_type=CoordinationEventType.TASK_INTERRUPTED,
+                task_id=task_id,
+                data={"reason": reason}
+            ))
+            
+            return True
+        
+        return False
+    
+    async def interrupt_all_tasks(self, reason: str = "Global interrupt") -> List[str]:
+        """Interrupt all running tasks."""
+        interrupted_tasks = []
+        
+        for task in self.dag.tasks.values():
+            if isinstance(task, InteractiveTaskNode) and task.state == TaskState.RUNNING:
+                task.interrupt(reason)
+                interrupted_tasks.append(task.task_id)
+        
+        self.cancellation_requested = True
+        
+        for task_id in interrupted_tasks:
+            await self.coordination.emit_event(CoordinationEvent(
+                event_type=CoordinationEventType.TASK_INTERRUPTED,
+                task_id=task_id,
+                data={"reason": reason}
+            ))
+        
+        return interrupted_tasks
+    
+    def create_stream_subscription(self, coordinator_id: str, 
+                                 event_types: Set[CoordinationEventType] = None,
+                                 task_filters: Dict[str, str] = None) -> str:
+        """Create stream subscription for real-time updates."""
+        return self.coordination.create_stream_subscription(
+            subscriber_id=coordinator_id,
+            event_types=event_types,
+            task_id=task_filters.get("task_id") if task_filters else None,
+            agent_id=task_filters.get("agent_id") if task_filters else None,
+            filters=task_filters or {}
+        )
+    
+    async def stream_updates(self, coordinator_id: str) -> AsyncGenerator[Dict[str, Any], None]:
+        """Stream real-time updates to coordinator."""
+        async for update in self.coordination.stream_task_updates(coordinator_id):
+            yield update
+    
+    async def connect_coordinator(self, coordinator_id: str, coordinator_type: str = "human") -> bool:
+        """Connect a coordinator for real-time interaction."""
+        return await self.coordination.connect_coordinator(coordinator_id, coordinator_type)
+    
+    def get_comprehensive_status(self) -> Dict[str, Any]:
+        """Get comprehensive orchestrator status."""
+        return {
+            "orchestrator_id": self.orchestrator_id,
+            "workflow_status": self.status.to_dict(),
+            "coordination": {
+                "connected_coordinators": len(self.coordination.connected_coordinators),
+                "active_subscriptions": len(self.coordination.stream_subscriptions),
+                "coordination_actions": self.status.coordination_actions
+            },
+            "execution": {
+                "running": self.running,
+                "cancellation_requested": self.cancellation_requested,
+                "background_tasks": len(self._background_tasks)
+            },
+            "agents": len(self._registered_agents)
+        }
+    
+    async def _stream_workflow_progress(self):
+        """Background task for streaming workflow progress."""
+        try:
+            while self.running:
+                # Update and stream status
+                self.status.update_from_dag(self.dag)
+                await self.status.notify_progress()
+                
+                # Stream to all subscribers
+                await self.coordination.send_real_time_update({
+                    "update_type": "workflow_heartbeat",
+                    "status": self.status.to_dict()
+                })
+                
+                await asyncio.sleep(self.stream_interval)
+                
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            self.logger.error(f"Streaming error: {e}")
+    
+    async def _retry_worker(self):
+        """Worker for handling task retries."""
+        try:
+            while self.running:
+                try:
+                    retry_time, task_id = await asyncio.wait_for(
+                        self.retry_queue.get(), timeout=1.0
+                    )
+                    
+                    current_time = time.time()
+                    if retry_time > current_time:
+                        await asyncio.sleep(retry_time - current_time)
+                    
+                    if task_id in self.dag.tasks:
+                        task = self.dag.tasks[task_id]
+                        if task.state == TaskState.RETRYING:
+                            await task.set_state(TaskState.PENDING)
+                
+                except asyncio.TimeoutError:
+                    continue
+        except asyncio.CancelledError:
+            pass
+    
+    async def _handle_task_failure(self, task: InteractiveTaskNode, error: Optional[TaskError]):
         """Handle task failure with retry logic."""
         if error:
             await task.set_state(TaskState.FAILED, error)
         else:
             await task.set_state(TaskState.FAILED)
         
-        # Check if should retry
         if task.can_retry():
             await task.set_state(TaskState.RETRYING)
             retry_delay = task.get_retry_delay()
-            
-            self.logger.info(f"Scheduling retry for task {task.task_id} in {retry_delay:.2f}s "
-                           f"(attempt {task.attempts + 1}/{task.retry_policy.max_attempts})")
-            
-            # Schedule retry
             retry_time = time.time() + retry_delay
             await self.retry_queue.put((retry_time, task.task_id))
         else:
-            # Mark task as permanently failed
-            await task.set_state(TaskState.FAILED)
             self.failed_tasks.add(task.task_id)
-            self.logger.error(f"Task {task.task_id} failed permanently after {task.attempts} attempts")
+            await self.coordination.emit_event(CoordinationEvent(
+                event_type=CoordinationEventType.TASK_FAILED,
+                task_id=task.task_id,
+                data={"error": error.to_dict() if error else None}
+            ))
     
-    async def _handle_task_timeout(self, task: TaskNode) -> None:
-        """Handle task timeout."""
-        error = TaskError(
-            error_type="TimeoutError",
-            message=f"Task exceeded timeout of {task.timeout}s",
-            category=ErrorCategory.TRANSIENT,
-            timestamp=datetime.now()
-        )
+    def _build_execution_context(self, task: InteractiveTaskNode) -> Dict[str, Any]:
+        """Build execution context for task."""
+        context = {
+            "task_id": task.task_id,
+            "task": task,  # Add task reference for interruption checking
+            "workflow_status": self.status.to_dict(),
+            "orchestrator_id": self.orchestrator_id
+        }
         
-        await task.set_state(TaskState.TIMEOUT, error)
-        
-        # Timeout can be retried if policy allows
-        if task.can_retry():
-            await self._handle_task_failure(task, error)
-        else:
-            self.failed_tasks.add(task.task_id)
-    
-    def _build_execution_context(self, task: TaskNode) -> Dict[str, Any]:
-        """Build execution context with completed task results."""
-        context = {"task_id": task.task_id, "workflow_status": self.status.to_dict()}
-        
-        # Add results from completed dependencies
+        # Add dependency results
         for dep_id in task.dependencies:
             if dep_id in self.completed_tasks:
                 dep_task = self.dag.tasks[dep_id]
@@ -439,158 +889,13 @@ class TaskOrchestrator(WorkflowVisualizationMixin):
         
         return context
     
-    async def _monitor_workflow(self) -> None:
-        """Monitor workflow progress and handle deadlocks."""
-        last_progress_time = time.time()
-        
-        while self.running and not self.cancellation_requested:
-            await asyncio.sleep(1.0)
-            
-            self.status.update_from_dag(self.dag)
-            await self.status.notify_progress()
-            
-            # Check for deadlocks (no progress for too long)
-            if self.status.running_tasks == 0 and not self.status.is_complete():
-                current_time = time.time()
-                if current_time - last_progress_time > 30:  # 30 second deadlock threshold
-                    self.logger.warning("Potential deadlock detected - no running tasks but workflow incomplete")
-                    await self._diagnose_deadlock()
-            else:
-                last_progress_time = time.time()
-    
-    async def _retry_worker(self) -> None:
-        """Worker that handles scheduled retries."""
-        while self.running and not self.cancellation_requested:
-            try:
-                # Wait for retry with timeout
-                retry_time, task_id = await asyncio.wait_for(self.retry_queue.get(), timeout=1.0)
-                
-                # Wait until retry time
-                current_time = time.time()
-                if retry_time > current_time:
-                    await asyncio.sleep(retry_time - current_time)
-                
-                # Check if task still needs retry
-                if task_id in self.dag.tasks:
-                    task = self.dag.tasks[task_id]
-                    if task.state == TaskState.RETRYING:
-                        await task.set_state(TaskState.PENDING)
-                        # Task will be picked up by next execution cycle
-            
-            except asyncio.TimeoutError:
-                continue  # Check cancellation and loop
-            except asyncio.CancelledError:
-                break
-    
-    async def _diagnose_deadlock(self) -> bool:
-        """Diagnose and attempt to resolve deadlocks."""
-        blocked_tasks = self.dag.get_blocked_tasks(self.completed_tasks)
-        resolved_count = 0
-        
-        if blocked_tasks:
-            self.logger.warning(f"Found {len(blocked_tasks)} blocked tasks:")
-            for task in blocked_tasks:
-                missing_deps = task.dependencies - self.completed_tasks
-                failed_deps = missing_deps.intersection(self.failed_tasks)
-                
-                if failed_deps:
-                    self.logger.error(f"Task {task.task_id} blocked by failed dependencies: {failed_deps}")
-                    await task.set_state(TaskState.FAILED)
-                    self.failed_tasks.add(task.task_id)
-                    resolved_count += 1
-        
-        # Also check for tasks stuck in retry loop for too long
-        current_time = time.time()
-        for task in self.dag.tasks.values():
-            if task.state == TaskState.RETRYING and task.attempts >= task.retry_policy.max_attempts:
-                self.logger.error(f"Task {task.task_id} exceeded max retry attempts, marking as failed")
-                await task.set_state(TaskState.FAILED)
-                self.failed_tasks.add(task.task_id)
-                resolved_count += 1
-        
-        return resolved_count > 0
-    
-    async def cancel_workflow(self) -> None:
-        """Cancel the running workflow gracefully."""
-        if not self.running:
-            return
-        
-        self.logger.info("Cancelling workflow...")
-        self.cancellation_requested = True
-        
-        # Cancel all active workers
-        await self._cancel_remaining_tasks()
-    
-    async def _cancel_remaining_tasks(self) -> None:
-        """Cancel all remaining tasks."""
-        # Cancel active workers
-        for task_id, worker in self.status.active_workers.items():
-            if not worker.done():
-                worker.cancel()
-        
-        # Mark pending/blocked tasks as cancelled
-        for task in self.dag.tasks.values():
-            if task.state in {TaskState.PENDING, TaskState.READY, TaskState.BLOCKED}:
-                await task.set_state(TaskState.CANCELLED)
-    
-    def _generate_workflow_result(self) -> Dict[str, Any]:
-        """Generate comprehensive workflow execution result."""
-        execution_time = None
-        if self.status.started_at and self.status.completed_at:
-            execution_time = (self.status.completed_at - self.status.started_at).total_seconds()
-        
-        # Collect task results
-        task_results = {}
-        for task_id, task in self.dag.tasks.items():
-            task_results[task_id] = task.to_dict()
-        
-        # Calculate success rate
-        total_tasks = len(self.dag.tasks)
-        success_rate = (self.status.completed_tasks / total_tasks) * 100 if total_tasks > 0 else 0
-        
-        return {
-            "workflow_id": id(self),
-            "status": self.status.to_dict(),
-            "execution_time": execution_time,
-            "success_rate": success_rate,
-            "dag_stats": self.dag.get_dag_stats(),
-            "task_results": task_results,
-            "cancelled": self.cancellation_requested,
-            "errors": [
-                task.errors for task in self.dag.tasks.values() if task.errors
-            ]
-        }
-    
-    def get_workflow_status(self) -> Dict[str, Any]:
-        """Get current workflow status."""
-        self.status.update_from_dag(self.dag)
-        return self.status.to_dict()
-    
-    def get_task_status(self, task_id: str) -> Optional[Dict[str, Any]]:
-        """Get status of a specific task."""
-        task = self.dag.tasks.get(task_id)
-        return task.to_dict() if task else None
-    
-    def get_execution_stats(self) -> Dict[str, Any]:
-        """Get execution statistics for the workflow."""
-        self.status.update_from_dag(self.dag)
-        
-        execution_time = None
-        if self.status.started_at and self.status.completed_at:
-            execution_time = (self.status.completed_at - self.status.started_at).total_seconds()
-        elif self.status.started_at:
-            execution_time = (datetime.now() - self.status.started_at).total_seconds()
-        
-        return {
-            "total_tasks": self.status.total_tasks,
-            "completed_tasks": self.status.completed_tasks,
-            "failed_tasks": self.status.failed_tasks,
-            "running_tasks": self.status.running_tasks,
-            "pending_tasks": self.status.pending_tasks,
-            "cancelled_tasks": self.status.cancelled_tasks,
-            "execution_time": execution_time or 0.0,
-            "success_rate": (self.status.completed_tasks / max(1, self.status.total_tasks)) * 100,
-            "progress_percentage": self.status.get_progress_percentage(),
-            "is_complete": self.status.is_complete(),
-            "active_workers": len(self.status.active_workers)
-        }
+    async def _cleanup_background_tasks(self):
+        """Clean up background tasks."""
+        for task in self._background_tasks:
+            if not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+        self._background_tasks.clear()

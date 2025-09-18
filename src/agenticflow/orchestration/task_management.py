@@ -309,7 +309,12 @@ class FunctionTaskExecutor(TaskExecutor):
             final_kwargs = {**self.kwargs, **safe_context}
             
             # Execute function (handle both sync and async)
-            if asyncio.iscoroutinefunction(self.func):
+            # Check if it's a coroutine function or has an async __call__ method
+            is_async = (asyncio.iscoroutinefunction(self.func) or 
+                       (hasattr(self.func, '__call__') and 
+                        asyncio.iscoroutinefunction(self.func.__call__)))
+            
+            if is_async:
                 result = await self.func(*self.args, **final_kwargs)
             else:
                 # Run sync function in thread pool

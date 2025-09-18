@@ -86,17 +86,25 @@ uv run python examples/tools/final_tool_calling_validation.py
 
 ---
 
-### 🎭 [Orchestration](./orchestration/)
-**Task orchestration and workflow management**
+### ⚡ [Orchestration](./orchestration/)
+**Task orchestration with embedded interactive control**
 
+- **[`task_orchestrator_demo.py`](./orchestration/task_orchestrator_demo.py)** - Core orchestrator with embedded features
+- **[`simple_streaming_example.py`](./orchestration/simple_streaming_example.py)** - Basic streaming and coordination
 - **[`complex_orchestration_test.py`](./orchestration/complex_orchestration_test.py)** - Advanced parallel/sequential workflows
 
 ```bash
-# Test complex orchestration patterns
+# Core orchestrator demo with embedded interactive control
+uv run python examples/orchestration/task_orchestrator_demo.py
+
+# Simple streaming example
+uv run python examples/orchestration/simple_streaming_example.py
+
+# Complex workflows with coordination
 uv run python examples/orchestration/complex_orchestration_test.py
 ```
 
-**Orchestration Features**: Parallel execution, dependency management, task DAGs, performance monitoring
+**Orchestration Features**: Embedded interactive control, real-time streaming, task coordination, dependency management, parallel execution
 
 ---
 

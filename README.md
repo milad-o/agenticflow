@@ -1,6 +1,6 @@
 # 🤖 AgenticFlow
 
-> **Next-generation AI agent framework with comprehensive retrieval systems, advanced memory architecture, and production-ready orchestration**
+> **Production-ready AI agent framework with embedded Interactive Task Control, unified orchestration, and enterprise-grade multi-agent coordination**
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -12,22 +12,22 @@
 
 ---
 
-## ✨ What's New in v0.1.5
+## 🚀 What's New in v1.0.0 (Major Release)
 
-⚡ **Interactive Task Control (ITC)** - Real-time streaming and coordination between agents  
-🔄 **Background Streaming** - Automatic agent communication with 1M+ updates/second  
-👁️ **Real-time Monitoring** - Live task progress tracking and dynamic coordination  
-🎯 **Smart Coordination** - Agents automatically assist and optimize each other's work  
-🔍 **Advanced Retriever System** - 15+ retriever types with text, semantic, and composite strategies  
-🧠 **Enhanced Memory Architecture** - Cross-session persistence with vector search capabilities  
+⚡ **Embedded Interactive Control** - Interactive features fully integrated into TaskOrchestrator  
+🔄 **Unified Architecture** - Single TaskOrchestrator with embedded real-time streaming  
+👁️ **Simplified API** - Clean, intuitive interface with embedded coordination capabilities  
+🎯 **Enhanced Performance** - Streamlined architecture with improved task throughput  
+🔍 **Advanced Retrieval Systems** - 15+ retriever types with text, semantic, and composite strategies  
+🧠 **Smart Memory Architecture** - Cross-session persistence with vector search capabilities  
 🔗 **Production MCP Integration** - Multi-server support with custom tool development  
-📈 **Performance Optimizations** - 50% tool calling improvement, 65+ tasks/second throughput  
-🤖💬 **Interactive RAG Chatbot** - Production conversational AI with knowledge base retrieval
+📈 **Production Ready** - Enterprise-grade orchestration with comprehensive testing  
+🤖💬 **Interactive RAG Chatbots** - Production conversational AI with knowledge base retrieval
 
 ## ✨ Core Features
 
 🏗️ **Multi-Agent Architecture** - Star, P2P, Hierarchical, Pipeline, Mesh, Custom topologies  
-⚙️ **Advanced Orchestration** - DAG workflows with dependencies, priorities, parallel execution  
+⚡ **Embedded Task Orchestration** - Unified TaskOrchestrator with built-in interactive control
 🔍 **Intelligent Retrieval** - Text, semantic, and hybrid search with 15+ retriever types  
 🧠 **Smart Memory Systems** - Buffer, SQLite, PostgreSQL, Vector with chunking strategies  
 🔗 **MCP Integration** - Secure tool execution with multi-server coordination  
@@ -150,17 +150,17 @@ uv run python examples/mcp/mcp_integration_example.py
 uv run python examples/workflows/realistic_data_analysis.py
 ```
 
-### ⚡ **Interactive Task Control (ITC)**
-**Real-time streaming and coordination** with automatic background monitoring
+### ⚡ **Task Orchestration with Embedded Interactive Control**
+**Unified orchestration** with built-in real-time streaming and coordination
 ```bash
-# Background streaming demo (works with Groq or without LLM)
-uv run python examples/itc/background_streaming_groq_demo.py
+# Core orchestrator demo with embedded interactive control
+uv run python examples/orchestration/task_orchestrator_demo.py
 
-# Simple streaming between agents
-uv run python examples/itc/simple_streaming_example.py
+# Simple streaming example with embedded features
+uv run python examples/orchestration/simple_streaming_example.py
 
-# Advanced coordination patterns
-uv run python examples/itc/streaming_coordination_demo.py
+# Complex workflows with advanced coordination
+uv run python examples/orchestration/complex_orchestration_test.py
 ```
 
 ### 🛠️ **Tool Calling System**
@@ -182,10 +182,9 @@ uv run python examples/tools/final_tool_calling_validation.py
 ### 📂 **Feature Documentation**
 || **System** | **Guide** | **Examples** | **API** |
 ||------------|-----------|--------------|----------|
-|| **ITC Streaming** | [Real-time Coordination](docs/itc-streaming.md) | [Background Streaming](examples/itc/) | Auto-streaming, Coordination |
+|| **Orchestration** | [Task Management](examples/orchestration/README.md) | [Embedded Interactive Control](examples/orchestration/) | Streaming, Coordination |
 || **Chatbots** | [Multi-Agent RAG](examples/chatbots/README.md) | [Natural Supervision](examples/chatbots/) | .as_tool() API, Delegation |
 || **Tools** | [Tool Integration](examples/tools/README.md) | [Natural Language](examples/tools/) | LLM-Powered, Validation |
-|| **Orchestration** | [Task Management](examples/orchestration/README.md) | [Complex Workflows](examples/orchestration/) | DAG, Parallel, Sequential |
 | **Retrievers** | [Advanced Search](examples/retrievers/README.md) | [15+ Types](examples/retrievers/) | Text, Semantic, Composite |
 | **Memory** | [Smart Persistence](examples/memory/README.md) | [Vector Search](examples/memory/) | Buffer, SQLite, Vector |
 | **Workflows** | [Multi-Agent](examples/workflows/README.md) | [Topologies](examples/workflows/) | Star, P2P, Hierarchical |
@@ -204,10 +203,10 @@ agenticflow/
 │   ├── Backends: Buffer, SQLite, PostgreSQL, Vector
 │   ├── Chunking: Fixed, Sentence, Recursive, Markdown, Semantic
 │   └── Features: Cross-session persistence, semantic search
-├── ⚡ Interactive Task Control (ITC)
-│   ├── Real-time streaming: 1M+ updates/second, background coordination
-│   ├── Agent coordination: Auto-assist, dynamic optimization, live monitoring
-│   └── Communication patterns: Streaming, polling, mixed approaches
+├── ⚡ Embedded Task Orchestration
+│   ├── Unified TaskOrchestrator: Built-in interactive control and streaming
+│   ├── Real-time coordination: Live progress updates, task interruption
+│   └── Event-driven architecture: Comprehensive coordination system
 ├── 🤖 Multi-Agent Coordination
 │   ├── Topologies: Star, P2P, Hierarchical, Pipeline, Mesh, Custom
 │   └── Orchestration: DAG workflows, task dependencies, priorities

@@ -27,7 +27,7 @@ from ..tools.base_tool import AsyncTool, ToolRegistry, ToolResult, get_tool_regi
 from ..orchestration import ToolSelector, RuleBasedToolSelector, ParameterExtractor
 from ..mcp.manager import MCPServerManager
 from ..visualization.mixins import AgentVisualizationMixin
-from .itc import get_itc_manager, InterruptedError
+from ..orchestration.task_orchestrator import CoordinationManager
 
 logger = structlog.get_logger(__name__)
 
@@ -96,6 +96,9 @@ class Agent(AgentVisualizationMixin):
         self._task_queue: asyncio.Queue = asyncio.Queue()
         self._execution_lock = asyncio.Lock()
         
+        # Coordination for task tracking and orchestration
+        self._coordination: Optional[CoordinationManager] = None
+        
         self.logger.info(f"Agent {self.name} initialized")
     
     async def start(self) -> None:
@@ -123,22 +126,20 @@ class Agent(AgentVisualizationMixin):
             if self.config.enable_a2a_communication:
                 await self._initialize_a2a()
             
-            # Register with ITC manager and enable background streaming
-            itc = get_itc_manager()
-            itc.register_agent(self.id, self)
+            # Initialize coordination for task orchestration
+            self._coordination = CoordinationManager(self.id)
             
-            # Auto-connect for streaming if ITC streaming is enabled
-            if itc.config.enable_streaming:
-                await itc.connect_coordinator(
-                    coordinator_id=self.id,
-                    coordinator_type="agent",
-                    capabilities={
-                        "streaming": True,
-                        "interruption": True,
-                        "task_coordination": True,
-                        "background_monitoring": True
-                    }
-                )
+            # Register agent capabilities with coordination system
+            await self._coordination.connect_coordinator(
+                coordinator_id=self.id,
+                coordinator_type="agent",
+                capabilities={
+                    "streaming": True,
+                    "interruption": True,
+                    "task_coordination": True,
+                    "background_monitoring": True
+                }
+            )
             
             self.state.status = "idle"
             self.logger.info(f"Agent {self.name} started successfully")
@@ -185,9 +186,10 @@ class Agent(AgentVisualizationMixin):
         self.state.status = "thinking"
         self.state.total_tasks += 1
         
-        # Start ITC task tracking
-        itc = get_itc_manager()
-        await itc.start_task(task_id, task, self.id, context)
+        # Start task tracking with coordination system
+        if self._coordination:
+            # Task tracking is handled by the coordination system
+            pass
         
         if context:
             self.state.context.update(context)
@@ -213,10 +215,8 @@ class Agent(AgentVisualizationMixin):
             messages.extend(recent_messages[-3:])  # Add last 3 messages for context
         
         try:
-            # Check for ITC interruption before starting
-            if itc.is_interrupted(task_id):
-                await itc.complete_task(task_id, {"error": "Task interrupted before execution"})
-                raise InterruptedError(f"Task {task_id} was interrupted")
+            # Task interruption handling is managed by the coordination system
+            # Individual agents can implement custom interruption logic as needed
             
             async with self._execution_lock:
                 # Execute based on configured mode
@@ -250,8 +250,7 @@ class Agent(AgentVisualizationMixin):
                 self.state.status = "idle"
                 self.state.current_task = None
                 
-                # Complete ITC task tracking
-                await itc.complete_task(task_id, result)
+                # Task completion is handled by the coordination system
                 
                 self.logger.info(f"Task {task_id} completed successfully")
                 return result

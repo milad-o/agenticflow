@@ -23,7 +23,7 @@ from datetime import datetime
 
 # All imports are now handled by the package structure
 
-from agenticflow.orchestration.task_orchestrator import TaskOrchestrator
+from agenticflow import TaskOrchestrator, FunctionTaskExecutor
 from agenticflow.orchestration.task_management import RetryPolicy, TaskPriority
 
 
@@ -673,7 +673,10 @@ async def run_complex_orchestration():
     
     orchestrator = TaskOrchestrator(
         max_concurrent_tasks=4,  # Allow multiple parallel tasks
-        default_retry_policy=retry_policy
+        default_retry_policy=retry_policy,
+        enable_streaming=True,
+        enable_coordination=True,
+        stream_interval=0.5  # Embedded streaming configuration
     )
     
     print("🏗️  Building Complex Orchestration Workflow...")
@@ -684,25 +687,28 @@ async def run_complex_orchestration():
     # =========================================
     print("📊 Stage 1: Parallel Data Generation")
     
-    orchestrator.add_function_task(
-        "generate_a", "Generate Dataset A",
-        processor.generate_dataset_a,
-        args=(1000,),  # 1000 records
-        priority=TaskPriority.HIGH
+    orchestrator.add_interactive_task(
+        task_id="generate_a",
+        name="Generate Dataset A",
+        executor=FunctionTaskExecutor(processor.generate_dataset_a, 1000),
+        priority=TaskPriority.HIGH,
+        streaming_enabled=True
     )
     
-    orchestrator.add_function_task(
-        "generate_b", "Generate Dataset B", 
-        processor.generate_dataset_b,
-        args=(800,),   # 800 records
-        priority=TaskPriority.HIGH
+    orchestrator.add_interactive_task(
+        task_id="generate_b",
+        name="Generate Dataset B",
+        executor=FunctionTaskExecutor(processor.generate_dataset_b, 800),
+        priority=TaskPriority.HIGH,
+        streaming_enabled=True
     )
     
-    orchestrator.add_function_task(
-        "generate_c", "Generate Dataset C",
-        processor.generate_dataset_c,
-        args=(1200,),  # 1200 records
-        priority=TaskPriority.HIGH
+    orchestrator.add_interactive_task(
+        task_id="generate_c",
+        name="Generate Dataset C",
+        executor=FunctionTaskExecutor(processor.generate_dataset_c, 1200),
+        priority=TaskPriority.HIGH,
+        streaming_enabled=True
     )
     
     # =========================================
@@ -710,11 +716,13 @@ async def run_complex_orchestration():
     # =========================================
     print("🔍 Stage 2: Sequential Data Analysis")
     
-    orchestrator.add_function_task(
-        "analyze", "Analyze Datasets",
-        processor.analyze_datasets,
-        dependencies=["generate_a", "generate_b", "generate_c"],  # Depends on all data generation
-        priority=TaskPriority.CRITICAL
+    orchestrator.add_interactive_task(
+        task_id="analyze",
+        name="Analyze Datasets",
+        executor=FunctionTaskExecutor(processor.analyze_datasets),
+        dependencies=["generate_a", "generate_b", "generate_c"],
+        priority=TaskPriority.CRITICAL,
+        streaming_enabled=True
     )
     
     # =========================================
@@ -722,18 +730,22 @@ async def run_complex_orchestration():
     # =========================================
     print("🤖 Stage 3: Parallel Model Training")
     
-    orchestrator.add_function_task(
-        "train_alpha", "Train Model Alpha",
-        processor.train_model_alpha,
-        dependencies=["analyze"],  # Depends on analysis
-        priority=TaskPriority.NORMAL
+    orchestrator.add_interactive_task(
+        task_id="train_alpha",
+        name="Train Model Alpha",
+        executor=FunctionTaskExecutor(processor.train_model_alpha),
+        dependencies=["analyze"],
+        priority=TaskPriority.NORMAL,
+        streaming_enabled=True
     )
     
-    orchestrator.add_function_task(
-        "train_beta", "Train Model Beta",
-        processor.train_model_beta,
-        dependencies=["analyze"],  # Depends on analysis
-        priority=TaskPriority.NORMAL
+    orchestrator.add_interactive_task(
+        task_id="train_beta",
+        name="Train Model Beta",
+        executor=FunctionTaskExecutor(processor.train_model_beta),
+        dependencies=["analyze"],
+        priority=TaskPriority.NORMAL,
+        streaming_enabled=True
     )
     
     # =========================================
@@ -741,18 +753,22 @@ async def run_complex_orchestration():
     # =========================================
     print("🔗 Stage 4: Sequential Integration")
     
-    orchestrator.add_function_task(
-        "ensemble", "Create Ensemble",
-        processor.create_ensemble,
-        dependencies=["train_alpha", "train_beta"],  # Depends on both models
-        priority=TaskPriority.HIGH
+    orchestrator.add_interactive_task(
+        task_id="ensemble",
+        name="Create Ensemble",
+        executor=FunctionTaskExecutor(processor.create_ensemble),
+        dependencies=["train_alpha", "train_beta"],
+        priority=TaskPriority.HIGH,
+        streaming_enabled=True
     )
     
-    orchestrator.add_function_task(
-        "final_report", "Generate Final Report",
-        processor.generate_final_report,
-        dependencies=["ensemble"],  # Depends on ensemble
-        priority=TaskPriority.LOW
+    orchestrator.add_interactive_task(
+        task_id="final_report",
+        name="Generate Final Report",
+        executor=FunctionTaskExecutor(processor.generate_final_report),
+        dependencies=["ensemble"],
+        priority=TaskPriority.LOW,
+        streaming_enabled=True
     )
     
     # Execute the complex workflow
@@ -762,8 +778,38 @@ async def run_complex_orchestration():
     print()
     
     start_time = time.time()
-    result = await orchestrator.execute_workflow()
+    
+    # Execute with streaming updates
+    result = None
+    updates_received = []
+    
+    async for update in orchestrator.execute_workflow_with_streaming():
+        updates_received.append(update)
+        if update.get("type") == "status_update":
+            status_data = update.get("data", {})
+            completed = status_data.get("completed_tasks", 0)
+            total = status_data.get("total_tasks", 8)
+            progress = status_data.get("progress_percentage", 0)
+            print(f"⏱️  Progress: {completed}/{total} tasks ({progress:.1f}%)")
+        elif update.get("type") == "workflow_completed":
+            result = update.get("status", {})
+            break
+    
     total_time = time.time() - start_time
+    
+    # Convert enhanced status format to legacy format for compatibility
+    if result:
+        legacy_result = {
+            "success_rate": 100.0 if result.get("is_complete", False) and result.get("failed_tasks", 0) == 0 else 
+                           (result.get("completed_tasks", 0) / result.get("total_tasks", 1)) * 100,
+            "status": {
+                "total_tasks": result.get("total_tasks", 0),
+                "completed_tasks": result.get("completed_tasks", 0),
+                "is_complete": result.get("is_complete", False)
+            },
+            "task_results": {}  # Enhanced orchestrator doesn't provide this in same format
+        }
+        result = legacy_result
     
     # Generate comprehensive report
     print()
