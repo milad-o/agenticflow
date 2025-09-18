@@ -12,7 +12,7 @@
 
 ## ✨ Key Features
 
-🏗️ **Multi-Agent Architecture** - Star, P2P, Hierarchical, Pipeline topologies  
+🏗️ **Multi-Agent Architecture** - Star, P2P, Hierarchical, Pipeline, Mesh topologies
 ⚙️ **Task Orchestration** - DAG workflows with parallel execution and retry logic  
 🧠 **Advanced Memory** - Vector stores, semantic search, cross-session persistence  
 🛠️ **Comprehensive Tooling** - LLM providers, MCP integration, custom tools  
@@ -115,7 +115,7 @@ uv run python examples/visualization/test_modern_mermaid_features.py
 
 ```
 agenticflow/
-├── 🤖 Multi-agent coordination with 5+ topology patterns
+├── 🤖 Multi-agent coordination with 6+ topology patterns
 ├── 📊 Task orchestration with DAG dependency management  
 ├── 🧠 Advanced memory systems (Buffer, SQLite, PostgreSQL, Vector)
 ├── 🔗 Tool integration (LangChain, custom functions, MCP servers)

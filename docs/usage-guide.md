@@ -190,6 +190,216 @@ print(result['response'])
 await system.stop()
 ```
 
+### 🕸️ Different Topology Types
+
+**Choose the right communication pattern for your agents:**
+
+#### ⭐ Star Topology
+Central supervisor coordinates all worker agents:
+
+```mermaid
+flowchart TD
+    S[Supervisor] 
+    W1[Worker 1]
+    W2[Worker 2] 
+    W3[Worker 3]
+    
+    S <--> W1
+    S <--> W2
+    S <--> W3
+    
+    style S fill:#e1f5fe
+    style W1 fill:#f3e5f5
+    style W2 fill:#f3e5f5
+    style W3 fill:#f3e5f5
+```
+
+```python
+system = MultiAgentSystem(
+    supervisor=coordinator,
+    agents=[worker1, worker2, worker3], 
+    topology=TopologyType.STAR
+)
+```
+
+#### 🔗 Peer-to-Peer Topology
+All agents communicate directly with each other:
+
+```mermaid
+flowchart LR
+    A1[Agent 1]
+    A2[Agent 2]
+    A3[Agent 3]
+    A4[Agent 4]
+    
+    A1 <--> A2
+    A1 <--> A3
+    A1 <--> A4
+    A2 <--> A3
+    A2 <--> A4
+    A3 <--> A4
+    
+    style A1 fill:#e8f5e8
+    style A2 fill:#e8f5e8
+    style A3 fill:#e8f5e8
+    style A4 fill:#e8f5e8
+```
+
+```python
+system = MultiAgentSystem(
+    agents=[agent1, agent2, agent3, agent4],
+    topology=TopologyType.PEER_TO_PEER
+)
+```
+
+#### 🌳 Hierarchical Topology
+Tree-like organizational structure:
+
+```mermaid
+flowchart TD
+    CEO[CEO]
+    M1[Manager 1]
+    M2[Manager 2]
+    D1[Developer 1]
+    D2[Developer 2]
+    D3[Developer 3]
+    D4[Developer 4]
+    
+    CEO --> M1
+    CEO --> M2
+    M1 --> D1
+    M1 --> D2
+    M2 --> D3
+    M2 --> D4
+    
+    style CEO fill:#fff3e0
+    style M1 fill:#e3f2fd
+    style M2 fill:#e3f2fd
+    style D1 fill:#f1f8e9
+    style D2 fill:#f1f8e9
+    style D3 fill:#f1f8e9
+    style D4 fill:#f1f8e9
+```
+
+```python
+system = MultiAgentSystem(
+    agents=[ceo, manager1, manager2, dev1, dev2, dev3, dev4],
+    topology=TopologyType.HIERARCHICAL
+)
+```
+
+#### ➡️ Pipeline Topology
+Sequential processing with feedback:
+
+```mermaid
+flowchart LR
+    C[Collector]
+    P[Processor]
+    A[Analyzer]
+    R[Reporter]
+    
+    C --> P
+    P --> A
+    A --> R
+    
+    P -.-> C
+    A -.-> P
+    R -.-> A
+    
+    style C fill:#e8f5e8
+    style P fill:#fff3e0
+    style A fill:#e3f2fd
+    style R fill:#f3e5f5
+```
+
+```python
+system = MultiAgentSystem(
+    agents=[collector, processor, analyzer, reporter],
+    topology=TopologyType.PIPELINE
+)
+```
+
+#### 🕸️ Mesh Topology
+Selective connectivity based on capabilities/proximity:
+
+```mermaid
+flowchart LR
+    DA["Data Agent<br/>(analysis, stats)"]
+    ML["ML Agent<br/>(ml, analysis)"]
+    WE["Web Agent<br/>(scraping, data)"]
+    DB["DB Agent<br/>(database, data)"]
+    
+    DA <--> ML
+    ML <--> WE
+    WE <--> DB
+    DA <--> DB
+    
+    style DA fill:#e1f5fe
+    style ML fill:#f3e5f5
+    style WE fill:#e8f5e8
+    style DB fill:#fff3e0
+```
+
+```python
+# Mesh - Selective connectivity
+mesh_topology = MeshTopology(
+    "smart_mesh",
+    max_connections_per_agent=2,
+    connectivity_strategy="capability_based"
+)
+
+system = MultiAgentSystem(
+    agents=[data_agent, ml_agent, web_agent, db_agent],
+    topology=mesh_topology
+)
+
+# See connection statistics
+stats = mesh_topology.get_connection_stats()
+print(f"Network connectivity: {stats['connectivity_ratio']:.2%}")
+```
+
+#### 🎨 Custom Topology
+User-defined communication patterns:
+
+```mermaid
+flowchart TD
+    C[Coordinator]
+    W1[Worker A]
+    W2[Worker B]
+    S[Specialist]
+    B[Backup]
+    
+    C --> W1
+    C --> W2
+    W1 --> S
+    W2 --> S
+    S <--> B
+    
+    style C fill:#e1f5fe
+    style W1 fill:#f3e5f5
+    style W2 fill:#f3e5f5
+    style S fill:#fff3e0
+    style B fill:#f1f8e9
+```
+
+```python
+from agenticflow.workflows.topologies import CustomTopology, CommunicationRoute
+
+custom_topology = CustomTopology("my_pattern")
+
+def my_rule(agent_nodes):
+    routes = []
+    # Define your custom communication pattern
+    return routes
+
+custom_topology.add_custom_rule(my_rule)
+```
+
+**Try the mesh topology example:**
+```bash
+uv run python examples/workflows/mesh_topology_example.py
+```
+
 ## 📊 Workflow Visualization
 
 **Visualize your agents and workflows with modern diagrams:**

@@ -539,6 +539,299 @@ class PipelineTopology(BaseTopology):
             self.routes.append(route)
 
 
+class MeshTopology(BaseTopology):
+    """Partial mesh topology with selective connectivity.
+    
+    Unlike PeerToPeer (full mesh), this allows selective connections
+    based on criteria like capabilities, proximity, or custom rules.
+    """
+    
+    def __init__(self, name: str, max_connections_per_agent: int = 3, 
+                 connectivity_strategy: str = "capability_based"):
+        super().__init__(name, TopologyType.MESH)
+        self.max_connections_per_agent = max_connections_per_agent
+        self.connectivity_strategy = connectivity_strategy
+        self.connection_matrix: Dict[str, Set[str]] = {}  # agent_id -> connected_agents
+        
+    def add_agent(self, agent_id: str, agent_name: str, **kwargs) -> AgentNode:
+        """Add agent and create selective connections."""
+        node = AgentNode(
+            agent_id=agent_id,
+            agent_name=agent_name,
+            capabilities=kwargs.get('capabilities', []),
+            role=kwargs.get('role', 'node'),
+            metadata=kwargs.get('metadata', {}),
+            max_concurrent_messages=kwargs.get('max_concurrent_messages', 10),
+            message_queue_size=kwargs.get('message_queue_size', 100),
+            timeout_seconds=kwargs.get('timeout_seconds', 30)
+        )
+        
+        self.agents[agent_id] = node
+        self.connection_matrix[agent_id] = set()
+        
+        # Create selective connections based on strategy
+        self._create_mesh_connections()
+        
+        return node
+        
+    def remove_agent(self, agent_id: str) -> bool:
+        """Remove agent and update mesh connections."""
+        if agent_id not in self.agents:
+            return False
+        
+        # Remove all connections involving this agent
+        if agent_id in self.connection_matrix:
+            # Remove this agent from other agents' connection sets
+            for connected_agent in self.connection_matrix[agent_id]:
+                if connected_agent in self.connection_matrix:
+                    self.connection_matrix[connected_agent].discard(agent_id)
+            
+            # Remove this agent's connections
+            del self.connection_matrix[agent_id]
+        
+        del self.agents[agent_id]
+        self._create_mesh_connections()
+        
+        return True
+        
+    def get_communication_routes(self, from_agent: str, to_agent: Optional[str] = None) -> List[CommunicationRoute]:
+        """Get mesh communication routes based on connections."""
+        routes = []
+        
+        if from_agent in self.connection_matrix:
+            for connected_agent in self.connection_matrix[from_agent]:
+                if not to_agent or connected_agent == to_agent:
+                    routes.append(CommunicationRoute(
+                        from_agent=from_agent,
+                        to_agent=connected_agent,
+                        route_type=MessageRouting.DIRECT,
+                        bidirectional=True
+                    ))
+        
+        return routes
+        
+    def _create_mesh_connections(self):
+        """Create selective mesh connections based on strategy."""
+        self.routes.clear()
+        
+        if self.connectivity_strategy == "capability_based":
+            self._create_capability_based_connections()
+        elif self.connectivity_strategy == "round_robin":
+            self._create_round_robin_connections()
+        elif self.connectivity_strategy == "proximity_based":
+            self._create_proximity_based_connections()
+        elif self.connectivity_strategy == "random":
+            self._create_random_connections()
+        else:
+            # Default to capability-based
+            self._create_capability_based_connections()
+        
+        # Create routes from connection matrix
+        for agent_id, connections in self.connection_matrix.items():
+            for connected_agent in connections:
+                # Only create route once (avoid duplicates)
+                if agent_id < connected_agent:
+                    route = CommunicationRoute(
+                        from_agent=agent_id,
+                        to_agent=connected_agent,
+                        route_type=MessageRouting.DIRECT,
+                        bidirectional=True
+                    )
+                    self.routes.append(route)
+    
+    def _create_capability_based_connections(self):
+        """Connect agents with similar or complementary capabilities."""
+        agent_ids = list(self.agents.keys())
+        
+        for agent_id in agent_ids:
+            if len(self.connection_matrix[agent_id]) >= self.max_connections_per_agent:
+                continue
+                
+            agent_capabilities = set(self.agents[agent_id].capabilities)
+            candidates = []
+            
+            # Find agents with overlapping capabilities
+            for other_id in agent_ids:
+                if other_id == agent_id:
+                    continue
+                if other_id in self.connection_matrix[agent_id]:
+                    continue
+                if len(self.connection_matrix[other_id]) >= self.max_connections_per_agent:
+                    continue
+                    
+                other_capabilities = set(self.agents[other_id].capabilities)
+                overlap = len(agent_capabilities.intersection(other_capabilities))
+                candidates.append((other_id, overlap))
+            
+            # Sort by capability overlap (descending)
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            
+            # Connect to top candidates
+            connections_to_make = min(
+                self.max_connections_per_agent - len(self.connection_matrix[agent_id]),
+                len(candidates)
+            )
+            
+            for i in range(connections_to_make):
+                other_id, _ = candidates[i]
+                self.connection_matrix[agent_id].add(other_id)
+                self.connection_matrix[other_id].add(agent_id)
+    
+    def _create_round_robin_connections(self):
+        """Connect agents in a round-robin fashion."""
+        agent_ids = list(self.agents.keys())
+        n = len(agent_ids)
+        
+        if n < 2:
+            return
+            
+        for i, agent_id in enumerate(agent_ids):
+            connections_made = 0
+            offset = 1
+            
+            while connections_made < self.max_connections_per_agent and offset < n:
+                other_idx = (i + offset) % n
+                other_id = agent_ids[other_idx]
+                
+                if (other_id not in self.connection_matrix[agent_id] and 
+                    len(self.connection_matrix[other_id]) < self.max_connections_per_agent):
+                    
+                    self.connection_matrix[agent_id].add(other_id)
+                    self.connection_matrix[other_id].add(agent_id)
+                    connections_made += 1
+                
+                offset += 1
+    
+    def _create_proximity_based_connections(self):
+        """Connect agents based on metadata proximity (e.g., location, department)."""
+        agent_ids = list(self.agents.keys())
+        
+        for agent_id in agent_ids:
+            if len(self.connection_matrix[agent_id]) >= self.max_connections_per_agent:
+                continue
+                
+            agent_metadata = self.agents[agent_id].metadata
+            candidates = []
+            
+            for other_id in agent_ids:
+                if other_id == agent_id:
+                    continue
+                if other_id in self.connection_matrix[agent_id]:
+                    continue
+                if len(self.connection_matrix[other_id]) >= self.max_connections_per_agent:
+                    continue
+                    
+                other_metadata = self.agents[other_id].metadata
+                
+                # Calculate "proximity" based on shared metadata keys
+                shared_keys = set(agent_metadata.keys()).intersection(set(other_metadata.keys()))
+                proximity_score = 0
+                
+                for key in shared_keys:
+                    if agent_metadata[key] == other_metadata[key]:
+                        proximity_score += 1
+                
+                if proximity_score > 0:
+                    candidates.append((other_id, proximity_score))
+            
+            # Sort by proximity score (descending)
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            
+            # Connect to closest agents
+            connections_to_make = min(
+                self.max_connections_per_agent - len(self.connection_matrix[agent_id]),
+                len(candidates)
+            )
+            
+            for i in range(connections_to_make):
+                other_id, _ = candidates[i]
+                self.connection_matrix[agent_id].add(other_id)
+                self.connection_matrix[other_id].add(agent_id)
+    
+    def _create_random_connections(self):
+        """Connect agents randomly up to max connections."""
+        import random
+        
+        agent_ids = list(self.agents.keys())
+        random.shuffle(agent_ids)
+        
+        for agent_id in agent_ids:
+            if len(self.connection_matrix[agent_id]) >= self.max_connections_per_agent:
+                continue
+                
+            # Get available candidates
+            candidates = [
+                other_id for other_id in agent_ids 
+                if (other_id != agent_id and 
+                    other_id not in self.connection_matrix[agent_id] and
+                    len(self.connection_matrix[other_id]) < self.max_connections_per_agent)
+            ]
+            
+            # Randomly select connections
+            connections_to_make = min(
+                self.max_connections_per_agent - len(self.connection_matrix[agent_id]),
+                len(candidates)
+            )
+            
+            selected = random.sample(candidates, connections_to_make)
+            
+            for other_id in selected:
+                self.connection_matrix[agent_id].add(other_id)
+                self.connection_matrix[other_id].add(agent_id)
+    
+    def add_connection(self, agent1_id: str, agent2_id: str) -> bool:
+        """Manually add a connection between two agents."""
+        if (agent1_id not in self.agents or agent2_id not in self.agents or
+            agent1_id == agent2_id):
+            return False
+            
+        if (len(self.connection_matrix[agent1_id]) >= self.max_connections_per_agent or
+            len(self.connection_matrix[agent2_id]) >= self.max_connections_per_agent):
+            return False
+            
+        self.connection_matrix[agent1_id].add(agent2_id)
+        self.connection_matrix[agent2_id].add(agent1_id)
+        
+        # Update routes
+        self._create_mesh_connections()
+        return True
+    
+    def remove_connection(self, agent1_id: str, agent2_id: str) -> bool:
+        """Manually remove a connection between two agents."""
+        if (agent1_id not in self.connection_matrix or 
+            agent2_id not in self.connection_matrix[agent1_id]):
+            return False
+            
+        self.connection_matrix[agent1_id].discard(agent2_id)
+        self.connection_matrix[agent2_id].discard(agent1_id)
+        
+        # Update routes
+        self._create_mesh_connections()
+        return True
+    
+    def get_connection_stats(self) -> Dict[str, Any]:
+        """Get statistics about mesh connectivity."""
+        total_connections = sum(len(connections) for connections in self.connection_matrix.values()) // 2
+        n = len(self.agents)
+        max_possible = (n * (n - 1)) // 2  # Full mesh
+        
+        connectivity_ratio = total_connections / max_possible if max_possible > 0 else 0.0
+        
+        # Connection distribution
+        connection_counts = [len(connections) for connections in self.connection_matrix.values()]
+        avg_connections = sum(connection_counts) / len(connection_counts) if connection_counts else 0
+        
+        return {
+            "total_connections": total_connections,
+            "max_possible_connections": max_possible,
+            "connectivity_ratio": connectivity_ratio,
+            "average_connections_per_agent": avg_connections,
+            "max_connections_per_agent": self.max_connections_per_agent,
+            "connectivity_strategy": self.connectivity_strategy,
+            "agents_count": n
+        }
+
+
 class CustomTopology(BaseTopology):
     """Fully customizable topology for complex patterns."""
     
@@ -624,6 +917,8 @@ def create_topology(topology_type: Union[TopologyType, str], name: str, **kwargs
         return HierarchicalTopology(name)
     elif topology_type == TopologyType.PIPELINE:
         return PipelineTopology(name)
+    elif topology_type == TopologyType.MESH:
+        return MeshTopology(name, **kwargs)
     elif topology_type == TopologyType.CUSTOM:
         return CustomTopology(name)
     else:

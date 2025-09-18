@@ -628,6 +628,7 @@ config = AgentConfig(
 - **PeerToPeerTopology**: Fully connected agent networks
 - **HierarchicalTopology**: Tree-like command structures
 - **PipelineTopology**: Sequential processing with feedback
+- **MeshTopology**: Partial connectivity with selective agent connections
 - **CustomTopology**: User-defined communication patterns
 
 #### 4. **Tool Integration** (`src/agenticflow/tools/`)
@@ -669,6 +670,17 @@ PENDING → READY → RUNNING → COMPLETED
 
 ## 📊 Topology Types & Communication Patterns
 
+### Topology Comparison
+
+| Topology | Use Case | Scalability | Fault Tolerance | Communication Overhead |
+|----------|----------|-------------|-----------------|------------------------|
+| **Star** | Centralized control, simple coordination | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
+| **Peer-to-Peer** | Collaborative tasks, full connectivity | ⭐⭐ | ⭐⭐⭐⭐ | ⭐ |
+| **Hierarchical** | Organizational workflows, delegation | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
+| **Pipeline** | Sequential processing, data flow | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Mesh** | Selective connectivity, capability-based | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ |
+| **Custom** | Specialized patterns, complex workflows | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
+
 ### Star Topology
 ```python
 # Central coordinator manages all communication
@@ -697,6 +709,31 @@ hierarchy.add_agent("ceo", "CEO", level=0)
 hierarchy.add_agent("tech_manager", "Tech Manager", parent_id="ceo", level=1)
 hierarchy.add_agent("dev1", "Developer 1", parent_id="tech_manager", level=2)
 hierarchy.add_agent("dev2", "Developer 2", parent_id="tech_manager", level=2)
+```
+
+### Mesh Topology
+```python
+# Partial connectivity with selective connections
+from agenticflow.workflows.topologies import MeshTopology
+
+# Capability-based connections
+mesh = MeshTopology(
+    "capability_mesh",
+    max_connections_per_agent=3,
+    connectivity_strategy="capability_based"
+)
+
+# Add agents with capabilities
+mesh.add_agent("data_analyst", "Data Analyst", 
+              capabilities=["analysis", "statistics"])
+mesh.add_agent("ml_engineer", "ML Engineer", 
+              capabilities=["ml", "analysis", "python"])
+mesh.add_agent("web_scraper", "Web Scraper", 
+              capabilities=["scraping", "python"])
+
+# Agents auto-connect based on shared capabilities
+stats = mesh.get_connection_stats()
+print(f"Connectivity: {stats['connectivity_ratio']:.2%}")
 ```
 
 ### Custom Topology
