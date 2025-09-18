@@ -165,17 +165,29 @@ class A2AConfig(BaseModel):
     max_retries: int = Field(3, ge=0, description="Maximum message send retries")
 
 
-class HITLConfig(BaseModel):
-    """Configuration for Human-in-the-Loop functionality."""
+class ITCConfig(BaseModel):
+    """Configuration for Interactive Task Control functionality."""
     
-    enable_hitl: bool = Field(False, description="Enable HITL globally")
+    enable_itc: bool = Field(False, description="Enable ITC globally")
     confirmation_required: bool = Field(True, description="Require confirmation for critical actions")
-    timeout: int = Field(300, ge=1, description="HITL response timeout in seconds")
+    timeout: int = Field(300, ge=1, description="ITC response timeout in seconds")
     
     # Notification methods
     enable_console: bool = Field(True, description="Enable console notifications")
     enable_webhook: bool = Field(False, description="Enable webhook notifications")
     webhook_url: Optional[str] = Field(None, description="Webhook URL for notifications")
+    
+    # Real-time communication settings
+    enable_streaming: bool = Field(True, description="Enable real-time streaming updates")
+    stream_interval: float = Field(0.5, ge=0.01, description="Streaming update interval in seconds")
+    max_stream_duration: int = Field(3600, ge=1, description="Maximum streaming duration in seconds")
+    
+    # Task coordination settings
+    enable_agent_coordination: bool = Field(True, description="Enable agent-to-agent coordination")
+    coordination_timeout: int = Field(60, ge=1, description="Coordination timeout in seconds")
+    max_concurrent_coordinators: int = Field(10, ge=1, description="Maximum concurrent coordinators")
+
+
 
 
 class AgenticFlowConfig(BaseSettings):
@@ -210,7 +222,7 @@ class AgenticFlowConfig(BaseSettings):
     # Component configurations
     task_config: TaskConfig = Field(default_factory=TaskConfig, description="Task management configuration")
     a2a_config: A2AConfig = Field(default_factory=A2AConfig, description="A2A communication configuration")
-    hitl_config: HITLConfig = Field(default_factory=HITLConfig, description="HITL configuration")
+    itc_config: ITCConfig = Field(default_factory=ITCConfig, description="ITC configuration")
     
     # Agent configurations
     agents: List[AgentConfig] = Field(default_factory=list, description="Agent configurations")

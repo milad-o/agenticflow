@@ -12,14 +12,16 @@
 
 ---
 
-## ✨ What's New in v0.1.4
+## ✨ What's New in v0.1.5
 
+⚡ **Interactive Task Control (ITC)** - Real-time streaming and coordination between agents  
+🔄 **Background Streaming** - Automatic agent communication with 1M+ updates/second  
+👁️ **Real-time Monitoring** - Live task progress tracking and dynamic coordination  
+🎯 **Smart Coordination** - Agents automatically assist and optimize each other's work  
 🔍 **Advanced Retriever System** - 15+ retriever types with text, semantic, and composite strategies  
 🧠 **Enhanced Memory Architecture** - Cross-session persistence with vector search capabilities  
 🔗 **Production MCP Integration** - Multi-server support with custom tool development  
 📈 **Performance Optimizations** - 50% tool calling improvement, 65+ tasks/second throughput  
-📚 **Comprehensive Documentation** - Complete examples with step-by-step guides for all features  
-🏢 **Business-Ready Systems** - End-to-end applications processing real revenue data  
 🤖💬 **Interactive RAG Chatbot** - Production conversational AI with knowledge base retrieval
 
 ## ✨ Core Features
@@ -148,6 +150,19 @@ uv run python examples/mcp/mcp_integration_example.py
 uv run python examples/workflows/realistic_data_analysis.py
 ```
 
+### ⚡ **Interactive Task Control (ITC)**
+**Real-time streaming and coordination** with automatic background monitoring
+```bash
+# Background streaming demo (works with Groq or without LLM)
+uv run python examples/itc/background_streaming_groq_demo.py
+
+# Simple streaming between agents
+uv run python examples/itc/simple_streaming_example.py
+
+# Advanced coordination patterns
+uv run python examples/itc/streaming_coordination_demo.py
+```
+
 ### 🛠️ **Tool Calling System**
 **Enhanced natural language detection** with 50% success improvement
 ```bash
@@ -165,11 +180,12 @@ uv run python examples/tools/final_tool_calling_validation.py
 | [**Memory Systems**](examples/memory/) | [**Workflows**](examples/workflows/) |  |
 
 ### 📂 **Feature Documentation**
-| **System** | **Guide** | **Examples** | **API** |
-|------------|-----------|--------------|----------|
-| **Chatbots** | [Multi-Agent RAG](examples/chatbots/README.md) | [Natural Supervision](examples/chatbots/) | .as_tool() API, Delegation |
-| **Tools** | [Tool Integration](examples/tools/README.md) | [Natural Language](examples/tools/) | LLM-Powered, Validation |
-| **Orchestration** | [Task Management](examples/orchestration/README.md) | [Complex Workflows](examples/orchestration/) | DAG, Parallel, Sequential |
+|| **System** | **Guide** | **Examples** | **API** |
+||------------|-----------|--------------|----------|
+|| **ITC Streaming** | [Real-time Coordination](docs/itc-streaming.md) | [Background Streaming](examples/itc/) | Auto-streaming, Coordination |
+|| **Chatbots** | [Multi-Agent RAG](examples/chatbots/README.md) | [Natural Supervision](examples/chatbots/) | .as_tool() API, Delegation |
+|| **Tools** | [Tool Integration](examples/tools/README.md) | [Natural Language](examples/tools/) | LLM-Powered, Validation |
+|| **Orchestration** | [Task Management](examples/orchestration/README.md) | [Complex Workflows](examples/orchestration/) | DAG, Parallel, Sequential |
 | **Retrievers** | [Advanced Search](examples/retrievers/README.md) | [15+ Types](examples/retrievers/) | Text, Semantic, Composite |
 | **Memory** | [Smart Persistence](examples/memory/README.md) | [Vector Search](examples/memory/) | Buffer, SQLite, Vector |
 | **Workflows** | [Multi-Agent](examples/workflows/README.md) | [Topologies](examples/workflows/) | Star, P2P, Hierarchical |
@@ -188,6 +204,10 @@ agenticflow/
 │   ├── Backends: Buffer, SQLite, PostgreSQL, Vector
 │   ├── Chunking: Fixed, Sentence, Recursive, Markdown, Semantic
 │   └── Features: Cross-session persistence, semantic search
+├── ⚡ Interactive Task Control (ITC)
+│   ├── Real-time streaming: 1M+ updates/second, background coordination
+│   ├── Agent coordination: Auto-assist, dynamic optimization, live monitoring
+│   └── Communication patterns: Streaming, polling, mixed approaches
 ├── 🤖 Multi-Agent Coordination
 │   ├── Topologies: Star, P2P, Hierarchical, Pipeline, Mesh, Custom
 │   └── Orchestration: DAG workflows, task dependencies, priorities

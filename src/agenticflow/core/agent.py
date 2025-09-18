@@ -27,6 +27,7 @@ from ..tools.base_tool import AsyncTool, ToolRegistry, ToolResult, get_tool_regi
 from ..orchestration import ToolSelector, RuleBasedToolSelector, ParameterExtractor
 from ..mcp.manager import MCPServerManager
 from ..visualization.mixins import AgentVisualizationMixin
+from .itc import get_itc_manager, InterruptedError
 
 logger = structlog.get_logger(__name__)
 
@@ -122,6 +123,23 @@ class Agent(AgentVisualizationMixin):
             if self.config.enable_a2a_communication:
                 await self._initialize_a2a()
             
+            # Register with ITC manager and enable background streaming
+            itc = get_itc_manager()
+            itc.register_agent(self.id, self)
+            
+            # Auto-connect for streaming if ITC streaming is enabled
+            if itc.config.enable_streaming:
+                await itc.connect_coordinator(
+                    coordinator_id=self.id,
+                    coordinator_type="agent",
+                    capabilities={
+                        "streaming": True,
+                        "interruption": True,
+                        "task_coordination": True,
+                        "background_monitoring": True
+                    }
+                )
+            
             self.state.status = "idle"
             self.logger.info(f"Agent {self.name} started successfully")
             
@@ -167,6 +185,10 @@ class Agent(AgentVisualizationMixin):
         self.state.status = "thinking"
         self.state.total_tasks += 1
         
+        # Start ITC task tracking
+        itc = get_itc_manager()
+        await itc.start_task(task_id, task, self.id, context)
+        
         if context:
             self.state.context.update(context)
         
@@ -191,6 +213,11 @@ class Agent(AgentVisualizationMixin):
             messages.extend(recent_messages[-3:])  # Add last 3 messages for context
         
         try:
+            # Check for ITC interruption before starting
+            if itc.is_interrupted(task_id):
+                await itc.complete_task(task_id, {"error": "Task interrupted before execution"})
+                raise InterruptedError(f"Task {task_id} was interrupted")
+            
             async with self._execution_lock:
                 # Execute based on configured mode
                 if self.config.execution_mode == ExecutionMode.SEQUENTIAL:
@@ -222,6 +249,9 @@ class Agent(AgentVisualizationMixin):
                 self.state.successful_tasks += 1
                 self.state.status = "idle"
                 self.state.current_task = None
+                
+                # Complete ITC task tracking
+                await itc.complete_task(task_id, result)
                 
                 self.logger.info(f"Task {task_id} completed successfully")
                 return result

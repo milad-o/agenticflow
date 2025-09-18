@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agenticflow"
-version = "0.1.4"
-description = "Next-generation AI agent framework with natural multi-agent supervision via .as_tool() API, advanced RAG systems, smart memory architecture, MCP integration, and production-ready orchestration"
+version = "0.1.5"
+description = "Next-generation AI agent framework with real-time Interactive Task Control (ITC), automatic agent coordination, natural multi-agent supervision via .as_tool() API, advanced RAG systems, smart memory architecture, MCP integration, and production-ready orchestration"
 authors = [
     {name = "AgenticFlow Team"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
-keywords = ["ai", "agents", "multi-agent", "supervision", "delegation", "as-tool", "rag", "langchain", "langgraph", "async", "automation", "tool-calling", "memory", "vector-stores", "embeddings", "chunking", "semantic-search", "retrievers", "mcp", "orchestration", "llm", "production-ready"]
+keywords = ["ai", "agents", "multi-agent", "supervision", "delegation", "as-tool", "itc", "streaming", "real-time", "coordination", "background-processing", "rag", "langchain", "langgraph", "async", "automation", "tool-calling", "memory", "vector-stores", "embeddings", "chunking", "semantic-search", "retrievers", "mcp", "orchestration", "llm", "production-ready"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

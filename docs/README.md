@@ -23,6 +23,11 @@ Welcome to the comprehensive documentation for AgenticFlow! This directory conta
   - Tool discovery and registration
   - Multi-server management
   - Production MCP deployment
+- [**ITC Streaming**](itc-streaming.md) - Interactive Task Control system
+  - Real-time agent coordination
+  - Background streaming architecture
+  - Performance optimization
+  - Production streaming deployment
 
 ### 📊 **Examples & Tutorials**
 - [**Examples Directory**](../examples/) - 100+ working examples
@@ -40,10 +45,11 @@ Welcome to the comprehensive documentation for AgenticFlow! This directory conta
 | **I want to...** | **Go to...** |
 |------------------|--------------|
 || **Get started quickly** | [Usage Guide](usage-guide.md) |
-| **Install and test** | [Installation](../README.md#installation) → [Test Script](../scripts/test_installation.py) |
-| **See examples** | [Examples Directory](../examples/) |
+|| **Install and test** | [Installation](../README.md#installation) → [Test Script](../scripts/test_installation.py) |
+|| **See examples** | [Examples Directory](../examples/) |
 || **Learn all features** | [API Reference](api-reference.md) |
 || **Integrate MCP servers** | [MCP Integration Guide](mcp-integration.md) |
+|| **Set up agent streaming** | [ITC Streaming](itc-streaming.md) |
 || **Deploy in production** | [Production Guide](api-reference.md#production-deployment) |
 
 ## 🏗️ Project Structure
