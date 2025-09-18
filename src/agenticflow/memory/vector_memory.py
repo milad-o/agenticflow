@@ -441,7 +441,7 @@ class VectorMemory(AsyncMemory):
             "total_messages": len(self.messages),
             "vector_store_connected": self.vector_store is not None,
             "embeddings_enabled": self.embeddings is not None,
-            "chunking_enabled": self.vector_config.enable_chunking,
+            "chunking_enabled": self.vector_config.enable_splitting,
             "vector_store_type": self.vector_config.vector_store_config.store_type.value
         }
         
