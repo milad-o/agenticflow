@@ -2,6 +2,48 @@
 
 This directory contains comprehensive examples demonstrating the full capabilities of the AgenticFlow framework, from basic agent usage to complex multi-agent systems and enterprise-grade integrations.
 
+## 🌟 **FEATURED: Enterprise Super Agentic Chatbot**
+
+**NEW!** The **[Enterprise Super Agentic Chatbot](./enterprise_chatbot/)** is our flagship demonstration showcasing the full power of AgenticFlow with comprehensive file-focused capabilities:
+
+### 🚀 **File Management Powerhouse**
+- 🗂️ **Multi-Format Analysis** (15+ formats: JSON, XML, CSV, YAML, TOML, INI, LOG, Python, JavaScript, HTML, SQL, Markdown)
+- 🔄 **Format Conversion & Editing** (find/replace, line operations, merging strategies)
+- 🗃️ **Database Integration** (SQLite queries, schema analysis, data export)
+- 📊 **Report Generation** (HTML, Markdown reports with analytics)
+- 🔗 **File Relationship Mapping** (dependency graphs, import analysis)
+- 🔍 **Pattern Detection & Anomaly Analysis** (emails, URLs, IPs, duplicates)
+- 📈 **Flowchart & Visualization Generation** (code flows, process diagrams)
+
+### 🤖 **Enterprise Architecture**
+- **Multi-Agent Coordination** with specialized FileAgent, DataAgent, CodeAgent, AnalyticsAgent
+- ⚡ **Real-time Task Monitoring** with progress tracking and resource usage
+- 💬 **Conversational Interface** - ask anything about files in natural language
+- 🎯 **Tool Usage Analytics** with success tracking and performance metrics
+
+### 🎯 **Quick Start**
+```bash
+cd examples/enterprise_chatbot
+source ../../.env  # Set GROQ_API_KEY
+uv run python enterprise_super_agent.py
+
+# Try these commands:
+# help - Show all capabilities
+# demo - Run automated demonstration
+# "Create a JSON file and analyze its structure"
+# "Convert data.csv to XML format"
+# "Find patterns in log files"
+```
+
+**Example Capabilities:**
+- *"Create a JSON file with sample data and analyze its structure"*
+- *"Convert users.json to CSV format and generate HTML report"*
+- *"Analyze all Python files and map their import dependencies"*
+- *"Find anomalies and patterns in application logs"*
+- *"Query SQLite database and create visualization charts"*
+
+---
+
 ## 🚀 Quick Start Guide
 
 Choose your learning path based on what you want to explore:
@@ -19,9 +61,10 @@ Choose your learning path based on what you want to explore:
 3. **[Vector Stores](./vector_stores/)** - Semantic search backends
 
 ### 🏢 **For Production**: Enterprise Features
-1. **[Complete Systems](./realistic_systems/)** - End-to-end business applications
-2. **[Performance Testing](./performance/)** - Benchmarking and optimization
-3. **[Integration Patterns](./integration/)** - Best practices and patterns
+1. **[Enterprise Super Agentic Chatbot](./enterprise_chatbot/)** 🌟 - **File-focused multi-agent system**
+2. **[Complete Systems](./realistic_systems/)** - End-to-end business applications
+3. **[Performance Testing](./performance/)** - Benchmarking and optimization
+4. **[Integration Patterns](./integration/)** - Best practices and patterns
 
 ---
 
