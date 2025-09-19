@@ -1,0 +1,60 @@
+application:
+  name: "Enterprise Management System"
+  version: "2.1.0"
+  environment: "production"
+  debug: false
+  
+database:
+  host: "localhost"
+  port: 5432
+  name: "enterprise_db"
+  username: "admin"
+  ssl_enabled: true
+  connection_pool:
+    min_connections: 5
+    max_connections: 20
+    
+cache:
+  redis_url: "redis://localhost:6379"
+  ttl: 3600
+  enable_clustering: true
+  
+logging:
+  level: "INFO"
+  file: "/var/log/enterprise/app.log"
+  max_size: "100MB"
+  backup_count: 5
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+api:
+  base_url: "https://api.enterprise.com"
+  timeout: 30
+  rate_limit:
+    requests_per_minute: 1000
+    burst_limit: 50
+    
+security:
+  jwt_secret: "${JWT_SECRET}"
+  session_timeout: 1800
+  password_policy:
+    min_length: 12
+    require_uppercase: true
+    require_numbers: true
+    require_symbols: true
+    
+features:
+  user_analytics: true
+  real_time_sync: true
+  backup_enabled: true
+  monitoring_enabled: true
+  
+departments:
+  - name: "Engineering" 
+    budget: 500000
+    head: "Alice Johnson"
+  - name: "Marketing"
+    budget: 200000
+    head: "Bob Smith"  
+  - name: "DevOps"
+    budget: 300000
+    head: "Charlie Brown"

@@ -1,0 +1,71 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice Johnson",
+      "email": "alice.johnson@enterprise.com",
+      "age": 30,
+      "department": "Engineering",
+      "skills": ["Python", "JavaScript", "React", "Docker"],
+      "projects": {
+        "current": "AgenticFlow Enhancement",
+        "completed": 15,
+        "skills_used": ["Python", "AI/ML"]
+      },
+      "contact": {
+        "phone": "555-0123",
+        "address": "123 Tech Street, San Francisco, CA 94105"
+      },
+      "active": true,
+      "join_date": "2022-03-15",
+      "salary": 95000
+    },
+    {
+      "id": 2,
+      "name": "Bob Smith",
+      "email": "bob.smith@enterprise.com",
+      "age": 28,
+      "department": "Marketing",
+      "skills": ["Analytics", "SQL", "Tableau", "Python"],
+      "projects": {
+        "current": "Data Analysis Pipeline",
+        "completed": 8,
+        "skills_used": ["SQL", "Analytics"]
+      },
+      "contact": {
+        "phone": "555-0456",
+        "address": "456 Business Ave, New York, NY 10001"
+      },
+      "active": true,
+      "join_date": "2023-01-10",
+      "salary": 75000
+    },
+    {
+      "id": 3,
+      "name": "Charlie Brown",
+      "email": "charlie.brown@enterprise.com",
+      "age": 35,
+      "department": "DevOps",
+      "skills": ["Kubernetes", "Docker", "AWS", "Python", "Terraform"],
+      "projects": {
+        "current": "Infrastructure Automation",
+        "completed": 22,
+        "skills_used": ["Kubernetes", "AWS"]
+      },
+      "contact": {
+        "phone": "555-0789",
+        "address": "789 Cloud Lane, Seattle, WA 98101"
+      },
+      "active": true,
+      "join_date": "2021-07-20",
+      "salary": 110000
+    }
+  ],
+  "metadata": {
+    "version": "2.1",
+    "created": "2025-09-19T01:56:00Z",
+    "total_users": 3,
+    "departments": ["Engineering", "Marketing", "DevOps"],
+    "average_salary": 93333
+  }
+}
