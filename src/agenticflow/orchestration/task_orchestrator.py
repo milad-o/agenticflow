@@ -871,6 +871,7 @@ class TaskOrchestrator:
                 data={"error": error.to_dict() if error else None}
             ))
     
+    
     def _build_execution_context(self, task: InteractiveTaskNode) -> Dict[str, Any]:
         """Build execution context for task."""
         context = {

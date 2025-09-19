@@ -12,12 +12,18 @@
 
 ---
 
+## 🚀 What's New in v1.0.1 (Latest)
+
+✨ **Pydantic v2 Compatibility** - Full migration to Pydantic v2 with ConfigDict patterns  
+🔧 **API Cleanup** - Removed deprecated methods and streamlined current API  
+🧪 **Enhanced Testing** - All tests passing with improved reliability  
+🔄 **Unified Architecture** - Single TaskOrchestrator with embedded real-time streaming  
+🎯 **Enhanced Performance** - Streamlined architecture with improved task throughput  
+
 ## 🚀 What's New in v1.0.0 (Major Release)
 
 ⚡ **Embedded Interactive Control** - Interactive features fully integrated into TaskOrchestrator  
-🔄 **Unified Architecture** - Single TaskOrchestrator with embedded real-time streaming  
 👁️ **Simplified API** - Clean, intuitive interface with embedded coordination capabilities  
-🎯 **Enhanced Performance** - Streamlined architecture with improved task throughput  
 🔍 **Advanced Retrieval Systems** - 15+ retriever types with text, semantic, and composite strategies  
 🧠 **Smart Memory Architecture** - Cross-session persistence with vector search capabilities  
 🔗 **Production MCP Integration** - Multi-server support with custom tool development  

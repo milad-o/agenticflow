@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agenticflow"
-version = "1.0.0"
-description = "Production-ready AI agent framework with embedded Interactive Task Control, unified TaskOrchestrator, real-time streaming, multi-agent coordination, advanced RAG systems, smart memory architecture, MCP integration, and comprehensive orchestration capabilities"
+version = "1.0.1"
+description = "Production-ready AI agent framework with embedded Interactive Task Control, unified TaskOrchestrator, real-time streaming, multi-agent coordination, advanced RAG systems, smart memory architecture, MCP integration, comprehensive orchestration capabilities, and full Pydantic v2 compatibility"
 authors = [
     {name = "AgenticFlow Team"}
 ]

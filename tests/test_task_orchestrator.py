@@ -24,7 +24,6 @@ from agenticflow.orchestration.task_orchestrator import (
 from agenticflow.orchestration.task_management import (
     FunctionTaskExecutor, TaskState, TaskResult, RetryPolicy
 )
-from agenticflow.config.settings import ITCConfig
 
 
 class MockFunction:
@@ -81,7 +80,7 @@ def task_orchestrator():
         max_concurrent_tasks=3,
         enable_streaming=True,
         enable_coordination=True,
-        itc_config=ITCConfig(stream_interval=0.1, enable_streaming=True)
+        stream_interval=0.1
     )
 
 

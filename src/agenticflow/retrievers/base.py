@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Union
 import time
 
 import structlog
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from ..memory.core import MemoryDocument
 
@@ -106,8 +106,7 @@ class RetrieverConfig(BaseModel):
     batch_size: int = 10
     enable_parallel: bool = False
     
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AsyncRetriever(ABC):
@@ -351,7 +350,7 @@ class AsyncRetriever(ABC):
             "retriever_type": self.retriever_type,
             "cache_size": len(self._cache),
             "cache_hit_ratio": 0.0,  # Could track this
-            "config": self.config.dict()
+            "config": self.config.model_dump()
         }
     
     def clear_cache(self):

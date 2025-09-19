@@ -42,7 +42,7 @@ from agenticflow.retrievers import (
 from agenticflow.memory.core import MemoryDocument
 
 
-class TestMemoryDataSource:
+class MockMemoryDataSource:
     """Mock memory data source for testing."""
     
     def __init__(self, documents: List[MemoryDocument] = None):
@@ -109,13 +109,13 @@ class TestMemoryDataSource:
 @pytest.fixture
 def sample_memory():
     """Create sample memory data source."""
-    return TestMemoryDataSource()
+    return MockMemoryDataSource()
 
 
 @pytest.fixture
 def sample_documents():
     """Create sample documents."""
-    return TestMemoryDataSource()._create_sample_documents()
+    return MockMemoryDataSource()._create_sample_documents()
 
 
 class TestRetrieverBase:

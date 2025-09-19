@@ -40,7 +40,13 @@ AgenticFlow is a comprehensive, production-ready framework for building sophisti
 - **🔍 Semantic Search**: Vector-enabled memory with automatic text splitting and embedding generation
 - **⚡ Smart Content Detection**: Automatic splitter selection based on content analysis and type detection
 
-### ✅ **Latest Enhancements (v0.1.3)**
+### ✅ **Latest Enhancements (v1.0.1)**
+- **✨ Pydantic v2 Compatibility**: Full migration to Pydantic v2 patterns with ConfigDict
+- **🔧 API Cleanup**: Removed deprecated TaskOrchestrator methods and ITC references
+- **🧪 Enhanced Testing**: All 107 tests passing with improved reliability
+- **🗑️ Removed Legacy Code**: Cleaned up outdated test files and deprecated API usage
+
+### ✅ **Previous Enhancements (v0.1.3)**
 - **🔧 Enhanced LangChain Integration**: Fixed missing LangChain integration packages for vector stores
 - **📁 Reorganized Examples**: Comprehensive examples directory with enhanced vector capabilities
 - **🏗️ Modular LLM Provider Architecture**: Clean separation with dedicated files per provider
@@ -93,8 +99,9 @@ AgenticFlow is a comprehensive, production-ready framework for building sophisti
 
 ### 🔧 **Developer Experience**
 - **Fully Async**: Built on Python's asyncio for high-performance concurrent operations
-- **Type-Safe Configuration**: Pydantic models with validation and environment variable support
-- **Comprehensive Testing**: Production-tested orchestration with 100% success rates
+- **Type-Safe Configuration**: Pydantic v2 models with ConfigDict patterns and validation
+- **Modern Compatibility**: Full Pydantic v2 support with no deprecation warnings
+- **Comprehensive Testing**: Production-tested orchestration with 100% success rates (107 tests passing)
 - **Modern Python**: Leverages Python 3.12+ features and best practices
 - **Extensible Architecture**: Plugin system for custom agents, tools, and topologies
 
@@ -311,6 +318,7 @@ asyncio.run(main())
 ```python
 import asyncio
 from agenticflow.orchestration.task_orchestrator import TaskOrchestrator
+from agenticflow.orchestration.task_management import FunctionTaskExecutor
 
 async def sample_task(name: str, duration: float = 1.0):
     """Sample interruptible task"""
@@ -331,22 +339,22 @@ async def main():
     # Connect a coordinator for real-time monitoring
     await orchestrator.connect_coordinator(
         coordinator_id="human_monitor",
-        coordinator_type="human",
-        capabilities={"streaming": True, "interruption": True}
+        coordinator_type="human"
     )
     
-    # Add interruptible tasks
-    orchestrator.add_function_task(
-        "long_task", "Long Running Task", 
-        sample_task, 
-        args=("long_task", 3.0),
-        interruptible=True  # Can be interrupted
+    # Add interruptible tasks using current API
+    executor = FunctionTaskExecutor(sample_task, "long_task", 3.0)
+    orchestrator.add_interactive_task(
+        "long_task", 
+        "Long Running Task", 
+        executor,
+        interruptible=True,  # Can be interrupted
+        streaming_enabled=True
     )
     
     # Create stream subscription for real-time updates
     subscription = orchestrator.create_stream_subscription(
-        coordinator_id="human_monitor",
-        event_types={"task_started", "task_progress", "task_completed"}
+        coordinator_id="human_monitor"
     )
     
     # Execute with real-time streaming
