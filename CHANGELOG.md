@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.3.0a0 — Phase 3 scaffolding (Decomposition, Patterns, Debugging)
+
+Highlights
+- Decomposition & Capabilities
+  - LLMTaskDecomposer: parses JSON plans from LLM output and maps capabilities to agents via CapabilityMatcher
+  - CapabilityMatcher and DictCapabilityMatcher for simple capability→agent routing
+- Advanced Patterns
+  - Negotiation: deterministic numeric negotiation with delta-based convergence and aggregation
+  - Auction: second-price (Vickrey) auction helper with winner/price output
+- Debugging & Summaries
+  - DebugInterface filters (event_types, since/until) for workflow/agent timelines
+  - WorkflowSummary: event counts, unique tasks/agents, start/end timestamps, duration
+  - Orchestrator events now include agent_id (and task_type for completed) for better introspection
+- Tests: full coverage for decomposer, patterns, debug filters/summary
+
 ## v0.2.0a0 — Phase 2 alpha (Communication, Reliability, Supervisor, Observability)
 
 Highlights
