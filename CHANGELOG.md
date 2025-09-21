@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.2.0a0 — Phase 2 alpha (Communication, Reliability, Supervisor, Observability)
+
+Highlights
+- Communication
+  - CommunicationBus interfaces and Message type (topic, type, payload, correlation_id, reply_to)
+  - Adapters: InMemory and LocalWebSocket (server/client), both support publish/subscribe and request/response
+  - Request/Response pattern helpers (rpc_call, register_rpc_handler) with correlation preservation
+- Reliability
+  - CircuitBreaker utility (CLOSED/OPEN/HALF_OPEN) with failure thresholds and recovery timeout
+  - Optional integration in ToolRegistry.invoke
+- Supervisor scaffolding
+  - SupervisorAgent interface and NoopTaskDecomposer (single-task workflow generation)
+- Observability (optional exporters)
+  - Env-toggled OpenTelemetry tracer wiring (console or OTLP), fallback to Noop by default
+  - Env-toggled Prometheus metrics HTTP server (no-op if library absent)
+- Tests & DX
+  - WebSocket adapter tests (broadcast, request/response)
+  - Pattern, reliability, supervisor, and optional observability tests
+  - uv-based workflow remains default (uv sync, uv run)
+
 ## v0.1.0a0 — Phase 1 foundation
 
 Initial V2 foundation with stable core contracts and working scaffold.

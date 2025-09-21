@@ -60,10 +60,21 @@ Acceptance criteria
 
 ## Phase 2: Communication & Patterns
 
-- Multi-protocol CommunicationBus (WebSockets/Redis)
-- Basic interaction patterns (request/response, broadcast)
-- Message persistence/replay; circuit breakers/retries
-- Metrics collection framework
+Scope
+- CommunicationBus interfaces (Message, publish/subscribe, request/response, broadcast)
+- Adapters: InMemory (dev) and LocalWebSocket (dev) behind interfaces
+- Interaction patterns: request/response and broadcast atop the bus
+- Persistence hooks: optional append to EventStore for replay
+- Reliability: CircuitBreaker utility and retry helpers
+- Observability: optional OpenTelemetry exporter wiring; metrics counters for bus/orchestrator
+- Security: standardize operation:resource naming; audit enrichment (trace/workflow IDs)
+
+Acceptance criteria
+- InMemory and LocalWebSocket adapters pass compliance tests (pub/sub, request/response)
+- Backpressure hook invoked when subscriber count or queue size exceeds threshold
+- Request/response supports timeout and propagates errors; correlation IDs consistent
+- Broadcast delivers exactly once per subscriber
+- If OTel enabled, spans export to Jaeger; otherwise Noop tracer is default
 
 Backward-compat constraints
 - Preserve Phase 1 contracts: Event types, FSM API, Orchestrator interfaces
@@ -72,9 +83,22 @@ Backward-compat constraints
 
 ## Phase 3: Supervisor & Advanced Observability
 
-- SupervisorAgent with LLM-based task decomposition
-- Advanced patterns (negotiation, auction)
-- OpenTelemetry exporters + Jaeger; Debug interface
+Scope
+- Supervisor & Decomposition
+  - LLM-powered TaskDecomposer (schema-guided, deterministic temperature), capability matching
+  - Template registry for common workflows; validation and optimization step
+- Advanced patterns
+  - Negotiation and auction interaction patterns with convergence detection and fairness policies
+  - Streaming communications with backpressure and flow control
+- Deep Observability
+  - Distributed tracing spans across agents/orchestrator/tools with context propagation over bus
+  - Real-time Debug interface (event timeline per workflow/agent), event replay helpers
+  - Metrics dashboards (tasks latency, failures, circuit states)
+
+Acceptance criteria
+- Supervisor: given a complex query, returns a multi-step workflow with dependencies and executes successfully with human-readable trace
+- Patterns: negotiation/auction tests validate convergence under synthetic inputs
+- Observability: spans export to Jaeger when enabled; debug interface can reconstruct task timelines from EventStore
 
 ---
 
