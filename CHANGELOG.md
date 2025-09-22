@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.0.0a1 (2025-09-22)
+
+Highlights
+- Validation & Policy (local): TaskSchemaRegistry enforced pre-assignment (jsonschema when available; fallback with helpful hints), PolicyGuard (allow/deny per agent:task), dev policy loader (YAML/JSON) + sample profiles
+- Mid-task events: tools can emit progress; orchestrator publishes task_progress events (streaming-friendly)
+- Topologies: class-based PipelineTopology and FanoutReduceTopology with tests; function helpers remain
+- Examples reorg: each demo self-contained (demo.py + data/ vs artifacts/); added Tools Pipeline, Local Docs, MCP demo scaffolding
+- Quickstart: root script that runs a minimal pipeline and renders diagrams (artifacts/quickstart)
+- Web UI (optional): minimal FastAPI server to browse summaries, diagrams, events, plus SSE stream
+- MCP (optional): preferred SDK integration hooks (mcp/fastmcp), fallback hardened HTTP/SSE tools; demo writes server responses to artifacts
+- Hardening: FSReadTool (extensions), HttpFetchTool (HTTPS-only option, content-type/size caps), sanitized error handling and log noise reduction
+- Docs: Quickstart, Usage, extended API Reference, Security & Policy (with troubleshooting), Utilities; Roadmap updated
+
+Breaking changes
+- Examples were moved to self-contained folders, and root-level example scripts removed in favor of demo.py per example
+
+Upgrade notes
+- Install UI or MCP extras if needed:
+  - `uv sync --extra ui` (Web UI)
+  - `uv sync --extra mcp` (MCP SDK-based tools)
+
+---
+
+# Changelog
+
 All notable changes to this project will be documented in this file.
 
 ## v0.3.0a0 — Phase 3 scaffolding (Decomposition, Patterns, Debugging)
