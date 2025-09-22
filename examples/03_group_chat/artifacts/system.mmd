@@ -1,0 +1,26 @@
+flowchart LR
+  analyst(["Agent: analyst"])
+  class analyst agent;
+  reporter(["Agent: reporter"])
+  class reporter agent;
+  classDef agent fill:#eef7ff,stroke:#05c;
+  classDef tool fill:#f9f0d0,stroke:#b98;
+  classDef task fill:#e8ffe8,stroke:#0a0;
+  tool_analyst_fs_read[/"Tool: fs_read"/]
+  class tool_analyst_fs_read tool;
+  analyst --> tool_analyst_fs_read
+  tool_analyst_http_fetch[/"Tool: http_fetch"/]
+  class tool_analyst_http_fetch tool;
+  analyst --> tool_analyst_http_fetch
+  tool_reporter_fs_read[/"Tool: fs_read"/]
+  class tool_reporter_fs_read tool;
+  reporter --> tool_reporter_fs_read
+  tool_reporter_http_fetch[/"Tool: http_fetch"/]
+  class tool_reporter_http_fetch tool;
+  reporter --> tool_reporter_http_fetch
+  task_analyst_chat(["Task: chat"])
+  class task_analyst_chat task;
+  analyst --> task_analyst_chat
+  task_reporter_chat(["Task: chat"])
+  class task_reporter_chat task;
+  reporter --> task_reporter_chat

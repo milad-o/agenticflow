@@ -1,0 +1,7 @@
+digraph G {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  "qna" [label="Agent: qna", shape=box, style="rounded,filled", fillcolor="#eef7ff"];
+  "task::qna::file_qna" [label="Task: file_qna", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "qna" -> "task::qna::file_qna";
+}

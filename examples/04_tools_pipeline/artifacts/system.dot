@@ -1,0 +1,15 @@
+digraph G {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  "reader" [label="Agent: reader", shape=box, style="rounded,filled", fillcolor="#eef7ff"];
+  "processor" [label="Agent: processor", shape=box, style="rounded,filled", fillcolor="#eef7ff"];
+  "writer" [label="Agent: writer", shape=box, style="rounded,filled", fillcolor="#eef7ff"];
+  "tool::reader::fs_read" [label="Tool: fs_read", shape=parallelogram, style=filled, fillcolor="#f9f0d0"];
+  "reader" -> "tool::reader::fs_read";
+  "task::reader::fs_read" [label="Task: fs_read", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "reader" -> "task::reader::fs_read";
+  "task::processor::compute_stats" [label="Task: compute_stats", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "processor" -> "task::processor::compute_stats";
+  "task::writer::write_report" [label="Task: write_report", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "writer" -> "task::writer::write_report";
+}

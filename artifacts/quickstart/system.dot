@@ -1,0 +1,10 @@
+digraph G {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  "processor" [label="Agent: processor", shape=box, style="rounded,filled", fillcolor="#eef7ff"];
+  "writer" [label="Agent: writer", shape=box, style="rounded,filled", fillcolor="#eef7ff"];
+  "task::processor::compute_stats" [label="Task: compute_stats", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "processor" -> "task::processor::compute_stats";
+  "task::writer::write_report" [label="Task: write_report", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "writer" -> "task::writer::write_report";
+}

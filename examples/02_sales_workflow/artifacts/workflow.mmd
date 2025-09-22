@@ -1,0 +1,8 @@
+flowchart TD
+  analyze_sales["analyze_sales\n(analyst:analyze_sales)"]
+  generate_report["generate_report\n(reporter:generate_sales_report)"]
+  analyze_sales --> generate_report
+classDef completed fill:#dfffd8,stroke:#0a0;
+classDef failed fill:#ffd8d8,stroke:#a00;
+classDef in_progress fill:#d8e8ff,stroke:#05c;
+class analyze_sales generate_report completed;

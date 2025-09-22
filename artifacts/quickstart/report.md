@@ -1,0 +1,11 @@
+# File Report
+
+````json
+{
+  "path": "README.md",
+  "lines": 184,
+  "words": 694,
+  "sha256": "faed09728e0bebb78afe80bbdd26297bf26a693e7283bea54a4f6002609be116"
+}
+
+````

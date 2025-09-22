@@ -1,0 +1,10 @@
+digraph G {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  "scanner" [label="Agent: scanner", shape=box, style="rounded,filled", fillcolor="#eef7ff"];
+  "summarizer" [label="Agent: summarizer", shape=box, style="rounded,filled", fillcolor="#eef7ff"];
+  "task::scanner::scan_files" [label="Task: scan_files", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "scanner" -> "task::scanner::scan_files";
+  "task::summarizer::write_summary" [label="Task: write_summary", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "summarizer" -> "task::summarizer::write_summary";
+}

@@ -1,0 +1,14 @@
+flowchart LR
+  scanner(["Agent: scanner"])
+  class scanner agent;
+  summarizer(["Agent: summarizer"])
+  class summarizer agent;
+  classDef agent fill:#eef7ff,stroke:#05c;
+  classDef tool fill:#f9f0d0,stroke:#b98;
+  classDef task fill:#e8ffe8,stroke:#0a0;
+  task_scanner_scan_files(["Task: scan_files"])
+  class task_scanner_scan_files task;
+  scanner --> task_scanner_scan_files
+  task_summarizer_write_summary(["Task: write_summary"])
+  class task_summarizer_write_summary task;
+  summarizer --> task_summarizer_write_summary

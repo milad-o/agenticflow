@@ -1,0 +1,21 @@
+digraph G {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  "mcp" [label="Agent: mcp", shape=box, style="rounded,filled", fillcolor="#eef7ff"];
+  "tool::mcp::mcp_http" [label="Tool: mcp_http", shape=parallelogram, style=filled, fillcolor="#f9f0d0"];
+  "mcp" -> "tool::mcp::mcp_http";
+  "tool::mcp::mcp_sse_stream" [label="Tool: mcp_sse_stream", shape=parallelogram, style=filled, fillcolor="#f9f0d0"];
+  "mcp" -> "tool::mcp::mcp_sse_stream";
+  "tool::mcp::mcp_sdk_call" [label="Tool: mcp_sdk_call", shape=parallelogram, style=filled, fillcolor="#f9f0d0"];
+  "mcp" -> "tool::mcp::mcp_sdk_call";
+  "tool::mcp::mcp_sdk_stream" [label="Tool: mcp_sdk_stream", shape=parallelogram, style=filled, fillcolor="#f9f0d0"];
+  "mcp" -> "tool::mcp::mcp_sdk_stream";
+  "task::mcp::mcp_http" [label="Task: mcp_http", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "mcp" -> "task::mcp::mcp_http";
+  "task::mcp::mcp_sse_stream" [label="Task: mcp_sse_stream", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "mcp" -> "task::mcp::mcp_sse_stream";
+  "task::mcp::mcp_sdk_call" [label="Task: mcp_sdk_call", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "mcp" -> "task::mcp::mcp_sdk_call";
+  "task::mcp::mcp_sdk_stream" [label="Task: mcp_sdk_stream", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "mcp" -> "task::mcp::mcp_sdk_stream";
+}

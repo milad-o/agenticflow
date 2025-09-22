@@ -1,0 +1,10 @@
+digraph G {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  "analyst" [label="Agent: analyst", shape=box, style="rounded,filled", fillcolor="#eef7ff"];
+  "reporter" [label="Agent: reporter", shape=box, style="rounded,filled", fillcolor="#eef7ff"];
+  "task::analyst::analyze_sales" [label="Task: analyze_sales", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "analyst" -> "task::analyst::analyze_sales";
+  "task::reporter::generate_sales_report" [label="Task: generate_sales_report", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "reporter" -> "task::reporter::generate_sales_report";
+}

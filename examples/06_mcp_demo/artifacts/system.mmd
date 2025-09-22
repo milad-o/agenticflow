@@ -1,0 +1,30 @@
+flowchart LR
+  mcp(["Agent: mcp"])
+  class mcp agent;
+  classDef agent fill:#eef7ff,stroke:#05c;
+  classDef tool fill:#f9f0d0,stroke:#b98;
+  classDef task fill:#e8ffe8,stroke:#0a0;
+  tool_mcp_mcp_http[/"Tool: mcp_http"/]
+  class tool_mcp_mcp_http tool;
+  mcp --> tool_mcp_mcp_http
+  tool_mcp_mcp_sse_stream[/"Tool: mcp_sse_stream"/]
+  class tool_mcp_mcp_sse_stream tool;
+  mcp --> tool_mcp_mcp_sse_stream
+  tool_mcp_mcp_sdk_call[/"Tool: mcp_sdk_call"/]
+  class tool_mcp_mcp_sdk_call tool;
+  mcp --> tool_mcp_mcp_sdk_call
+  tool_mcp_mcp_sdk_stream[/"Tool: mcp_sdk_stream"/]
+  class tool_mcp_mcp_sdk_stream tool;
+  mcp --> tool_mcp_mcp_sdk_stream
+  task_mcp_mcp_http(["Task: mcp_http"])
+  class task_mcp_mcp_http task;
+  mcp --> task_mcp_mcp_http
+  task_mcp_mcp_sse_stream(["Task: mcp_sse_stream"])
+  class task_mcp_mcp_sse_stream task;
+  mcp --> task_mcp_mcp_sse_stream
+  task_mcp_mcp_sdk_call(["Task: mcp_sdk_call"])
+  class task_mcp_mcp_sdk_call task;
+  mcp --> task_mcp_mcp_sdk_call
+  task_mcp_mcp_sdk_stream(["Task: mcp_sdk_stream"])
+  class task_mcp_mcp_sdk_stream task;
+  mcp --> task_mcp_mcp_sdk_stream

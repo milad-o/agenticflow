@@ -36,7 +36,28 @@ dev = [
   "black>=23.7.0",
   "ruff>=0.0.285",
   "mypy>=1.5.0",
-  "pre-commit>=3.5.0"
+  "pre-commit>=3.5.0",
+  "websockets>=11.0",
+]
+llm-groq = [
+  "httpx>=0.25.0"
+]
+llm-azure = [
+  "httpx>=0.25.0"
+]
+embed-ollama = [
+  "httpx>=0.25.0"
+]
+embed-hf = [
+  "sentence-transformers>=2.2.0"
+]
+mcp = [
+  "mcp",
+  "fastmcp",
+]
+ui = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.30.0"
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -53,6 +74,9 @@ select = ["E", "F", "I"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = ["-ra"]
+markers = [
+  "integration: marks tests as integration tests (require external services)"
+]
 
 [tool.mypy]
 python_version = "3.11"

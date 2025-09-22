@@ -1,0 +1,22 @@
+flowchart LR
+  reader(["Agent: reader"])
+  class reader agent;
+  processor(["Agent: processor"])
+  class processor agent;
+  writer(["Agent: writer"])
+  class writer agent;
+  classDef agent fill:#eef7ff,stroke:#05c;
+  classDef tool fill:#f9f0d0,stroke:#b98;
+  classDef task fill:#e8ffe8,stroke:#0a0;
+  tool_reader_fs_read[/"Tool: fs_read"/]
+  class tool_reader_fs_read tool;
+  reader --> tool_reader_fs_read
+  task_reader_fs_read(["Task: fs_read"])
+  class task_reader_fs_read task;
+  reader --> task_reader_fs_read
+  task_processor_compute_stats(["Task: compute_stats"])
+  class task_processor_compute_stats task;
+  processor --> task_processor_compute_stats
+  task_writer_write_report(["Task: write_report"])
+  class task_writer_write_report task;
+  writer --> task_writer_write_report

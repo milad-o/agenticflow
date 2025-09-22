@@ -1,0 +1,14 @@
+flowchart LR
+  analyst(["Agent: analyst"])
+  class analyst agent;
+  reporter(["Agent: reporter"])
+  class reporter agent;
+  classDef agent fill:#eef7ff,stroke:#05c;
+  classDef tool fill:#f9f0d0,stroke:#b98;
+  classDef task fill:#e8ffe8,stroke:#0a0;
+  task_analyst_analyze_sales(["Task: analyze_sales"])
+  class task_analyst_analyze_sales task;
+  analyst --> task_analyst_analyze_sales
+  task_reporter_generate_sales_report(["Task: generate_sales_report"])
+  class task_reporter_generate_sales_report task;
+  reporter --> task_reporter_generate_sales_report

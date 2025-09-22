@@ -1,0 +1,8 @@
+flowchart TD
+  stats["stats\n(processor:compute_stats)"]
+  report["report\n(writer:write_report)"]
+  stats --> report
+classDef completed fill:#dfffd8,stroke:#0a0;
+classDef failed fill:#ffd8d8,stroke:#a00;
+classDef in_progress fill:#d8e8ff,stroke:#05c;
+class stats report completed;

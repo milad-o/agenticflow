@@ -1,0 +1,12 @@
+schemas:
+  "reader:fs_read":
+    type: object
+    properties:
+      path: {type: string}
+    required: [path]
+policy:
+  allow_agent_tasks:
+    reader: [fs_read]
+    processor: [compute_stats]
+    writer: [write_report]
+  default_allow: false

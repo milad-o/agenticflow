@@ -1,0 +1,18 @@
+digraph G {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  "analyst" [label="Agent: analyst", shape=box, style="rounded,filled", fillcolor="#eef7ff"];
+  "reporter" [label="Agent: reporter", shape=box, style="rounded,filled", fillcolor="#eef7ff"];
+  "tool::analyst::fs_read" [label="Tool: fs_read", shape=parallelogram, style=filled, fillcolor="#f9f0d0"];
+  "analyst" -> "tool::analyst::fs_read";
+  "tool::analyst::http_fetch" [label="Tool: http_fetch", shape=parallelogram, style=filled, fillcolor="#f9f0d0"];
+  "analyst" -> "tool::analyst::http_fetch";
+  "tool::reporter::fs_read" [label="Tool: fs_read", shape=parallelogram, style=filled, fillcolor="#f9f0d0"];
+  "reporter" -> "tool::reporter::fs_read";
+  "tool::reporter::http_fetch" [label="Tool: http_fetch", shape=parallelogram, style=filled, fillcolor="#f9f0d0"];
+  "reporter" -> "tool::reporter::http_fetch";
+  "task::analyst::chat" [label="Task: chat", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "analyst" -> "task::analyst::chat";
+  "task::reporter::chat" [label="Task: chat", shape=oval, style=filled, fillcolor="#e8ffe8"];
+  "reporter" -> "task::reporter::chat";
+}

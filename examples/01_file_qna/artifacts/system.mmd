@@ -1,0 +1,9 @@
+flowchart LR
+  qna(["Agent: qna"])
+  class qna agent;
+  classDef agent fill:#eef7ff,stroke:#05c;
+  classDef tool fill:#f9f0d0,stroke:#b98;
+  classDef task fill:#e8ffe8,stroke:#0a0;
+  task_qna_file_qna(["Task: file_qna"])
+  class task_qna_file_qna task;
+  qna --> task_qna_file_qna

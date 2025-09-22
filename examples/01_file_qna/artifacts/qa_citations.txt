@@ -1,0 +1,2 @@
+/Users/miladolad/Projects/agenticflow/examples/01_file_qna/data/nature.md
+/Users/miladolad/Projects/agenticflow/examples/01_file_qna/data/law.md
