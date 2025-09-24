@@ -1,0 +1,36 @@
+name: "AgenticFlow Example"
+
+orchestrator:
+  model: ""
+  temperature: 0.0
+  max_parallel_tasks: 3
+  retry_attempts: 2
+
+agents:
+  file_manager:
+    name: "file_manager"
+    model: ""
+    temperature: 0.0
+    tools: ["read_file", "write_file"]
+    tags: ["filesystem"]
+    description: "Agent specialized in file operations and content management"
+    max_iterations: 10
+
+  system_admin:
+    name: "system_admin"
+    model: ""
+    temperature: 0.0
+    tools: ["shell"]
+    tags: ["system"]
+    description: "Agent for system administration and shell command execution"
+    max_iterations: 5
+
+tools:
+  read_file:
+    description: "Read contents of a file"
+  write_file:
+    description: "Write content to a file"
+  shell:
+    description: "Execute shell commands"
+
+resources: {}

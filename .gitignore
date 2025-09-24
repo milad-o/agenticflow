@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+*.so
+
+# Virtual environments
+.venv/
+venv/
+.env
+.env.*
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Test / coverage / cache
+.pytest_cache/
+.coverage*
+htmlcov/
+.mypy_cache/
+.cache/
+
+# Logs / artifacts
+logs/
+*.log
+
+# Node / misc
+node_modules/
+
+# LangChain/LangSmith
+.langchain/

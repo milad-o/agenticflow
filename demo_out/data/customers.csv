@@ -1,0 +1,5 @@
+-e id,name,tier
+1,Alice,Gold
+2,Bob,Silver
+3,Chad,Bronze
+-e 4,Dina,Gold
