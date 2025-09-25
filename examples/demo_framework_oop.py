@@ -17,27 +17,40 @@ import asyncio
 import os
 import logging
 from pathlib import Path
-from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama, OllamaEmbeddings
+
+
+def _pick_ollama_models():
+    import subprocess
+    prefer = ("qwen2.5:7b", "granite3.2:8b")
+    prefer_embed = ("nomic-embed-text:latest", "nomic-embed-text")
+    names = []
+    try:
+        p = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=False)
+        for line in p.stdout.splitlines()[1:]:
+            parts = line.split()
+            if parts:
+                names.append(parts[0])
+    except Exception:
+        names = []
+    chat = next((m for m in prefer if any(n.startswith(m) for n in names)), names[0] if names else None)
+    embed = next((m for m in prefer_embed if any(n.startswith(m) for n in names)), None)
+    if not chat:
+        raise RuntimeError("No Ollama chat model found. Please `ollama pull qwen2.5:7b` or `granite3.2:8b`.")
+    return chat, embed
 
 # New clean imports from restructured modules
 from agenticflow import (
     Flow, FlowConfig, AgentConfig, AgentRole,
     FileSystemAgent, ReportingAgent, AnalysisAgent,
-    AgentRegistry, AgentType, register_agent,
+    AgentRegistry, AgentType,
     get_chat_model, Planner, ToolRegistry
 )
 from agenticflow.core.events import EventEmitter, EventType
 from agenticflow.agent.strategies import HybridRPAVHAgent
 
 
-# Example: Custom agent using the new OOP approach
-@register_agent(
-    name="DataValidationAgent",
-    agent_type=AgentType.SPECIALIZED,
-    description="Validates data quality and integrity",
-    capabilities=["data_validation", "quality_checks", "schema_validation"],
-    requires_llm=True
-)
+# Example: Custom agent using the new OOP approach (no registry decorator needed for this demo)
 class DataValidationAgent(HybridRPAVHAgent):
     """Custom data validation agent demonstrating OOP patterns."""
 
@@ -82,15 +95,15 @@ async def main() -> int:
     # Configure logging
     logging.getLogger().setLevel(logging.WARNING)
 
-    # 1. Modern LLM Integration
+    # 1. Modern LLM Integration (explicit Ollama)
     print("\n📡 LLM Integration:")
-    llm = ChatGroq(
-        model="llama-3.2-90b-text-preview",
-        temperature=0.1,
-        api_key=os.environ.get("GROQ_API_KEY")
-    )
+    chat_model, embed_model = _pick_ollama_models()
+    llm = ChatOllama(model=chat_model, temperature=0.1)
+    embeddings = OllamaEmbeddings(model=embed_model) if embed_model else None
     print(f"  ✅ LangChain LLM: {type(llm).__name__}")
-    print(f"  📋 Model: {llm.model_name}")
+    print(f"  📋 Model: {getattr(llm, 'model_name', getattr(llm, 'model', 'unknown'))}")
+    if embeddings:
+        print(f"  🧩 Embeddings: {embed_model}")
 
     # 2. Agent Registry Exploration
     print("\n🏗️ Agent Registry System:")
@@ -192,14 +205,8 @@ async def main() -> int:
     print("\n💼 Executing Advanced Workflow:")
 
     request = """
-    Please analyze the Python files in the examples directory to understand
-    the new OOP framework structure. Create a comprehensive report that highlights:
-    1. The transition from factory patterns to pure OOP
-    2. New module organization and separation of concerns
-    3. LangChain integration improvements
-    4. Developer experience enhancements
-
-    Save the analysis as 'oop_framework_report.md' with executive summary.
+    Please read the ssis packages in data/ssis/ and tell me
+    what they are and prepare short report.
     """
 
     print("📋 Task:", request[:100] + "...")
@@ -213,7 +220,7 @@ async def main() -> int:
         print(f"  ✅ Success: {result.get('success', False)}")
 
         # Check for generated report
-        report_path = artifact_dir / "oop_framework_report.md"
+        report_path = artifact_dir / f"{Path(__file__).stem}_report.md"
         if report_path.exists():
             print(f"  📄 Report Generated: {report_path}")
             file_size = report_path.stat().st_size
@@ -228,6 +235,8 @@ async def main() -> int:
                 print(f"  {line}")
             if len(preview.split('\n')) > 10:
                 print("  ...")
+        else:
+            print("  ⚠️ Report not found:", report_path)
 
     except Exception as e:
         print(f"  ❌ Execution Error: {e}")

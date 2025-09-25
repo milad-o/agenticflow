@@ -13,13 +13,29 @@ from pathlib import Path
 # Add the project root to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# Direct import of just the LLM functionality
-try:
-    from agenticflow.core.models import get_easy_llm
-except ImportError as e:
-    print(f"Import error: {e}")
-    print("Trying direct path...")
-    from agenticflow.core.models.models import get_easy_llm
+# Explicit Ollama LLM and Embeddings setup
+from langchain_ollama import ChatOllama, OllamaEmbeddings
+
+
+def _pick_ollama_models():
+    """Detect available Ollama models and pick preferred chat and embedding models."""
+    import subprocess
+    prefer = ("qwen2.5:7b", "granite3.2:8b")
+    prefer_embed = ("nomic-embed-text:latest", "nomic-embed-text")
+    names = []
+    try:
+        p = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=False)
+        for line in p.stdout.splitlines()[1:]:
+            parts = line.split()
+            if parts:
+                names.append(parts[0])
+    except Exception:
+        names = []
+    chat = next((m for m in prefer if any(n.startswith(m) for n in names)), names[0] if names else None)
+    embed = next((m for m in prefer_embed if any(n.startswith(m) for n in names)), None)
+    if not chat:
+        raise RuntimeError("No Ollama chat model found. Please `ollama pull qwen2.5:7b` or `granite3.2:8b`.")
+    return chat, embed
 
 import pandas as pd
 
@@ -30,14 +46,15 @@ async def main():
     print("🚀 Minimal LLM Demo")
     print("=" * 30)
 
-    # Super easy LLM setup - this is the key feature!
+    # Explicit Ollama LLM + Embeddings setup
     try:
-        llm = get_easy_llm("auto", temperature=0.1)
+        chat_model, embed_model = _pick_ollama_models()
+        llm = ChatOllama(model=chat_model, temperature=0.1)
+        embeddings = OllamaEmbeddings(model=embed_model) if embed_model else None
         print(f"✅ LLM: {type(llm).__name__}")
-        if hasattr(llm, 'model_name'):
-            print(f"📋 Model: {llm.model_name}")
-        elif hasattr(llm, 'model'):
-            print(f"📋 Model: {llm.model}")
+        print(f"📋 Model: {getattr(llm, 'model_name', getattr(llm, 'model', 'unknown'))}")
+        if embeddings:
+            print(f"🧩 Embeddings: OllamaEmbeddings ({embed_model})")
     except Exception as e:
         print(f"❌ LLM setup failed: {e}")
         return 1
@@ -51,6 +68,9 @@ async def main():
 
     if csv_files:
         print(f"📊 Found {len(csv_files)} CSV files")
+        artifact_dir = (Path(__file__).parent / "artifact")
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        report_path = artifact_dir / f"{Path(__file__).stem}_report.md"
 
         # Read samples from each file
         file_summaries = []
@@ -86,6 +106,8 @@ async def main():
             print("\n📄 LLM Analysis:")
             print("─" * 50)
             print(result)
+            # Write artifact
+            (report_path).write_text(str(result), encoding="utf-8")
 
         except Exception as e:
             print(f"❌ LLM invocation failed: {e}")
@@ -103,15 +125,21 @@ async def main():
             print("─" * 30)
             print(result)
 
+            # Write artifact
+            artifact_dir = (Path(__file__).parent / "artifact")
+            artifact_dir.mkdir(parents=True, exist_ok=True)
+            report_path = artifact_dir / f"{Path(__file__).stem}_report.md"
+            report_path.write_text(str(result), encoding="utf-8")
+
         except Exception as e:
             print(f"❌ LLM invocation failed: {e}")
             return 1
 
-    print(f"\n🎉 Success! The easy LLM setup works perfectly:")
-    print(f"  • get_easy_llm('auto') - automatically detects best LLM")
-    print(f"  • Supports Groq, OpenAI, Ollama, and more")
-    print(f"  • No configuration files needed")
-    print(f"  • Works with any LangChain provider")
+    print(f"\n🎉 Success! Explicit Ollama setup works:")
+    print(f"  • Chat model: {getattr(llm, 'model', 'unknown')}")
+    print(f"  • Embeddings: {getattr(embeddings, 'model', 'none') if 'embeddings' in locals() else 'none'}")
+    print(f"  • Local-first, zero secrets required")
+    print(f"  • Still compatible with any LangChain LLM if you swap it in")
 
     return 0
 

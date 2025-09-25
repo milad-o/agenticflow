@@ -769,7 +769,7 @@ Briefly analyze what needs to be done and any issues to avoid. Respond in 2-3 se
                         # Optionally ask LLM to synthesize a richer report
                         use_llm = self.static_resources.get("use_llm_for_report")
                         if use_llm is None:
-                            use_llm = len(content_snippets) > 0  # default: only if we actually read files
+                            use_llm = True
                         if use_llm:
                             try:
                                 max_chars = self.static_resources.get("content_limits", {}).get("max_file_content_chars", 1000)
@@ -829,18 +829,17 @@ Briefly analyze what needs to be done and any issues to avoid. Respond in 2-3 se
                                     + extra_guidance +
                                     "Write in clear markdown without backticks around the whole report."
                                 )
-                                llm_resp = await asyncio.wait_for(self.model.ainvoke([HumanMessage(content=prompt)]), timeout=20.0)
+                                llm_resp = await asyncio.wait_for(self.model.ainvoke([HumanMessage(content=prompt)]), timeout=60.0)
                                 llm_text = llm_resp.content if hasattr(llm_resp, "content") else str(llm_resp)
                                 if llm_text and isinstance(llm_text, str) and len(llm_text.strip()) > 0:
                                     params["content"] = llm_text
                                 else:
                                     raise RuntimeError("LLM report generation returned empty content")
                             except Exception as e:
-                                # Strict: never fall back to heuristic content
                                 raise
                         else:
-                            # Strict: LLM must be used
-                            raise RuntimeError("use_llm_for_report is False but strict LLM-only reporting is enforced")
+                            raise RuntimeError("use_llm_for_report is False but LLM-only reporting is enforced")
+                    
                     
                     # Execute tool via ainvoke with param dict
                     tool_input = params if params else {}

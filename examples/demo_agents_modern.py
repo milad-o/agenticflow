@@ -16,9 +16,27 @@ import time
 import os
 import logging
 from pathlib import Path
-from langchain_openai import ChatOpenAI
-from langchain_groq import ChatGroq
-from langchain_ollama import ChatOllama
+from langchain_ollama import ChatOllama, OllamaEmbeddings
+
+
+def _pick_ollama_models():
+    import subprocess
+    prefer = ("qwen2.5:7b", "granite3.2:8b")
+    prefer_embed = ("nomic-embed-text:latest", "nomic-embed-text")
+    names = []
+    try:
+        p = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=False)
+        for line in p.stdout.splitlines()[1:]:
+            parts = line.split()
+            if parts:
+                names.append(parts[0])
+    except Exception:
+        names = []
+    chat = next((m for m in prefer if any(n.startswith(m) for n in names)), names[0] if names else None)
+    embed = next((m for m in prefer_embed if any(n.startswith(m) for n in names)), None)
+    if not chat:
+        raise RuntimeError("No Ollama chat model found. Please `ollama pull qwen2.5:7b` or `granite3.2:8b`.")
+    return chat, embed
 
 from agenticflow import (
     Flow, FlowConfig,
@@ -27,33 +45,7 @@ from agenticflow import (
 )
 
 
-def get_llm_instance(provider: str = "groq") -> any:
-    """Get LLM instance based on provider preference."""
-    if provider == "openai":
-        return ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=0.1,
-            api_key=os.environ.get("OPENAI_API_KEY")
-        )
-    elif provider == "groq":
-        return ChatGroq(
-            model="llama-3.2-90b-text-preview",
-            temperature=0.1,
-            api_key=os.environ.get("GROQ_API_KEY")
-        )
-    elif provider == "ollama":
-        return ChatOllama(
-            model="llama3.2:latest",
-            temperature=0.1,
-            base_url=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-        )
-    else:
-        # Fallback to Groq
-        return ChatGroq(
-            model="llama-3.2-90b-text-preview",
-            temperature=0.1,
-            api_key=os.environ.get("GROQ_API_KEY")
-        )
+# Explicit Ollama only for this demo
 
 
 async def main() -> int:
@@ -65,9 +57,11 @@ async def main() -> int:
     # Configure logging
     logging.getLogger().setLevel(logging.WARNING)
 
-    # Choose your LLM provider
-    llm_provider = os.environ.get("LLM_PROVIDER", "groq")  # groq, openai, ollama
-    llm = get_llm_instance(llm_provider)
+    # Explicit Ollama setup
+    chat_model, embed_model = _pick_ollama_models()
+    llm = ChatOllama(model=chat_model, temperature=0.1)
+    embeddings = OllamaEmbeddings(model=embed_model) if embed_model else None
+    llm_provider = "ollama"
 
     # Initialize flow
     flow = Flow(
@@ -99,10 +93,11 @@ async def main() -> int:
         temperature=0.0  # Deterministic for filesystem operations
     )
 
+    report_name = f"{Path(__file__).stem}_report.md"
     reporting_agent = ReportingAgent(
         llm=llm,
         name="reporting_agent",
-        report_filename=str(artifact_dir / "modern_demo_report.md"),
+        report_filename=str(artifact_dir / report_name),
         report_format="markdown",
         max_attempts=2,
         use_llm_reflection=False,  # Keep report generation fast
@@ -160,10 +155,10 @@ async def main() -> int:
     print(f"Completed in {elapsed:.2f}s")
     print(f"Tasks: {len(task_results)}/{len(tasks)} completed")
     print(f"LLM Provider: {llm_provider}")
-    print(f"LLM Model: {llm.model_name if hasattr(llm, 'model_name') else 'Unknown'}")
+    print(f"LLM Model: {getattr(llm, 'model_name', getattr(llm, 'model', 'Unknown'))}")
 
     # Check for report
-    report_path = artifact_dir / "modern_demo_report.md"
+    report_path = artifact_dir / report_name
     if report_path.exists():
         print("Report:", report_path)
         preview_lines = report_path.read_text(encoding="utf-8", errors="ignore").splitlines()[:10]

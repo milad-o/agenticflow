@@ -16,9 +16,30 @@ from pathlib import Path
 
 from agenticflow import (
     Flow, FlowConfig, Planner,
-    FileSystemAgent, AnalysisAgent, ReportingAgent,
-    get_easy_llm
+    FileSystemAgent, AnalysisAgent, ReportingAgent
 )
+
+from langchain_ollama import ChatOllama, OllamaEmbeddings
+
+
+def _pick_ollama_models():
+    import subprocess
+    prefer = ("qwen2.5:7b", "granite3.2:8b")
+    prefer_embed = ("nomic-embed-text:latest", "nomic-embed-text")
+    names = []
+    try:
+        p = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=False)
+        for line in p.stdout.splitlines()[1:]:
+            parts = line.split()
+            if parts:
+                names.append(parts[0])
+    except Exception:
+        names = []
+    chat = next((m for m in prefer if any(n.startswith(m) for n in names)), names[0] if names else None)
+    embed = next((m for m in prefer_embed if any(n.startswith(m) for n in names)), None)
+    if not chat:
+        raise RuntimeError("No Ollama chat model found. Please `ollama pull qwen2.5:7b` or `granite3.2:8b`.")
+    return chat, embed
 
 
 async def main() -> int:
@@ -32,7 +53,6 @@ async def main() -> int:
         logging.getLogger().setLevel(logging.WARNING)
     except Exception:
         pass
-    os.environ.setdefault("AGENTICFLOW_LLM_PROVIDER", "groq")
 
     flow = Flow(
         FlowConfig(
@@ -53,9 +73,13 @@ async def main() -> int:
         "write_text_atomic",
     ])
 
-    # Get LLM instance for agents (auto-detect best available)
-    llm = get_easy_llm("auto", temperature=0.1)
-    print(f"🤖 Using LLM: {type(llm).__name__}")
+    # Explicit Ollama LLM + Embeddings
+    chat_model, embed_model = _pick_ollama_models()
+    llm = ChatOllama(model=chat_model, temperature=0.1)
+    embeddings = OllamaEmbeddings(model=embed_model) if embed_model else None
+    print(f"🤖 Using LLM: {type(llm).__name__} ({getattr(llm, 'model', 'unknown')})")
+    if embeddings:
+        print(f"🧩 Embeddings: {embed_model}")
 
     # Agents
     csv_path = "examples/data/huge/products-1000000.csv"
@@ -100,7 +124,7 @@ async def main() -> int:
         value_column="size",
     )
 
-    report_name = "huge_csv_analysis_report.md"
+    report_name = f"{Path(__file__).stem}_report.md"
     reporter = ReportingAgent(
         llm=llm,
         name="hybrid_reporting",

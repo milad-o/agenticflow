@@ -15,8 +15,28 @@ import pandas as pd
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
 
-# AgenticFlow easy setup
-from agenticflow import get_easy_llm
+# Explicit Ollama LLM + Embeddings
+from langchain_ollama import ChatOllama, OllamaEmbeddings
+
+
+def _pick_ollama_models():
+    import subprocess
+    prefer = ("qwen2.5:7b", "granite3.2:8b")
+    prefer_embed = ("nomic-embed-text:latest", "nomic-embed-text")
+    names = []
+    try:
+        p = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=False)
+        for line in p.stdout.splitlines()[1:]:
+            parts = line.split()
+            if parts:
+                names.append(parts[0])
+    except Exception:
+        names = []
+    chat = next((m for m in prefer if any(n.startswith(m) for n in names)), names[0] if names else None)
+    embed = next((m for m in prefer_embed if any(n.startswith(m) for n in names)), None)
+    if not chat:
+        raise RuntimeError("No Ollama chat model found. Please `ollama pull qwen2.5:7b` or `granite3.2:8b`.")
+    return chat, embed
 
 
 @tool
@@ -74,10 +94,14 @@ async def main():
     print("🚀 Simple CSV Demo - Easy LLM Setup")
     print("=" * 45)
 
-    # Super easy LLM setup!
+    # Explicit Ollama setup
     try:
-        llm = get_easy_llm("auto", temperature=0.1)
-        print(f"✅ LLM: {type(llm).__name__}")
+        chat_model, embed_model = _pick_ollama_models()
+        llm = ChatOllama(model=chat_model, temperature=0.1)
+        embeddings = OllamaEmbeddings(model=embed_model) if embed_model else None
+        print(f"✅ LLM: {type(llm).__name__} ({getattr(llm, 'model', 'unknown')})")
+        if embeddings:
+            print(f"🧩 Embeddings: {embed_model}")
     except Exception as e:
         print(f"❌ LLM setup failed: {e}")
         return 1
@@ -140,7 +164,14 @@ async def main():
 
         print(f"\n📄 LLM Response:")
         print("─" * 50)
-        print(response.content if hasattr(response, 'content') else str(response))
+        content = response.content if hasattr(response, 'content') else str(response)
+        print(content)
+
+        # Write artifact
+        artifact_dir = (Path(__file__).parent / "artifact")
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        report_path = artifact_dir / f"{Path(__file__).stem}_report.md"
+        report_path.write_text(content, encoding="utf-8")
 
         print("\n✅ Demo completed successfully!")
 
