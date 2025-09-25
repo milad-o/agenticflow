@@ -59,6 +59,8 @@ def get_llm_instance(provider: str = "groq") -> any:
 async def main() -> int:
     base = Path(__file__).resolve().parent.parent
     workspace = base / "examples"
+    artifact_dir = workspace / "artifact"
+    artifact_dir.mkdir(parents=True, exist_ok=True)
 
     # Configure logging
     logging.getLogger().setLevel(logging.WARNING)
@@ -91,7 +93,7 @@ async def main() -> int:
         llm=llm,
         name="filesystem_agent",
         file_pattern="*.dtsx",
-        search_root="data/ssis",
+        search_root="examples/data/ssis",
         max_attempts=2,
         use_llm_reflection=True,  # Enable smart reflection with LLM
         temperature=0.0  # Deterministic for filesystem operations
@@ -100,7 +102,7 @@ async def main() -> int:
     reporting_agent = ReportingAgent(
         llm=llm,
         name="reporting_agent",
-        report_filename="modern_demo_report.md",
+        report_filename=str(artifact_dir / "modern_demo_report.md"),
         report_format="markdown",
         max_attempts=2,
         use_llm_reflection=False,  # Keep report generation fast
@@ -161,7 +163,7 @@ async def main() -> int:
     print(f"LLM Model: {llm.model_name if hasattr(llm, 'model_name') else 'Unknown'}")
 
     # Check for report
-    report_path = workspace / "modern_demo_report.md"
+    report_path = artifact_dir / "modern_demo_report.md"
     if report_path.exists():
         print("Report:", report_path)
         preview_lines = report_path.read_text(encoding="utf-8", errors="ignore").splitlines()[:10]

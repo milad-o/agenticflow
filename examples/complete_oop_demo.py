@@ -73,6 +73,8 @@ async def main() -> int:
 
     base = Path(__file__).resolve().parent.parent
     workspace = base / "examples"
+    artifact_dir = workspace / "artifact"
+    artifact_dir.mkdir(parents=True, exist_ok=True)
 
     print("🚀 AgenticFlow Complete OOP Framework Demo")
     print("=" * 50)
@@ -118,7 +120,7 @@ async def main() -> int:
     reporting_agent = ReportingAgent(
         llm=llm,
         name="modern_reporter",
-        report_filename="oop_framework_report.md",
+        report_filename=str(artifact_dir / "oop_framework_report.md"),
         temperature=0.2  # Creative report writing
     )
     print(f"  ✅ Created: {reporting_agent.__class__.__name__}")
@@ -211,7 +213,7 @@ async def main() -> int:
         print(f"  ✅ Success: {result.get('success', False)}")
 
         # Check for generated report
-        report_path = workspace / "oop_framework_report.md"
+        report_path = artifact_dir / "oop_framework_report.md"
         if report_path.exists():
             print(f"  📄 Report Generated: {report_path}")
             file_size = report_path.stat().st_size

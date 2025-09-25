@@ -34,6 +34,8 @@ async def main():
     print("=" * 55)
 
     workspace = Path(__file__).parent
+    artifact_dir = workspace / "artifact"
+    artifact_dir.mkdir(parents=True, exist_ok=True)
 
     # Method 1: Use any LangChain LLM directly
     print("\n🎯 Method 1: Direct LangChain Integration")
@@ -121,7 +123,7 @@ async def main():
     reporting_agent = ReportingAgent(
         llm=llm2,  # ← Same LLM or different one!
         name="easy_reporter",
-        report_filename="easy_setup_report.md"
+        report_filename=str(artifact_dir / "easy_setup_report.md")
     )
     print(f"  ✅ {reporting_agent.__class__.__name__} with {type(llm2).__name__}")
 
@@ -164,7 +166,7 @@ async def main():
         print(f"  ✅ Completed successfully!")
 
         # Check report
-        report_path = workspace / "easy_setup_report.md"
+        report_path = artifact_dir / "easy_setup_report.md"
         if report_path.exists():
             print(f"  📄 Report: {report_path}")
 

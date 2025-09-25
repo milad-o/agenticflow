@@ -24,6 +24,8 @@ from agenticflow import (
 async def main() -> int:
     base = Path(__file__).resolve().parent.parent
     workspace = base / "examples"
+    artifact_dir = workspace / "artifact"
+    artifact_dir.mkdir(parents=True, exist_ok=True)
 
     # Quiet console; full transcript goes to logs/
     try:
@@ -102,7 +104,7 @@ async def main() -> int:
     reporter = ReportingAgent(
         llm=llm,
         name="hybrid_reporting",
-        report_filename=report_name,
+        report_filename=str(artifact_dir / report_name),
         max_attempts=2,
         use_llm_reflection=False,
     )
@@ -146,7 +148,7 @@ async def main() -> int:
     print(f"Completed in {elapsed:.2f}s")
     print(f"Tasks: {len(task_results)}/{len(tasks)} completed")
 
-    candidates = [workspace / report_name, base / report_name]
+    candidates = [artifact_dir / report_name]
     report_path = next((p for p in candidates if p.exists()), None)
     if report_path:
         print("Report:", report_path)

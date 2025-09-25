@@ -30,6 +30,8 @@ async def main():
     print("=" * 50)
 
     workspace = Path(__file__).parent
+    artifact_dir = workspace / "artifact"
+    artifact_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Pick ANY LangChain LLM - super easy!
     print("\n🤖 LLM Options:")
@@ -81,7 +83,7 @@ async def main():
     reporting_agent = ReportingAgent(
         llm=llm,  # ← Same here!
         name="reporter",
-        report_filename="simple_demo_report.md"
+        report_filename=str(artifact_dir / "simple_demo_report.md")
     )
     print(f"  ✅ {reporting_agent.__class__.__name__} created")
 
@@ -132,7 +134,7 @@ async def main():
         print(f"  ✅ Task completed successfully!")
 
         # Check for report
-        report_path = workspace / "simple_demo_report.md"
+        report_path = artifact_dir / "simple_demo_report.md"
         if report_path.exists():
             print(f"  📄 Report created: {report_path}")
 

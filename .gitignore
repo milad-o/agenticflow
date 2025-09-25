@@ -38,3 +38,6 @@ node_modules/
 
 # LangChain/LangSmith
 .langchain/
+
+.claude/
+WARP.md

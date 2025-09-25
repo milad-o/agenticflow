@@ -1,81 +1,43 @@
-# Data Integration Report
-==========================
+# Executive Summary
+This report provides an overview and analysis of the provided CSV files: customers.csv, products.csv, and orders.csv. The goal is to integrate these datasets to gain insights into customer purchasing behavior and product sales. A proposed merge strategy is outlined, including join keys, join types, and handling of missing values.
 
-## Executive Summary
--------------------
+# Data Overview
+The datasets contain information about customers, products, and orders. The customers.csv file likely contains customer demographic information, products.csv contains product details, and orders.csv contains transactional data. The file sizes are relatively small, with customers.csv and products.csv being 0.5 KB each, and orders.csv being 0.4 KB.
 
-This report presents an analysis of the provided CSV files, `department.csv` and `employees.csv`. The goal is to understand the data, identify potential issues, and propose a merge strategy to integrate the two datasets.
+# Detailed Analysis
+Based on the file names and typical schema conventions, the following columns are inferred:
+- customers.csv: customer_id, name, email, address
+- products.csv: product_id, name, description, price
+- orders.csv: order_id, customer_id, product_id, order_date, quantity
 
-## Data Overview
-----------------
+A proposed merge strategy involves joining the orders.csv file with customers.csv and products.csv using the customer_id and product_id columns, respectively. The join type will be an inner join to ensure that only matching records are included in the merged dataset.
 
-### department.csv
+To handle missing values, a threshold will be set to determine the minimum number of required fields. Type mismatches will be addressed by converting data types to the most suitable format.
 
-| Column Name | Data Type | Description |
-| --- | --- | --- |
-| department_id | int | Unique identifier for each department |
-| department_name | string | Name of the department |
+# Key Findings
+The merged dataset will provide valuable insights into customer purchasing behavior, including:
+- Which products are most popular among customers
+- Customer demographics and purchasing patterns
+- Product sales trends and revenue
 
-### employees.csv
-
-| Column Name | Data Type | Description |
-| --- | --- | --- |
-| employee_id | int | Unique identifier for each employee |
-| department_id | int | Foreign key referencing the department_id in department.csv |
-| employee_name | string | Name of the employee |
-| job_title | string | Job title of the employee |
-
-## Detailed Analysis
--------------------
-
-Upon reviewing the data, we notice the following:
-
-* Both datasets have a unique identifier column (`department_id` in department.csv and `employee_id` in employees.csv).
-* The `department_id` column in employees.csv is a foreign key referencing the `department_id` column in department.csv.
-* There are no missing values or type mismatches in either dataset.
-
-## Merge Strategy
-----------------
-
-Based on the analysis, we propose the following merge strategy:
-
-* **Join Type:** Inner Join
-* **Join Key:** `department_id`
-* **Column Mappings/Renames:**
-	+ `department_id` in employees.csv will be joined with `department_id` in department.csv
-* **Handling of Missing Values:** None, as there are no missing values in either dataset
-* **Handling of Type Mismatches:** None, as there are no type mismatches in either dataset
-
-## Example Merge
-----------------
-
-Here is an example of how to merge the two datasets using SQL:
+Example merge using pandas:
 ```sql
-SELECT e.employee_name, d.department_name
-FROM employees e
-INNER JOIN department d ON e.department_id = d.department_id;
+SELECT orders.order_id, customers.name, products.name, orders.order_date, orders.quantity
+FROM orders
+INNER JOIN customers ON orders.customer_id = customers.customer_id
+INNER JOIN products ON orders.product_id = products.product_id
 ```
-Or using pandas in Python:
+Alternatively, using pandas merge:
 ```python
 import pandas as pd
 
-# Load the datasets
-department_df = pd.read_csv('department.csv')
-employees_df = pd.read_csv('employees.csv')
+orders = pd.read_csv('orders.csv')
+customers = pd.read_csv('customers.csv')
+products = pd.read_csv('products.csv')
 
-# Merge the datasets
-merged_df = pd.merge(employees_df, department_df, on='department_id')
-
-# Print the merged dataset
-print(merged_df)
+merged_data = pd.merge(orders, customers, on='customer_id')
+merged_data = pd.merge(merged_data, products, on='product_id')
 ```
-## Key Findings
-----------------
 
-* The two datasets can be successfully merged using an inner join on the `department_id` column.
-* There are no missing values or type mismatches in either dataset.
-
-## Conclusion
---------------
-
-In conclusion, the proposed merge strategy and example merge demonstrate a successful integration of the `department.csv` and `employees.csv` datasets. The merged dataset can be used for further analysis and reporting.
+# Conclusion
+The proposed merge strategy will enable the integration of the customers, products, and orders datasets, providing a comprehensive view of customer purchasing behavior and product sales. The merged dataset will be useful for business intelligence and data-driven decision-making. Further analysis can be performed to identify trends, patterns, and correlations within the data.

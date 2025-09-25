@@ -56,6 +56,8 @@ class CustomDataAgent(HybridRPAVHAgent):
 async def main() -> int:
     base = Path(__file__).resolve().parent.parent
     workspace = base / "examples"
+    artifact_dir = workspace / "artifact"
+    artifact_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialize LLM
     llm = ChatGroq(
@@ -110,7 +112,7 @@ async def main() -> int:
             "ReportingAgent",
             llm=llm,
             name="registry_reporter",
-            report_filename="registry_demo_report.md"
+            report_filename=str(artifact_dir / "registry_demo_report.md")
         )
         print(f"  ✅ Created {reporter.__class__.__name__}")
 
@@ -183,7 +185,7 @@ async def main() -> int:
         print(f"Response preview: {result.get('final_response', '')[:100]}...")
 
         # Check if report was created
-        report_path = workspace / "registry_demo_report.md"
+        report_path = artifact_dir / "registry_demo_report.md"
         if report_path.exists():
             print(f"📄 Report created: {report_path}")
 
