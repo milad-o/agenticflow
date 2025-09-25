@@ -179,6 +179,15 @@ class Orchestrator:
             except Exception:
                 pass
 
+            # Sanitize dependencies: drop any that don't refer to valid task IDs
+            try:
+                valid_ids = {t.get("id") for t in atomic if t.get("id")}
+                for t in atomic:
+                    deps = [d for d in (t.get("dependencies", []) or []) if d in valid_ids and d != t.get("id")]
+                    t["dependencies"] = deps
+            except Exception:
+                pass
+
             # Detect cycles; if found, fallback to a simple, safe 3-task DAG
             def _has_cycle(ts):
                 try:
