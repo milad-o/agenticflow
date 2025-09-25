@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path
-from typing import Dict, List, Optional, Any, AsyncGenerator
+from typing import Dict, List, Optional, Any, AsyncGenerator, Iterable
 import structlog
 import uuid
 
@@ -13,6 +13,11 @@ from ..registry.tool_registry import ToolRegistry
 from ..registry.resource_registry import ResourceRegistry
 from .env import load_env
 from ..observability.reporter import Reporter
+from .path_guard import PathGuard
+from ..registry.tool_repo import ToolRepo
+from ..registry.toolset import ToolSet
+from .event_bus import EventBus, EventType, TaskLifecycleManager
+from .agent_state import AgentStateManager
 
 logger = structlog.get_logger()
 
@@ -46,6 +51,12 @@ class Flow:
         # Initialize registries
         self.tool_registry = ToolRegistry()
         self.resource_registry = ResourceRegistry()
+        self.tool_repo = ToolRepo()
+        
+        # Initialize event bus, task management, and agent state tracking
+        self.event_bus = EventBus()
+        self.task_manager = TaskLifecycleManager(self.event_bus)
+        self.agent_state_manager = AgentStateManager()
         
         # Initialize components
         self.agents: Dict[str, Agent] = {}
@@ -54,6 +65,7 @@ class Flow:
         self.capability_extractor = None
         self.reporter = Reporter()
         self.run_id: Optional[str] = None
+        self._workspace_guard: PathGuard | None = None
         
         logger.info("Flow initialized", flow_name=self.config.name)
     
@@ -111,7 +123,20 @@ class Flow:
         # Assign a run_id for observability
         self.run_id = str(uuid.uuid4())
         self.reporter.set_run_id(self.run_id)
+        # Disable LangSmith/LangChain tracing to avoid telemetry uploads
+        try:
+            import os as _os
+            _os.environ["LANGCHAIN_TRACING_V2"] = "false"
+            _os.environ["LANGSMITH_TRACING"] = "false"
+            _os.environ["LANGCHAIN_ENDPOINT"] = ""
+        except Exception:
+            pass
         logger.info("Starting flow", flow_name=self.config.name, run_id=self.run_id)
+        # Minimal console logs; detailed transcript goes to file at end of run
+        try:
+            self.reporter.set_console_verbosity(minimal=True)
+        except Exception:
+            pass
         self.reporter.flow("starting", flow_name=self.config.name)
         
         # Create agents from config only if agents not preconfigured
@@ -125,6 +150,12 @@ class Flow:
             try:
                 setattr(agent, "reporter", self.reporter)
                 setattr(agent, "run_id", self.run_id)
+                # Provide a back-reference to the Flow for agents that can use it (e.g., to access orchestrator/task context)
+                if hasattr(agent, "set_flow_reference"):
+                    try:
+                        agent.set_flow_reference(self)
+                    except Exception:
+                        pass
             except Exception:
                 pass
 
@@ -159,6 +190,13 @@ class Flow:
             result = await self.orchestrator.arun(request, thread_id, **kwargs)
             logger.info("Request completed successfully", thread_id=thread_id, run_id=self.run_id)
             self.reporter.flow("request_end", thread_id=thread_id)
+            # Persist human-readable transcript to a file (quiet console)
+            try:
+                path = self.reporter.dump_transcript_to_file()
+                if path:
+                    logger.info("Transcript written", path=path)
+            except Exception:
+                pass
             return result
         except Exception as e:
             logger.error("Request failed", error=str(e), thread_id=thread_id, run_id=self.run_id)
@@ -215,9 +253,37 @@ class Flow:
         return chunks
     
     def add_agent(self, name: str, agent: Agent) -> "Flow":
-        """Add an agent to the flow."""
+        """Add an agent to the flow.
+        If the agent has auto_discover=True (default), adopt current Flow tools/resources and
+        enable dynamic discovery for future registrations.
+        """
         self.agents[name] = agent
         logger.info("Added agent", agent_name=name)
+        
+        # Attach reporter/run_id, event bus, and register in state manager
+        try:
+            setattr(agent, "reporter", self.reporter)
+            setattr(agent, "run_id", self.run_id)
+            setattr(agent, "event_bus", self.event_bus)
+            
+            # Register agent in state manager with specialized tools
+            tool_names = [t.name for t in agent.tools] if hasattr(agent, 'tools') else []
+            agent_state = self.agent_state_manager.register_agent(name, tool_names)
+            setattr(agent, "agent_state", agent_state)
+        except Exception:
+            pass
+        
+        # Auto adopt/discover
+        try:
+            if getattr(agent, "auto_discover", True):
+                if hasattr(agent, "adopt_flow_tools"):
+                    agent.adopt_flow_tools(self)
+                if hasattr(agent, "adopt_flow_resources"):
+                    agent.adopt_flow_resources(self)
+                if hasattr(agent, "enable_dynamic_discovery"):
+                    agent.enable_dynamic_discovery(self)
+        except Exception:
+            logger.debug("Auto-discovery setup failed for agent", agent=name)
         
         # Recreate orchestrator if it exists
         if self.orchestrator:
@@ -232,12 +298,111 @@ class Flow:
     def list_agents(self) -> List[str]:
         """List all agent names."""
         return list(self.agents.keys())
+
+    def describe_agents(self) -> List[Dict[str, Any]]:
+        """Return a catalog of agents with tools and inferred capabilities for planning."""
+        catalog: List[Dict[str, Any]] = []
+        # build a quick lookup for tool metadata
+        try:
+            tool_meta = self.tool_registry.list_tools()
+        except Exception:
+            tool_meta = {}
+        for name, agent in self.agents.items():
+            desc = agent.describe()
+            caps = set()
+            # tags from config
+            for tag in desc.get("tags", []) or []:
+                caps.add(tag)
+            # from tools -> add registered capabilities
+            for tname in desc.get("tools", []) or []:
+                meta = tool_meta.get(tname)
+                if meta:
+                    for c in (meta.capabilities or set()):
+                        caps.add(c)
+                # simple heuristic as fallback
+                if tname in ("write_file", "write_text_atomic"):
+                    caps.add("file_write")
+                if tname in ("read_file", "read_text_fast", "read_bytes_fast"):
+                    caps.add("file_read")
+                if tname in ("regex_search_dir", "regex_search_file", "find_files"):
+                    caps.add("search")
+                if tname in ("dir_tree", "list_dir", "list_directory"):
+                    caps.add("dir_walk")
+                if tname == "file_stat":
+                    caps.add("file_meta")
+            catalog.append({
+                "name": name,
+                "tools": desc.get("tools", []),
+                "resources": desc.get("resources", []),
+                "capabilities": sorted(caps),
+                "tags": desc.get("tags", []),
+            })
+        return catalog
     
-    def register_tool(self, name: str, tool_class: type, **kwargs) -> "Flow":
-        """Register a new tool."""
-        self.tool_registry.register_tool(name, tool_class, **kwargs)
-        logger.info("Registered tool", tool_name=name)
+    def register_tools(self, *objs: Any) -> "Flow":
+        """Register tools or toolsets.
+        Accepts:
+        - BaseTool instances
+        - ToolSet instances (or any object with instantiate() -> List[BaseTool])
+        - Iterables (lists/tuples) of the above, nested arbitrarily
+        """
+        from langchain_core.tools import BaseTool
+
+        def extract(obj: Any) -> List[BaseTool]:
+            out: List[BaseTool] = []
+            if obj is None:
+                return out
+            # Tool instance
+            if isinstance(obj, BaseTool):
+                out.append(obj)
+                return out
+            # ToolSet-like (duck typing)
+            inst_meth = getattr(obj, "instantiate", None)
+            if callable(inst_meth):
+                try:
+                    items = inst_meth()
+                    for it in items:
+                        out.extend(extract(it))
+                    return out
+                except Exception:
+                    pass
+            # Iterable
+            if isinstance(obj, (list, tuple, set)):
+                for it in obj:
+                    out.extend(extract(it))
+                return out
+            # Unknown
+            logger.warning("register_tools: skipping unsupported object", obj=type(obj).__name__)
+            return out
+
+        all_tools: List[BaseTool] = []
+        for o in objs:
+            all_tools.extend(extract(o))
+        for t in all_tools:
+            self.tool_registry.register_tool_instance(t)
+            logger.info("Registered tool", tool_name=getattr(t, "name", t.__class__.__name__))
         return self
+
+    # Backward-compat aliases
+    def register_tool(self, *args, **kwargs) -> "Flow":
+        """Deprecated: prefer register_tools(tool[, tool2, ...]).
+        Supports both old class-based signature and instance-based pass-through.
+        """
+        from langchain_core.tools import BaseTool
+        if args and isinstance(args[0], BaseTool):
+            return self.register_tools(args[0])
+        # Old signature: (name, tool_class, ...)
+        if len(args) >= 2:
+            name, tool_class = args[0], args[1]
+            self.tool_registry.register_tool(name, tool_class, **kwargs)
+            logger.info("Registered tool", tool_name=name)
+            return self
+        logger.warning("register_tool: called with unsupported arguments; use register_tools(tool)")
+        return self
+
+    def register_tool_instance(self, tool, **kwargs) -> "Flow":
+        """Deprecated: prefer register_tools(tool)."""
+        return self.register_tools(tool)
     
     def register_resource(self, name: str, resource_type: str, factory, **kwargs) -> "Flow":
         """Register a new resource."""
@@ -257,6 +422,53 @@ class Flow:
         logger.info("Capability extractor set on flow")
         return self
     
+    def set_workspace(self, root: str | Path, allow_read_outside: bool = False) -> "Flow":
+        """Restrict all filesystem tools to a workspace root.
+        - Writes are forbidden outside the workspace.
+        - Reads outside allowed only if allow_read_outside=True.
+        Applies to all current and future tools via ToolRegistry.
+        """
+        guard = PathGuard(root, allow_read_outside=allow_read_outside)
+        self._workspace_guard = guard
+        try:
+            self.tool_registry.set_path_guard(guard)
+            logger.info("Workspace guard set", workspace=str(guard.workspace_root), allow_read_outside=allow_read_outside)
+        except Exception as e:
+            logger.warning("Failed to set workspace guard on registry", error=str(e))
+        return self
+
+    def install_tools_from_repo(
+        self,
+        names: Optional[List[str]] = None,
+        tags: Optional[List[str]] = None,
+        sets: Optional[List[str]] = None,
+    ) -> "Flow":
+        """Instantiate tools from the ToolRepo and register them.
+        - names: list of tool names
+        - tags: list of tags (any match)
+        - sets: list of predefined toolset names (e.g., 'filesystem')
+        """
+        selected: List[Any] = []
+        if sets:
+            for s in sets:
+                try:
+                    selected.extend(self.tool_repo.instantiate_set(s))
+                except Exception:
+                    pass
+        if names:
+            try:
+                selected.extend(self.tool_repo.instantiate(names=names))
+            except Exception:
+                pass
+        if tags:
+            try:
+                selected.extend(self.tool_repo.instantiate(tags=set(tags)))
+            except Exception:
+                pass
+        if selected:
+            self.register_tools(selected)
+        return self
+
     def stop(self) -> "Flow":
         """Stop the flow and cleanup resources."""
         logger.info("Stopping flow", flow_name=self.config.name)

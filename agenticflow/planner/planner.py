@@ -14,6 +14,9 @@ class PlanTask(BaseModel):
     description: str
     priority: int = 1
     dependencies: List[str] = Field(default_factory=list)
+    # Optional suggestions from the planner
+    agent: Optional[str] = None
+    capabilities: List[str] = Field(default_factory=list)
 
 
 class Plan(BaseModel):
@@ -26,8 +29,8 @@ class Planner:
     def __init__(self, model_name: Optional[str] = None, temperature: float = 0.0):
         self.llm = get_chat_model(model_name=model_name, temperature=temperature)
 
-    async def aplan(self, user_request: str) -> Plan:
-        prompt = f"""
+    async def aplan(self, user_request: str, agent_catalog: Optional[List[Dict[str, Any]]] = None) -> Plan:
+        prompt_template = """
 Produce a plan as STRICT JSON only, with the schema:
 {{
   "tasks": [
@@ -35,18 +38,26 @@ Produce a plan as STRICT JSON only, with the schema:
       "id": "task_1",
       "description": "...",
       "priority": 1,
-      "dependencies": []
+      "dependencies": [],
+      "agent": "fs_agent",
+      "capabilities": ["file_write", "file_read"]
     }}
   ]
 }}
 Guidelines:
 - Break the request into MINIMAL atomic steps (one action per task).
-- Keep descriptions concise and tool-agnostic; the system will choose tools.
+- Prefer concise descriptions.
 - Include dependencies to enable parallel execution where safe.
+- If reasonable, suggest an agent name and capability hints per task.
 - Output ONLY valid JSON (no commentary, no code fences).
+
+Available agents (JSON):
+{agent_catalog}
 
 User request: {user_request}
 """
+        import json as _json
+        prompt = prompt_template.format(user_request=user_request, agent_catalog=_json.dumps(agent_catalog or [], ensure_ascii=False))
         try:
             msg = await self.llm.ainvoke([HumanMessage(content=prompt)])
             content = msg.content if isinstance(msg.content, str) else str(msg.content)

@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from langchain_core.tools import BaseTool
 import fnmatch
 from pathlib import Path
+from agenticflow.core.path_guard import PathGuard
 
 
 class FileStatTool(BaseTool):
@@ -17,6 +18,13 @@ class FileStatTool(BaseTool):
     )
 
     def _run(self, path: str) -> Dict[str, Any]:  # type: ignore[override]
+        # apply path guard for read
+        try:
+            guard = getattr(self, "_path_guard", None)
+            if isinstance(guard, PathGuard):
+                path = guard.resolve(path, mode="read")
+        except Exception as e:
+            return {"path": path, "error": str(e)}
         try:
             st = os.stat(path)
             return {
@@ -60,6 +68,13 @@ class RegexSearchTool(BaseTool):
         context_lines: int = 0,
         encoding: str = "utf-8",
     ) -> Dict[str, Any]:  # type: ignore[override]
+        # apply path guard for read
+        try:
+            guard = getattr(self, "_path_guard", None)
+            if isinstance(guard, PathGuard):
+                path = guard.resolve(path, mode="read")
+        except Exception as e:
+            return {"error": str(e)}
         if not os.path.exists(path):
             return {"error": f"File not found: {path}"}
         if os.path.isdir(path):
@@ -139,6 +154,13 @@ class RegexSearchDirTool(BaseTool):
         context_lines: int = 0,
         encoding: str = "utf-8",
     ) -> Dict[str, Any]:  # type: ignore[override]
+        # apply path guard for read directory
+        try:
+            guard = getattr(self, "_path_guard", None)
+            if isinstance(guard, PathGuard):
+                root_path = guard.resolve(root_path, mode="read")
+        except Exception as e:
+            return {"error": str(e)}
         if not os.path.exists(root_path):
             return {"error": f"Path not found: {root_path}"}
         if not os.path.isdir(root_path):
@@ -222,6 +244,13 @@ class DirTreeTool(BaseTool):
         follow_symlinks: bool = False,
         max_entries: int = 500,
     ) -> Dict[str, Any]:  # type: ignore[override]
+        # apply path guard for read directory
+        try:
+            guard = getattr(self, "_path_guard", None)
+            if isinstance(guard, PathGuard):
+                root_path = guard.resolve(root_path, mode="read")
+        except Exception as e:
+            return {"error": str(e)}
         p = Path(root_path)
         if not p.exists() or not p.is_dir():
             return {"error": f"Not a directory: {root_path}"}
@@ -294,6 +323,13 @@ class FindFilesTool(BaseTool):
         size_max: Optional[int] = None,
         max_files: int = 500,
     ) -> Dict[str, Any]:  # type: ignore[override]
+        # apply path guard for read directory
+        try:
+            guard = getattr(self, "_path_guard", None)
+            if isinstance(guard, PathGuard):
+                root_path = guard.resolve(root_path, mode="read")
+        except Exception as e:
+            return {"error": str(e)}
         p = Path(root_path)
         if not p.exists() or not p.is_dir():
             return {"error": f"Not a directory: {root_path}"}

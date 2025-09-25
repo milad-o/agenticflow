@@ -18,6 +18,7 @@ dependencies = [
     "langchain>=0.2.0",
     "langchain-core>=0.2.0",
     "langchain-community>=0.2.0",
+    "langchain-experimental>=0.3.0",
     "langchain-groq>=0.1.0",
     "langchain-ollama>=0.2.0",
     "chromadb>=0.5.3",
@@ -28,6 +29,8 @@ dependencies = [
     "asyncio-mqtt>=0.13.0",
     "aiofiles>=23.0.0",
     "structlog>=23.0.0",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
 ]
 
 [project.optional-dependencies]

@@ -21,6 +21,7 @@ class ResourceRegistry:
     def __init__(self) -> None:
         self._resources: Dict[str, ResourceMetadata] = {}
         self._instances: Dict[str, Any] = {}
+        self._listeners: Dict[str, Callable[[str, ResourceMetadata], None]] = {}
     
     def register_resource(
         self,
@@ -31,13 +32,20 @@ class ResourceRegistry:
         config: Optional[Dict[str, Any]] = None
     ) -> None:
         """Register a resource factory."""
-        self._resources[name] = ResourceMetadata(
+        meta = ResourceMetadata(
             name=name,
             resource_type=resource_type,
             description=description,
             factory=factory,
             config=config or {}
         )
+        self._resources[name] = meta
+        # notify listeners
+        for cb in list(self._listeners.values()):
+            try:
+                cb("register_resource", meta)
+            except Exception:
+                pass
     
     def get_resource(self, name: str) -> Any:
         """Get a resource instance by name."""
@@ -58,6 +66,15 @@ class ResourceRegistry:
     def list_resources(self) -> Dict[str, ResourceMetadata]:
         """List all registered resources."""
         return self._resources.copy()
+
+    def add_listener(self, callback: Callable[[str, ResourceMetadata], None]) -> str:
+        import uuid as _uuid
+        lid = str(_uuid.uuid4())
+        self._listeners[lid] = callback
+        return lid
+
+    def remove_listener(self, listener_id: str) -> None:
+        self._listeners.pop(listener_id, None)
     
     def get_resources_by_type(self, resource_type: str) -> Dict[str, Any]:
         """Get all resources of a specific type."""

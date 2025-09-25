@@ -2,13 +2,16 @@
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 import yaml
 from pydantic import BaseModel, Field
+from agenticflow.core.roles import AgentRole
 
 
 class AgentConfig(BaseModel):
     """Configuration for an individual agent."""
+    model_config = {"extra": "allow"}  # Allow extra fields
+    
     name: str
     model: str = ""  # choose via provider/model factory (Groq or Ollama)
     temperature: float = 0.0
@@ -16,6 +19,12 @@ class AgentConfig(BaseModel):
     tags: List[str] = Field(default_factory=list)
     max_iterations: int = 10
     description: Optional[str] = None
+    role: Optional[AgentRole] = None  # Agent's role for coordination
+    
+    # Additional fields commonly used by specialized agents
+    capabilities: List[str] = Field(default_factory=list)
+    system_prompt: Optional[str] = None
+    rules: Optional[Union[str, Dict[str, Any], object]] = None  # Operational rules for the agent
 
 
 class OrchestratorConfig(BaseModel):

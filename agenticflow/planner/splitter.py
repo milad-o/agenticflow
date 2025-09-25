@@ -80,6 +80,10 @@ def split_atomic(tasks: List[Dict]) -> List[Dict]:
                 "priority": priority,
                 "dependencies": sub_deps,
                 "status": status,
+                # Preserve planner suggestions when splitting
+                "agent": t.get("agent"),
+                "capabilities": t.get("capabilities", []),
             })
             prev_id = sub_id
+    
     return new_tasks
