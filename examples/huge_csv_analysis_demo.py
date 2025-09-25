@@ -14,12 +14,11 @@ import os
 import logging
 from pathlib import Path
 
-from agenticflow.core.flow import Flow
-from agenticflow.core.config import FlowConfig
-from agenticflow.planner.planner import Planner
-from agenticflow.agents_repo.hybrid_filesystem_agent import create_hybrid_filesystem_agent
-from agenticflow.agents_repo.hybrid_analysis_agent import create_hybrid_analysis_agent
-from agenticflow.agents_repo.hybrid_reporting_agent import create_hybrid_reporting_agent
+from agenticflow import (
+    Flow, FlowConfig, Planner,
+    FileSystemAgent, AnalysisAgent, ReportingAgent,
+    get_easy_llm
+)
 
 
 async def main() -> int:
@@ -48,27 +47,51 @@ async def main() -> int:
         "file_stat",
         "streaming_file_reader",
         "read_text_fast",
-        "csv_chunk_aggregate",
+        "pandas_chunk_aggregate",
         "write_text_atomic",
     ])
 
+    # Get LLM instance for agents (auto-detect best available)
+    llm = get_easy_llm("auto", temperature=0.1)
+    print(f"🤖 Using LLM: {type(llm).__name__}")
+
     # Agents
-    fs = create_hybrid_filesystem_agent(
+    csv_path = "examples/data/huge/products-1000000.csv"
+
+    # Ensure dataset exists; generate a small synthetic CSV if missing
+    abs_csv = (base / csv_path).resolve()
+    if not abs_csv.parent.exists():
+        abs_csv.parent.mkdir(parents=True, exist_ok=True)
+    if not abs_csv.exists():
+        try:
+            import random
+            import csv as _csv
+            cats = ["A", "B", "C", "D", "E"]
+            with open(abs_csv, "w", newline="", encoding="utf-8") as f:
+                w = _csv.writer(f)
+                w.writerow(["category", "size"])  # minimal columns needed
+                for i in range(10000):  # ~10k rows for quick demo
+                    w.writerow([random.choice(cats), random.randint(1, 1000)])
+            print(f"Generated synthetic dataset at {abs_csv}")
+        except Exception as e:
+            print(f"Failed to generate synthetic dataset: {e}")
+
+    fs = FileSystemAgent(
+        llm=llm,
         name="hybrid_filesystem",
         file_pattern="*.csv",
         search_root="data/huge",
         max_attempts=2,
         use_llm_reflection=False,
     )
-    # Analysis agent: configure defaults for this dataset
-    csv_path = "examples/data/huge/products-1000000.csv"
     fs.static_resources.update({
         "stream_threshold_kb": 1024,  # 1MB threshold for streaming
         "chunk_size_kb": 512,
         "max_stream_chunks": 2,  # just preview a couple of chunks
         "csv_path": csv_path,
     })
-    analysis = create_hybrid_analysis_agent(
+    analysis = AnalysisAgent(
+        llm=llm,
         name="hybrid_analysis",
         csv_path=csv_path,
         group_by="category",
@@ -76,17 +99,15 @@ async def main() -> int:
     )
 
     report_name = "huge_csv_analysis_report.md"
-    reporter = create_hybrid_reporting_agent(
+    reporter = ReportingAgent(
+        llm=llm,
         name="hybrid_reporting",
         report_filename=report_name,
         max_attempts=2,
         use_llm_reflection=False,
     )
-    try:
-        # Always prefer intelligent (LLM) reporting
-        reporter.static_resources["use_llm_for_report"] = True
-    except Exception:
-        pass
+    # Always prefer intelligent (LLM) reporting
+    reporter.static_resources["use_llm_for_report"] = True
 
     # Register agents with flow
     flow.add_agent("hybrid_filesystem", fs)

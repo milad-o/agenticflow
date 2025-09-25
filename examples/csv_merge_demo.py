@@ -11,15 +11,14 @@ Outputs:
 """
 import asyncio
 import time
-import os
 import logging
 from pathlib import Path
 
-from agenticflow.core.flow import Flow
-from agenticflow.core.config import FlowConfig
-from agenticflow.planner.planner import Planner
-from agenticflow.agents_repo.hybrid_filesystem_agent import create_hybrid_filesystem_agent
-from agenticflow.agents_repo.hybrid_reporting_agent import create_hybrid_reporting_agent
+from agenticflow import (
+    Flow, FlowConfig, Planner,
+    FileSystemAgent, ReportingAgent,
+    get_easy_llm  # Easy LLM setup!
+)
 
 
 async def main() -> int:
@@ -31,7 +30,6 @@ async def main() -> int:
         logging.getLogger().setLevel(logging.WARNING)
     except Exception:
         pass
-    os.environ.setdefault("AGENTICFLOW_LLM_PROVIDER", "groq")
 
     flow = Flow(
         FlowConfig(
@@ -51,8 +49,17 @@ async def main() -> int:
         "streaming_file_reader",
     ])
 
+    # Super easy LLM setup - auto-detects best available!
+    try:
+        llm = get_easy_llm("auto", temperature=0.1)
+        print(f"🤖 Using LLM: {type(llm).__name__}")
+    except Exception as e:
+        print(f"❌ LLM setup failed: {e}")
+        return 1
+
     # Filesystem agent configured for CSV discovery
-    fs_agent = create_hybrid_filesystem_agent(
+    fs_agent = FileSystemAgent(
+        llm=llm,
         name="hybrid_filesystem",
         file_pattern="*.csv",
         search_root="data/csv",
@@ -66,16 +73,14 @@ async def main() -> int:
     })
 
     report_name = "csv_merge_report.md"
-    reporter = create_hybrid_reporting_agent(
+    reporter = ReportingAgent(
+        llm=llm,
         name="hybrid_reporting",
         report_filename=report_name,
         max_attempts=2,
         use_llm_reflection=False,
     )
-    try:
-        reporter.static_resources["use_llm_for_report"] = True
-    except Exception:
-        pass
+    reporter.static_resources["use_llm_for_report"] = True
 
     # Register
     flow.add_agent("hybrid_filesystem", fs_agent)

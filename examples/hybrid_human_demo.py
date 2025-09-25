@@ -16,11 +16,11 @@ import os
 import logging
 from pathlib import Path
 
-from agenticflow.core.flow import Flow
-from agenticflow.core.config import FlowConfig
-from agenticflow.planner.planner import Planner
-from agenticflow.agents_repo.hybrid_filesystem_agent import create_hybrid_filesystem_agent
-from agenticflow.agents_repo.hybrid_reporting_agent import create_hybrid_reporting_agent
+from agenticflow import (
+    Flow, FlowConfig, Planner,
+    FileSystemAgent, ReportingAgent,
+    get_easy_llm
+)
 
 
 async def main() -> int:
@@ -54,8 +54,28 @@ async def main() -> int:
         "streaming_file_reader",
     ])
 
-    # Create agents
-    fs_agent = create_hybrid_filesystem_agent(
+    # Get LLM instance for agents (auto-detect best available)
+    llm = get_easy_llm("auto", temperature=0.1)
+    print(f"🤖 Using LLM: {type(llm).__name__}")
+
+    # Ensure demo SSIS directory exists with a couple of sample packages
+    ssis_dir = (base / "examples" / "data" / "ssis").resolve()
+    try:
+        if not ssis_dir.exists():
+            ssis_dir.mkdir(parents=True, exist_ok=True)
+            # Create minimal .dtsx-like XML stubs
+            for i in range(1, 3):
+                (ssis_dir / f"Package{i}.dtsx").write_text(
+                    f"""<?xml version=\"1.0\"?><DTS:Executable><DTS:Property DTS:Name=\"ObjectName\">Package{i}</DTS:Property><DTS:Executable/></DTS:Executable>""",
+                    encoding="utf-8"
+                )
+            print(f"Generated synthetic SSIS packages under {ssis_dir}")
+    except Exception as e:
+        print(f"Failed to prepare SSIS demo data: {e}")
+
+    # Create agents using new OOP approach
+    fs_agent = FileSystemAgent(
+        llm=llm,
         name="hybrid_filesystem",
         file_pattern="*.dtsx",
         search_root="data/ssis",
@@ -70,17 +90,15 @@ async def main() -> int:
     })
 
     report_name = "hybrid_demo_report.md"
-    reporter = create_hybrid_reporting_agent(
+    reporter = ReportingAgent(
+        llm=llm,
         name="hybrid_reporting",
         report_filename=report_name,
         max_attempts=2,
         use_llm_reflection=False,
     )
-    # Enable LLM report synthesis by default for this demo (fails soft to heuristic if provider/key not set)
-    try:
-        reporter.static_resources["use_llm_for_report"] = True
-    except Exception:
-        pass
+    # Enable LLM report synthesis by default for this demo
+    reporter.static_resources["use_llm_for_report"] = True
 
     # Register agents with the flow
     flow.add_agent("hybrid_filesystem", fs_agent)
