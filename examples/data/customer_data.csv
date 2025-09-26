@@ -1,0 +1,6 @@
+customer_id,name,email,age,city
+101,John Smith,john@email.com,35,New York
+102,Jane Doe,jane@email.com,28,Los Angeles
+103,Bob Johnson,bob@email.com,42,Chicago
+104,Alice Brown,alice@email.com,31,Houston
+105,Charlie Wilson,charlie@email.com,29,Phoenix
