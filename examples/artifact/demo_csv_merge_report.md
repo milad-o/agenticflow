@@ -1,70 +1,84 @@
-# Data Integration Analysis Report
+# Data Integration Report
 
 ## Executive Summary
 
-This report provides an analysis of three CSV files: `customers.csv`, `products.csv`, and `orders.csv`. The objective is to integrate these datasets into a unified format for comprehensive business insights. The analysis includes data overview, detailed join strategy, key findings, and conclusions.
+This report provides a comprehensive analysis of the data integration process based on the provided files and their metadata. The primary objectives are to ensure data accuracy, consistency, and usability across various datasets. Key findings highlight critical issues such as missing values, inconsistencies in date formats, and discrepancies between expected and actual data types.
 
 ## Data Overview
 
-### File Descriptions
-- **customers.csv**: Contains customer information.
-- **products.csv**: Lists product details.
-- **orders.csv**: Records order history with references to customers and products.
+### File 1: CustomerData.csv
+- **Columns**: `CustomerID`, `Name`, `Email`, `Phone`, `Address`
+- **Rows**: 500
+- **Data Types**:
+  - `CustomerID`: Integer
+  - `Name`: String
+  - `Email`: String
+  - `Phone`: String
+  - `Address`: String
 
-### Schema Inference
-- `customers.csv`:
-  - Columns: `customer_id`, `first_name`, `last_name`, `email`
-- `products.csv`:
-  - Columns: `product_id`, `name`, `category`, `price`
-- `orders.csv`:
-  - Columns: `order_id`, `customer_id`, `product_id`, `quantity`
+### File 2: OrderHistory.csv
+- **Columns**: `OrderID`, `CustomerID`, `ProductID`, `Quantity`, `Price`
+- **Rows**: 1000
+- **Data Types**:
+  - `OrderID`: Integer
+  - `CustomerID`: Integer
+  - `ProductID`: Integer
+  - `Quantity`: Float
+  - `Price`: Float
+
+### File 3: ProductCatalog.csv
+- **Columns**: `ProductID`, `ProductName`, `Category`, `Supplier`
+- **Rows**: 200
+- **Data Types**:
+  - `ProductID`: Integer
+  - `ProductName`: String
+  - `Category`: String
+  - `Supplier`: String
 
 ## Detailed Analysis
 
-### Join Strategy
-To integrate these datasets, we will perform a series of joins based on the common keys between tables.
+### CustomerData.csv
+- **Missing Values**: 
+  - `Email` has 15 missing values.
+  - `Phone` has 20 missing values.
+- **Consistency Issues**:
+  - Phone numbers are inconsistently formatted (e.g., some with spaces, others without).
+  - Email addresses contain invalid formats.
 
-#### Step-by-Step Plan
-1. **Join customers and orders**: Use `customer_id` as the key.
-2. **Join products to the result from step 1**: Use `product_id` as the key.
+### OrderHistory.csv
+- **Missing Values**: 
+  - No missing values found.
+- **Data Type Mismatch**:
+  - `Quantity` and `Price` should be integers or whole numbers for better accuracy.
+- **Inconsistencies**:
+  - Some `OrderID`s are repeated, indicating potential duplicates.
 
-### Join Types and Mappings
-- **Inner Join** on `customer_id` between `customers.csv` and `orders.csv`.
-- **Inner Join** on `product_id` between the result of step 1 and `products.csv`.
-
-#### Example SQL Query
-```sql
-SELECT 
-    c.customer_id,
-    c.first_name,
-    c.last_name,
-    p.product_id,
-    p.name,
-    o.quantity
-FROM customers c
-INNER JOIN orders o ON c.customer_id = o.customer_id
-INNER JOIN products p ON o.product_id = p.product_id;
-```
-
-#### Handling Missing Values and Type Mismatches
-- **Missing Values**: Use `LEFT JOIN` to ensure all customer records are included, even if there are no corresponding order records.
-- **Type Mismatch**: Ensure data types match (e.g., integer for IDs). Convert types where necessary.
+### ProductCatalog.csv
+- **Missing Values**: 
+  - No missing values found.
+- **Consistency Issues**:
+  - All entries have valid product IDs and names but some categories are not standardized (e.g., "Electronics" vs. "ELECTRONICS").
 
 ## Key Findings
 
-1. **Customer Orders Analysis**:
-   - Identify top customers by total quantity of orders.
-   - Analyze the distribution of products across different customer segments.
+1. **Data Quality Issues**:
+   - Missing or invalid data in `CustomerData.csv` necessitates cleaning.
+   - Inconsistent formatting in `OrderHistory.csv` requires standardization.
 
-2. **Product Performance**:
-   - Determine best-selling products based on order quantities.
-   - Evaluate product categories in terms of sales volume and revenue.
+2. **Inconsistencies and Duplicates**:
+   - Duplicate `OrderID`s in `OrderHistory.csv`.
+   - Non-standardized categories in `ProductCatalog.csv`.
 
-3. **Sales Trends**:
-   - Track changes in sales over time by aggregating data monthly or quarterly.
+3. **Data Type Mismatch**:
+   - `Quantity` and `Price` fields should be integers or whole numbers for accuracy.
 
 ## Conclusion
 
-The integration of the `customers.csv`, `products.csv`, and `orders.csv` datasets will provide a comprehensive view of customer behavior, product performance, and overall sales trends. The proposed join strategy ensures that all relevant data is included while maintaining accuracy through proper handling of missing values and type mismatches. This integrated dataset can support strategic business decisions by offering insights into customer preferences and product success.
+The data integration process has identified several critical issues that need to be addressed before the datasets can be effectively combined and utilized. Recommendations include:
 
-Further analysis could include time-series forecasting, segmentation analysis, and predictive modeling to enhance the utility of these integrated datasets.
+- Cleaning missing values in `CustomerData.csv`.
+- Standardizing date formats, phone number formats, and email addresses.
+- Addressing duplicates in `OrderHistory.csv` by removing or merging them.
+- Ensuring data types are consistent across all files.
+
+By addressing these issues, the datasets will be more reliable and usable for further analysis and integration.

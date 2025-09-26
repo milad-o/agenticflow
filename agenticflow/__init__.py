@@ -57,7 +57,8 @@ Architecture:
     ├── orchestration/          # Multi-agent coordination
     │   ├── orchestrators/     # Agent coordination
     │   ├── planners/          # Task planning
-    │   └── delegation/        # Capability matching
+    │   ├── delegation/        # Capability matching
+    │   └── cards/             # Discovery cards for inter-agent coordination
     ├── tools/                  # Comprehensive tool ecosystem
     │   ├── file/              # File operations
     │   ├── data/              # Data processing
@@ -71,7 +72,7 @@ Architecture:
 from .core import Flow, FlowConfig, AgentConfig
 from .agent import (
     # Base classes
-    Agent, RPAVHAgent, HybridRPAVHAgent,
+    Agent, RPAVHAgent,
     # Agent fundamentals
     AgentRole,
     # Pre-built agents
@@ -102,7 +103,6 @@ __all__ = [
     # Agents
     "Agent",
     "RPAVHAgent",
-    "HybridRPAVHAgent",
     "FileSystemAgent",
     "ReportingAgent",
     "AnalysisAgent",

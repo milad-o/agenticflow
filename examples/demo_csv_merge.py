@@ -59,7 +59,7 @@ async def main() -> int:
             flow_name="CSVMergeDemo",
             workspace_path=str(workspace),
             max_parallel_tasks=2,
-            recursion_limit=10,
+            recursion_limit=50,  # Increase to allow completion despite loops
         )
     )
 

@@ -8,7 +8,7 @@ Uses chunked processing to handle large files efficiently without loading everyt
 from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
-from ..strategies import HybridRPAVHAgent
+from ..base import Agent
 from ..roles import AgentRole
 
 if TYPE_CHECKING:
@@ -50,7 +50,7 @@ COMPLETION CRITERIA:
 ✅ Clear summary of processed data"""
 
 
-class AnalysisAgent(HybridRPAVHAgent):
+class AnalysisAgent(Agent):
     """
     Fast data analysis agent specialized in CSV analytics.
 

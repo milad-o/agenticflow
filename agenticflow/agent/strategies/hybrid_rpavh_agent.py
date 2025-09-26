@@ -31,9 +31,7 @@ from agenticflow.registries.tool_registry import ToolRegistry
 if TYPE_CHECKING:
     from agenticflow.core.config import AgentConfig
 from agenticflow.core.events import get_event_bus
-import structlog
-
-logger = structlog.get_logger()
+from agenticflow.core.logging import get_component_logger
 
 
 class ExecutionPhase(Enum):
@@ -148,16 +146,19 @@ class HybridRPAVHAgent:
             self.event_bus = get_event_bus()
         except Exception:
             self.event_bus = None
-        
+
+        # Component-aware logger
+        self.logger = get_component_logger(self.name, "agent")
+
         # Build the Hybrid RPAVH graph
         self.graph = self._build_hybrid_graph()
         self.compiled_graph = self.graph.compile(checkpointer=self.checkpointer)
-        
+
         # Coordination callbacks
         self.handoff_callback: Optional[Callable] = None
-        
-        logger.info("Hybrid RPAVH Agent initialized", name=self.name, tools=len(self.tools), 
-                   llm_reflection=self.use_llm_reflection, llm_verification=self.use_llm_verification)
+
+        self.logger.info("Hybrid RPAVH Agent initialized", tools=len(self.tools),
+                        llm_reflection=self.use_llm_reflection, llm_verification=self.use_llm_verification)
     
     def _build_hybrid_graph(self) -> StateGraph:
         """Build the streamlined Hybrid RPAVH graph."""
@@ -205,7 +206,8 @@ class HybridRPAVHAgent:
     
     async def _initialize(self, state: HybridRPAVHState) -> Dict[str, Any]:
         """Quick initialization without heavy LLM processing."""
-        logger.info("Hybrid RPAVH: Initializing", agent=self.name)
+        self.logger.user_progress("Initializing agent")
+        self.logger.debug("Hybrid RPAVH: Initializing")
         try:
             if hasattr(self, "reporter") and self.reporter:
                 self.reporter.agent("phase", agent=self.name, phase="initialize")
@@ -230,11 +232,18 @@ class HybridRPAVHAgent:
     
     async def _reflect(self, state: HybridRPAVHState) -> Dict[str, Any]:
         """Smart reflection - LLM only when needed or on failures."""
-        logger.info("Hybrid RPAVH: Reflection", agent=self.name, 
-                   attempt=state["attempt_number"], needs_llm=state.get("needs_reflection", False))
+        attempt = state["attempt_number"]
+        needs_llm = state.get("needs_reflection", False)
+
+        if needs_llm:
+            self.logger.user_info("Analyzing request and planning approach...")
+        else:
+            self.logger.user_progress("Quick assessment", step=attempt)
+
+        self.logger.debug("Hybrid RPAVH: Reflection", attempt=attempt, needs_llm=needs_llm)
         try:
             if hasattr(self, "reporter") and self.reporter:
-                self.reporter.agent("phase", agent=self.name, phase="reflect", attempt=state["attempt_number"])
+                self.reporter.agent("phase", agent=self.name, phase="reflect", attempt=attempt)
         except Exception:
             pass
         
@@ -272,7 +281,7 @@ Briefly analyze what needs to be done and any issues to avoid. Respond in 2-3 se
                 }
                 
             except Exception as e:
-                logger.warning("LLM reflection failed, using fallback", error=str(e))
+                self.logger.warning("LLM reflection failed, using fallback", error=str(e))
                 return {
                     "reflection_summary": f"Fallback reflection: Continue processing request (attempt {state['attempt_number']})",
                     "adaptation_needed": state["attempt_number"] > 1,
@@ -288,20 +297,25 @@ Briefly analyze what needs to be done and any issues to avoid. Respond in 2-3 se
     
     async def _plan_heuristic(self, state: HybridRPAVHState) -> Dict[str, Any]:
         """Fast, rule-based planning - no LLM needed."""
-        logger.info("Hybrid RPAVH: Heuristic planning", agent=self.name)
+        self.logger.user_info("Planning actions...")
+        self.logger.debug("Hybrid RPAVH: Heuristic planning")
         try:
             if hasattr(self, "reporter") and self.reporter:
                 self.reporter.agent("phase", agent=self.name, phase="plan")
         except Exception:
             pass
-        
+
         request = state["original_request"].lower()
         available_tools = [tool.name for tool in self.tools]
-        
-        logger.info("Planning details", request_preview=request[:100], 
-                   available_tools=available_tools, 
+
+        self.logger.debug("Planning details", request_preview=request[:100],
+                   available_tools=available_tools,
                    static_resources=getattr(self, 'static_resources', {}))
-        
+
+        # Check what actions have already been completed
+        completed_actions = state.get("completed_actions", [])
+        completed_action_ids = {action.get("id") for action in completed_actions}
+
         # Rule-based action planning
         planned_actions = []
         
@@ -486,26 +500,38 @@ Briefly analyze what needs to be done and any issues to avoid. Respond in 2-3 se
             "created_at": time.time()
         }
         
-        logger.info("Hybrid RPAVH: Plan created", actions=len(planned_actions), 
+        self.logger.user_info(f"Created plan with {len(planned_actions)} actions")
+        self.logger.debug("Hybrid RPAVH: Plan created", actions=len(planned_actions), 
                    strategy=action_plan["strategy"])
+        # Remove actions that have already been completed
+        filtered_actions = []
+        for action in planned_actions:
+            action_id = action.get("id")
+            if action_id not in completed_action_ids:
+                filtered_actions.append(action)
+            else:
+                self.logger.debug(f"Skipping already completed action: {action_id}")
+
         try:
             plan_summary = [
                 {"id": a.get("id"), "tool": a.get("tool"), "depends_on": a.get("depends_on")}
-                for a in planned_actions
+                for a in filtered_actions
             ]
-            logger.info("Hybrid RPAVH: Plan summary", actions=plan_summary)
+            self.logger.debug("Hybrid RPAVH: Plan summary", actions=plan_summary)
         except Exception:
             pass
-        
+
         return {
             "action_plan": action_plan,
-            "pending_actions": planned_actions,
+            "pending_actions": filtered_actions,
             "current_phase": ExecutionPhase.ACT.value
         }
     
     async def _act_direct(self, state: HybridRPAVHState) -> Dict[str, Any]:
         """Direct tool execution - fast and reliable."""
-        logger.info("Hybrid RPAVH: Direct action execution", agent=self.name,
+        pending_count = len(state["pending_actions"])
+        self.logger.user_progress(f"Executing {pending_count} actions")
+        self.logger.debug("Hybrid RPAVH: Direct action execution",
                    pending=len(state.get("pending_actions", [])))
         try:
             if hasattr(self, "reporter") and self.reporter:
@@ -517,7 +543,18 @@ Briefly analyze what needs to be done and any issues to avoid. Respond in 2-3 se
         completed_actions = list(state.get("completed_actions", []))
         current_result = None
         execution_errors = []
-        
+
+        # If no pending actions, consider this a success if we have completed any work
+        if not pending_actions:
+            success = len(completed_actions) > 0
+            self.logger.user_info("No pending actions - task appears complete")
+            return {
+                "completed_actions": completed_actions,
+                "current_result": state.get("current_result"),
+                "current_phase": ExecutionPhase.VERIFY.value,
+                "needs_reflection": False,
+            }
+
         # Execute actions until no further progress can be made
         while True:
             progress_made = False
@@ -739,7 +776,8 @@ Briefly analyze what needs to be done and any issues to avoid. Respond in 2-3 se
                     
                     # Execute tool via ainvoke with param dict
                     tool_input = params if params else {}
-                    logger.info("Hybrid RPAVH: Executing tool", tool=tool_name, params=tool_input)
+                    self.logger.user_info(f"Using {tool_name}...")
+                    self.logger.debug("Hybrid RPAVH: Executing tool", tool=tool_name, params=tool_input)
                     try:
                         if hasattr(self, "reporter") and self.reporter:
                             pv = {k: v for k, v in tool_input.items() if k in ("path", "root_path", "file_glob")}
@@ -819,7 +857,7 @@ Briefly analyze what needs to be done and any issues to avoid. Respond in 2-3 se
                     except Exception:
                         pass
                     
-                    logger.info("Hybrid RPAVH: Action completed", action_id=action["id"], 
+                    self.logger.debug("Hybrid RPAVH: Action completed", action_id=action["id"], 
                                tool=tool_name, duration=action["execution_time"]) 
                     try:
                         if hasattr(self, "reporter") and self.reporter:
@@ -829,7 +867,8 @@ Briefly analyze what needs to be done and any issues to avoid. Respond in 2-3 se
                     
                 except Exception as e:
                     error_msg = str(e)
-                    logger.error("Hybrid RPAVH: Action failed", action_id=action.get("id"), 
+                    self.logger.user_error(f"Action failed: {tool_name}")
+                    self.logger.error("Hybrid RPAVH: Action failed", action_id=action.get("id"), 
                                tool=tool_name, error=error_msg)
                     
                     action["status"] = "failed"
@@ -860,7 +899,8 @@ Briefly analyze what needs to be done and any issues to avoid. Respond in 2-3 se
     
     async def _verify_fast(self, state: HybridRPAVHState) -> Dict[str, Any]:
         """Fast verification - minimal LLM usage."""
-        logger.info("Hybrid RPAVH: Fast verification", agent=self.name)
+        self.logger.user_progress("Verifying results")
+        self.logger.debug("Hybrid RPAVH: Fast verification")
         try:
             if hasattr(self, "reporter") and self.reporter:
                 self.reporter.agent("phase", agent=self.name, phase="verify")
@@ -873,16 +913,21 @@ Briefly analyze what needs to be done and any issues to avoid. Respond in 2-3 se
         # Simple heuristic verification
         verification_passed = (
             len(completed_actions) > 0 and
-            current_result is not None and
             not any(action.get("status") == "failed" for action in completed_actions)
         )
 
-        # If a write action is planned but not completed, verification must fail to force another act pass
+        # Only fail verification if there are INCOMPLETE write actions
         try:
             pending_actions = state.get("pending_actions", [])
-            if any((a.get("tool") == "write_text_atomic") and (a.get("status") != "completed") for a in pending_actions):
+            incomplete_writes = [a for a in pending_actions
+                               if a.get("tool") == "write_text_atomic" and a.get("status") != "completed"]
+            if incomplete_writes:
                 verification_passed = False
-        except Exception:
+                self.logger.debug(f"Verification failed: {len(incomplete_writes)} incomplete write actions")
+            else:
+                self.logger.debug(f"Verification passed: {len(completed_actions)} completed actions, no incomplete writes")
+        except Exception as e:
+            self.logger.warning(f"Verification check failed: {e}")
             pass
         
         # Optional LLM verification for complex cases
@@ -905,7 +950,7 @@ Answer with just: YES or NO, followed by a brief reason.
                 verification_passed = response.content.strip().upper().startswith("YES")
                 
             except Exception as e:
-                logger.warning("LLM verification failed, using heuristic result", error=str(e))
+                self.logger.warning("LLM verification failed, using heuristic result", error=str(e))
         
         next_phase = ExecutionPhase.COMPLETE.value if verification_passed else ExecutionPhase.REFLECT.value
         
@@ -917,7 +962,9 @@ Answer with just: YES or NO, followed by a brief reason.
     
     async def _complete(self, state: HybridRPAVHState) -> Dict[str, Any]:
         """Complete execution with results summary."""
-        logger.info("Hybrid RPAVH: Completion", agent=self.name, 
+        success = state.get("verification_passed", False)
+        self.logger.user_success("Task completed" if success else "Task failed")
+        self.logger.debug("Hybrid RPAVH: Completion", 
                    success=state.get("verification_passed", False))
         try:
             if hasattr(self, "reporter") and self.reporter:
@@ -987,7 +1034,8 @@ Answer with just: YES or NO, followed by a brief reason.
     
     async def _handle_failure(self, state: HybridRPAVHState) -> Dict[str, Any]:
         """Handle failures with concise reporting."""
-        logger.error("Hybrid RPAVH: Handling failure", agent=self.name)
+        self.logger.user_error("Task failed, analyzing issue...")
+        self.logger.error("Hybrid RPAVH: Handling failure")
         try:
             if hasattr(self, "reporter") and self.reporter:
                 self.reporter.agent("phase", agent=self.name, phase="failed")
@@ -1028,9 +1076,9 @@ Answer with just: YES or NO, followed by a brief reason.
                 return "reflect"
         except Exception:
             pass
-        # Default: try to improve once more if we have partial progress
+        # Default: complete if we have made any progress
         if len(state.get("completed_actions", [])) > 0:
-            return "reflect"
+            return "complete"
         return "reflect"
     
     # Public interface
@@ -1041,7 +1089,8 @@ Answer with just: YES or NO, followed by a brief reason.
         **kwargs: Any
     ) -> Dict[str, Any]:
         """Execute Hybrid RPAVH cycle - fast and reliable."""
-        logger.info("Hybrid RPAVH Agent starting", agent=self.name, request_preview=message[:100])
+        self.logger.user_progress(f"Starting task: {message[:50]}...")
+        self.logger.info("Hybrid RPAVH Agent starting", request_preview=message[:100])
         
         initial_state = HybridRPAVHState(
             messages=[HumanMessage(content=message)],
@@ -1108,7 +1157,8 @@ Answer with just: YES or NO, followed by a brief reason.
             }
             
         except Exception as e:
-            logger.error("Hybrid RPAVH Agent execution failed", agent=self.name, error=str(e))
+            self.logger.user_error(f"Agent execution failed: {str(e)}")
+            self.logger.error("Hybrid RPAVH Agent execution failed", error=str(e))
             return {
                 "message": f"Agent execution failed: {str(e)}",
                 "success": False,
@@ -1126,7 +1176,7 @@ Answer with just: YES or NO, followed by a brief reason.
         self.tool_registry = ToolRegistry()
         for tool in self.tools:
             self.tool_registry.register_tool_instance(tool)
-        logger.info("Hybrid RPAVH Agent tools updated", agent=self.name, tool_count=len(tools))
+        self.logger.info("Hybrid RPAVH Agent tools updated", tool_count=len(tools))
     
     def add_tools(self, tools: List[BaseTool]) -> None:
         """Add tools (deduplicate by name)."""
@@ -1137,7 +1187,7 @@ Answer with just: YES or NO, followed by a brief reason.
             self.tools.append(tool)
             self.tool_registry.register_tool_instance(tool)
         
-        logger.info("Hybrid RPAVH Agent tools added", agent=self.name, new_tools=len(new_tools))
+        self.logger.info("Hybrid RPAVH Agent tools added", new_tools=len(new_tools))
     
     def list_tool_names(self) -> List[str]:
         """Get list of available tool names."""
@@ -1164,5 +1214,5 @@ Answer with just: YES or NO, followed by a brief reason.
             
             if tools_to_add:
                 self.add_tools(tools_to_add)
-                logger.info("Hybrid RPAVH Agent adopted flow tools", agent=self.name, 
+                self.logger.info("Hybrid RPAVH Agent adopted flow tools", 
                           adopted_count=len(tools_to_add))

@@ -8,7 +8,7 @@ All agents use the Hybrid RPAVH approach combining template-based generation wit
 from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
-from ..strategies import HybridRPAVHAgent
+from ..base import Agent
 from ..roles import AgentRole
 
 if TYPE_CHECKING:
@@ -56,7 +56,7 @@ QUALITY CRITERIA:
 ✅ Actionable conclusions"""
 
 
-class ReportingAgent(HybridRPAVHAgent):
+class ReportingAgent(Agent):
     """
     Fast, reliable reporting agent using Hybrid RPAVH.
 
@@ -171,7 +171,7 @@ Focus on creating clear, actionable reports quickly.""",
             pass
 
 
-class EnhancedReportingAgent(HybridRPAVHAgent):
+class EnhancedReportingAgent(Agent):
     """
     Enhanced reporting agent with adaptive content generation.
 

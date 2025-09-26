@@ -8,7 +8,7 @@ All agents use the Hybrid RPAVH approach combining rule-based planning with sele
 from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
-from ..strategies import HybridRPAVHAgent
+from ..base import Agent
 from ..roles import AgentRole
 
 if TYPE_CHECKING:
@@ -51,9 +51,9 @@ COMPLETION CRITERIA:
 ✅ File content or metadata available"""
 
 
-class FileSystemAgent(HybridRPAVHAgent):
+class FileSystemAgent(Agent):
     """
-    Fast, reliable filesystem agent using Hybrid RPAVH.
+    Fast, reliable filesystem agent with intelligent execution patterns.
 
     Features:
     - Rule-based planning (no LLM delays)
@@ -140,7 +140,7 @@ Focus on speed and accuracy in file operations.""",
             pass
 
 
-class EnhancedFileSystemAgent(HybridRPAVHAgent):
+class EnhancedFileSystemAgent(Agent):
     """
     Enhanced filesystem agent with smart adaptation.
 

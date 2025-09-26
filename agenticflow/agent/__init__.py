@@ -19,7 +19,7 @@ Usage:
 
 # Core agent classes
 from .base import Agent
-from .strategies import RPAVHAgent, HybridRPAVHAgent
+from .strategies import RPAVHAgent
 from .state import AgentState, AgentStatus, AgentStateManager
 from .rules import AgentRules, FileSystemAgentRules, ReportingAgentRules, AnalysisAgentRules
 from .roles import AgentRole
@@ -40,7 +40,6 @@ __all__ = [
     # Core classes
     "Agent",
     "RPAVHAgent",
-    "HybridRPAVHAgent",
 
     # Agent fundamentals
     "AgentRole",

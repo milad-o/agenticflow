@@ -3,7 +3,6 @@
 import asyncio
 from pathlib import Path
 from typing import Dict, List, Optional, Any, AsyncGenerator, Iterable
-import structlog
 import uuid
 
 from ..config import FlowConfig, AgentConfig
@@ -18,8 +17,8 @@ from ...registries.tool_repo import ToolRepo
 from ...registries.toolset import ToolSet
 from ..events import EventBus, EventType, TaskLifecycleManager
 from ...agent.state.agent_state import AgentStateManager
-
-logger = structlog.get_logger()
+from ..logging import get_component_logger
+from ..diagnostics import DiagnosticsTracker
 
 
 from typing import TYPE_CHECKING
@@ -66,8 +65,13 @@ class Flow:
         self.reporter = Reporter()
         self.run_id: Optional[str] = None
         self._workspace_guard: PathGuard | None = None
-        
-        logger.info("Flow initialized", flow_name=self.config.name)
+
+        # Initialize logging and diagnostics
+        self.logger = get_component_logger(self.config.name, "flow")
+        self.diagnostics: Optional[DiagnosticsTracker] = None
+
+        self.logger.user_success(f"Flow '{self.config.name}' initialized")
+        self.logger.info("Flow initialized")
     
     def _create_agents(self) -> Dict[str, Agent]:
         """Create agents from configuration."""
@@ -75,11 +79,11 @@ class Flow:
         
         # If no agents configured, leave empty and let demos configure agents explicitly
         if not self.config.agents:
-            logger.warning("No agents configured in FlowConfig; demos should add agents explicitly")
+            self.logger.warning("No agents configured in FlowConfig; demos should add agents explicitly")
         else:
             # Create configured agents
             for agent_name, agent_config in self.config.agents.items():
-                logger.info("Creating agent", agent_name=agent_name)
+                self.logger.info("Creating agent", agent_name=agent_name)
                 
                 # Get tools for this agent
                 tools = self.tool_registry.get_tools_by_names(agent_config.tools)
@@ -131,7 +135,11 @@ class Flow:
             _os.environ["LANGCHAIN_ENDPOINT"] = ""
         except Exception:
             pass
-        logger.info("Starting flow", flow_name=self.config.name, run_id=self.run_id)
+        # Initialize diagnostics tracking
+        self.diagnostics = DiagnosticsTracker(self.run_id, self.config.name)
+
+        self.logger.user_progress("Starting flow execution")
+        self.logger.info("Starting flow", run_id=self.run_id)
         # Minimal console logs; detailed transcript goes to file at end of run
         try:
             self.reporter.set_console_verbosity(minimal=True)
@@ -142,9 +150,11 @@ class Flow:
         # Create agents from config only if agents not preconfigured
         if not self.agents:
             self.agents = self._create_agents()
-            logger.info("Created agents from config", agent_count=len(self.agents))
+            self.logger.user_info(f"Created {len(self.agents)} agents from config")
+            self.logger.info("Created agents from config", agent_count=len(self.agents))
         else:
-            logger.info("Using preconfigured agents", agent_count=len(self.agents))
+            self.logger.user_info(f"Using {len(self.agents)} preconfigured agents")
+            self.logger.info("Using preconfigured agents", agent_count=len(self.agents))
         # Attach reporter/run_id to agents
         for name, agent in self.agents.items():
             try:
@@ -168,9 +178,11 @@ class Flow:
         
         # Create orchestrator
         self.orchestrator = self._create_orchestrator()
-        logger.info("Created orchestrator")
-        
-        logger.info("Flow started successfully", run_id=self.run_id)
+        self.logger.user_info("Orchestrator ready")
+        self.logger.info("Created orchestrator")
+
+        self.logger.user_success("Flow started successfully")
+        self.logger.info("Flow started successfully", run_id=self.run_id)
         self.reporter.flow("started", agent_count=len(self.agents))
         return self
     
@@ -184,22 +196,25 @@ class Flow:
         if not self.orchestrator:
             raise RuntimeError("Flow not started. Call start() first.")
         
-        logger.info("Processing request", request=request, thread_id=thread_id, run_id=self.run_id)
+        self.logger.user_progress("Processing request")
+        self.logger.info("Processing request", request=request, thread_id=thread_id, run_id=self.run_id)
         self.reporter.flow("request_start", thread_id=thread_id, request=request)
         try:
             result = await self.orchestrator.arun(request, thread_id, **kwargs)
-            logger.info("Request completed successfully", thread_id=thread_id, run_id=self.run_id)
+            self.logger.user_success("Request completed")
+            self.logger.info("Request completed successfully", thread_id=thread_id, run_id=self.run_id)
             self.reporter.flow("request_end", thread_id=thread_id)
             # Persist human-readable transcript to a file (quiet console)
             try:
                 path = self.reporter.dump_transcript_to_file()
                 if path:
-                    logger.info("Transcript written", path=path)
+                    self.logger.info("Transcript written", path=path)
             except Exception:
                 pass
             return result
         except Exception as e:
-            logger.error("Request failed", error=str(e), thread_id=thread_id, run_id=self.run_id)
+            self.logger.user_error(f"Request failed: {str(e)}")
+            self.logger.error("Request failed", error=str(e), thread_id=thread_id, run_id=self.run_id)
             self.reporter.flow("request_error", thread_id=thread_id, error=str(e))
             raise
     
@@ -213,14 +228,17 @@ class Flow:
         if not self.orchestrator:
             raise RuntimeError("Flow not started. Call start() first.")
         
-        logger.info("Streaming request", request=request, thread_id=thread_id)
+        self.logger.user_progress("Starting streaming request")
+        self.logger.info("Streaming request", request=request, thread_id=thread_id)
         
         try:
             async for chunk in self.orchestrator.astream(request, thread_id, **kwargs):
                 yield chunk
-            logger.info("Stream completed successfully", thread_id=thread_id)
+            self.logger.user_success("Stream completed")
+            self.logger.info("Stream completed successfully", thread_id=thread_id)
         except Exception as e:
-            logger.error("Stream failed", error=str(e), thread_id=thread_id)
+            self.logger.user_error(f"Stream failed: {str(e)}")
+            self.logger.error("Stream failed", error=str(e), thread_id=thread_id)
             raise
     
     def run(
@@ -258,7 +276,8 @@ class Flow:
         enable dynamic discovery for future registrations.
         """
         self.agents[name] = agent
-        logger.info("Added agent", agent_name=name)
+        self.logger.user_info(f"Added agent: {name}")
+        self.logger.info("Added agent", agent_name=name)
         
         # Attach reporter/run_id, event bus, and register in state manager
         try:
@@ -283,7 +302,7 @@ class Flow:
                 if hasattr(agent, "enable_dynamic_discovery"):
                     agent.enable_dynamic_discovery(self)
         except Exception:
-            logger.debug("Auto-discovery setup failed for agent", agent=name)
+            self.logger.debug("Auto-discovery setup failed for agent", agent=name)
         
         # Recreate orchestrator if it exists
         if self.orchestrator:
@@ -372,7 +391,7 @@ class Flow:
                     out.extend(extract(it))
                 return out
             # Unknown
-            logger.warning("register_tools: skipping unsupported object", obj=type(obj).__name__)
+            self.logger.warning("register_tools: skipping unsupported object", obj=type(obj).__name__)
             return out
 
         all_tools: List[BaseTool] = []
@@ -380,7 +399,7 @@ class Flow:
             all_tools.extend(extract(o))
         for t in all_tools:
             self.tool_registry.register_tool_instance(t)
-            logger.info("Registered tool", tool_name=getattr(t, "name", t.__class__.__name__))
+            self.logger.info("Registered tool", tool_name=getattr(t, "name", t.__class__.__name__))
         return self
 
     # Backward-compat aliases
@@ -395,9 +414,9 @@ class Flow:
         if len(args) >= 2:
             name, tool_class = args[0], args[1]
             self.tool_registry.register_tool(name, tool_class, **kwargs)
-            logger.info("Registered tool", tool_name=name)
+            self.logger.info("Registered tool", tool_name=name)
             return self
-        logger.warning("register_tool: called with unsupported arguments; use register_tools(tool)")
+        self.logger.warning("register_tool: called with unsupported arguments; use register_tools(tool)")
         return self
 
     def register_tool_instance(self, tool, **kwargs) -> "Flow":
@@ -407,19 +426,19 @@ class Flow:
     def register_resource(self, name: str, resource_type: str, factory, **kwargs) -> "Flow":
         """Register a new resource."""
         self.resource_registry.register_resource(name, resource_type, factory, **kwargs)
-        logger.info("Registered resource", resource_name=name, resource_type=resource_type)
+        self.logger.info("Registered resource", resource_name=name, resource_type=resource_type)
         return self
 
     def set_planner(self, planner) -> "Flow":
         """Attach a Planner before starting the flow."""
         self.planner = planner
-        logger.info("Planner set on flow")
+        self.logger.info("Planner set on flow")
         return self
     
     def set_capability_extractor(self, extractor) -> "Flow":
         """Attach a CapabilityExtractor before starting the flow."""
         self.capability_extractor = extractor
-        logger.info("Capability extractor set on flow")
+        self.logger.info("Capability extractor set on flow")
         return self
     
     def set_workspace(self, root: str | Path, allow_read_outside: bool = False) -> "Flow":
@@ -432,9 +451,9 @@ class Flow:
         self._workspace_guard = guard
         try:
             self.tool_registry.set_path_guard(guard)
-            logger.info("Workspace guard set", workspace=str(guard.workspace_root), allow_read_outside=allow_read_outside)
+            self.logger.info("Workspace guard set", workspace=str(guard.workspace_root), allow_read_outside=allow_read_outside)
         except Exception as e:
-            logger.warning("Failed to set workspace guard on registry", error=str(e))
+            self.logger.warning("Failed to set workspace guard on registry", error=str(e))
         return self
 
     def install_tools_from_repo(
@@ -471,11 +490,12 @@ class Flow:
 
     def stop(self) -> "Flow":
         """Stop the flow and cleanup resources."""
-        logger.info("Stopping flow", flow_name=self.config.name)
+        self.logger.user_info("Stopping flow")
+        self.logger.info("Stopping flow", flow_name=self.config.name)
         
         # For now, just reset components
         # In production, you'd handle graceful shutdown of active conversations
         self.orchestrator = None
         
-        logger.info("Flow stopped")
+        self.logger.info("Flow stopped")
         return self
