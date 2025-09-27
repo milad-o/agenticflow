@@ -34,15 +34,21 @@ Quick Start:
 """
 
 from .core import Flow
+from .core.observable_flow import ObservableFlow
 from .teams import SupervisorAgent, TeamState, TeamGraph
+from .observability import EventTracker, FlowObserver, MetricsCollector
 
 __version__ = "0.3.0"
 __author__ = "AgenticFlow Team"
-__description__ = "Hierarchical Multi-Agent Framework"
+__description__ = "Hierarchical Multi-Agent Framework with Observability"
 
 __all__ = [
     "Flow",
+    "ObservableFlow",
     "SupervisorAgent",
     "TeamState",
-    "TeamGraph"
+    "TeamGraph",
+    "EventTracker",
+    "FlowObserver",
+    "MetricsCollector"
 ]

@@ -1,0 +1,12 @@
+customer_name,segment,annual_revenue,revenue_q3,retention_status
+MegaCorp Industries,Enterprise,234500,234500,Retained
+Global Solutions LLC,Enterprise,187650,187650,Retained
+TechStart Innovations,Enterprise,156780,156780,Retained
+Premier Manufacturing,Enterprise,134920,134920,Retained
+Dynamic Systems Inc,Enterprise,112340,112340,Retained
+Mid-Market Customer 1,Mid-Market,45000,11250,Retained
+Mid-Market Customer 2,Mid-Market,38500,9625,Retained
+Mid-Market Customer 3,Mid-Market,42300,10575,New
+Small Business 1,Small Business,8500,2125,Retained
+Small Business 2,Small Business,6750,1687,Retained
+Small Business 3,Small Business,9200,2300,New

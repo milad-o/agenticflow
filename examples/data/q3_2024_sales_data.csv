@@ -1,0 +1,15 @@
+division,division_head,product,units_sold,unit_price,total_sales,region,market_share_pct
+Widget,Sarah Johnson,Widget Alpha,4562,100.00,456200,Northeast,26.1
+Widget,Sarah Johnson,Widget Alpha,4562,100.00,456200,West Coast,20.0
+Widget,Sarah Johnson,Widget Beta,2526,150.00,378900,Midwest,22.0
+Widget,Sarah Johnson,Widget Beta,2526,150.00,378900,Southeast,18.0
+Widget,Sarah Johnson,Widget Gamma,1642,250.00,410500,West Coast,20.0
+Widget,Sarah Johnson,Widget Gamma,1642,250.00,410500,Southwest,13.9
+Gadget,Mike Chen,Gadget Pro,2671,200.00,534200,Northeast,26.1
+Gadget,Mike Chen,Gadget Pro,2671,200.00,534200,Midwest,22.0
+Gadget,Mike Chen,Gadget Standard,3581,100.00,358100,Southeast,18.0
+Gadget,Mike Chen,Gadget Standard,3581,100.00,358100,Southwest,13.9
+Services,Lisa Rodriguez,Consulting,2837,150.00,425652,Enterprise,
+Services,Lisa Rodriguez,Consulting,2837,150.00,425652,Government,
+Services,Lisa Rodriguez,Support,567,500.82,283768,Premium,
+Services,Lisa Rodriguez,Support,567,500.82,283768,Standard,

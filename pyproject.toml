@@ -19,29 +19,27 @@ dependencies = [
     "langchain-core>=0.2.0",
     "langchain-community>=0.2.0",
     "langgraph>=0.2.0",
-
     # LLM Providers (optional but commonly used)
     "langchain-groq>=0.1.0",
     "langchain-ollama>=0.2.0",
     "langchain-openai>=0.1.0",
     "langchain-anthropic>=0.1.0",
     "langchain-huggingface>=0.0.3",
-
     # Security and encryption
     "cryptography>=41.0.0",
-
     # Core utilities
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.1",
     "aiofiles>=23.0.0",
     "structlog>=23.0.0",
     "pyyaml>=6.0",
-
     # Data processing
     "pandas>=2.0.0",
-
     # HTTP and async
     "httpx>=0.25.0",
+    "tavily-python>=0.7.12",
+    "streamlit>=1.50.0",
+    "plotly>=6.3.0",
 ]
 
 [project.optional-dependencies]

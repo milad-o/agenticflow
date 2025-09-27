@@ -42,51 +42,67 @@ class SupervisorAgent:
         return capabilities
 
     async def coordinate_task(self, state: TeamState) -> TeamState:
-        """Main coordination logic - decide which worker should handle the task."""
+        """Main coordination logic with friendly conversation and intelligent routing."""
 
-        # If task is complete, do nothing
+        # If task is complete, provide friendly completion message
         if state.is_complete:
             return state
+
+        # First interaction - provide greeting and understanding
+        if state.execution_count == 0:
+            greeting_response = await self._provide_friendly_greeting(state)
+            state.add_message("supervisor", greeting_response)
 
         # Safety check - limit total executions to prevent infinite loops
         if state.execution_count >= 10:
             state.mark_complete()
-            state.add_message("supervisor", f"Task completed after {state.execution_count} worker executions")
+            completion_message = await self._provide_completion_summary(state)
+            state.add_message("supervisor", completion_message)
             return state
 
         # Increment execution counter
         state.execution_count += 1
 
-        # Determine next worker
-        next_worker = await self._select_next_worker(state)
+        # Check if we should route to a worker or provide conversational response
+        routing_decision = await self._decide_routing_strategy(state)
 
-        if next_worker == "FINISH":
+        if routing_decision["action"] == "CONVERSATION":
+            # Provide conversational response without tool calling
+            conversational_response = await self._provide_conversational_response(state)
+            state.add_message("supervisor", conversational_response)
             state.mark_complete()
             return state
 
-        if next_worker not in self.workers:
-            state.mark_error(f"Unknown worker: {next_worker}")
-            return state
+        elif routing_decision["action"] == "ROUTE_TO_WORKER":
+            next_worker = routing_decision["worker"]
 
-        # Execute worker task
-        try:
-            worker = self.workers[next_worker]
+            # Provide friendly explanation of what we're doing
+            explanation = await self._explain_worker_routing(state, next_worker)
+            state.add_message("supervisor", explanation)
 
-            # Create worker-specific task
-            worker_task = await self._create_worker_task(state, next_worker)
+            # Execute worker task
+            try:
+                worker = self.workers[next_worker]
+                worker_task = await self._create_worker_task(state, next_worker)
+                result = await self._execute_worker(worker, worker_task)
 
-            # Execute worker
-            result = await self._execute_worker(worker, worker_task)
+                # Store result and provide friendly summary
+                state.set_worker_result(next_worker, result)
+                summary = await self._summarize_worker_result(next_worker, result)
+                state.add_message("supervisor", summary)
 
-            # Store result
-            state.set_worker_result(next_worker, result)
-            state.add_message(next_worker, f"Completed: {str(result)[:100]}...")
+                # Update context for next iteration
+                state.update_context(f"{next_worker}_completed", True)
 
-            # Update context for next iteration
-            state.update_context(f"{next_worker}_completed", True)
+            except Exception as e:
+                error_message = await self._handle_worker_error(next_worker, str(e))
+                state.add_message("supervisor", error_message)
+                state.mark_error(f"Worker {next_worker} failed: {str(e)}")
 
-        except Exception as e:
-            state.mark_error(f"Worker {next_worker} failed: {str(e)}")
+        elif routing_decision["action"] == "FINISH":
+            state.mark_complete()
+            completion_message = await self._provide_completion_summary(state)
+            state.add_message("supervisor", completion_message)
 
         return state
 
@@ -197,3 +213,160 @@ Be concise and actionable."""
         else:
             # Fallback
             return f"Worker {type(worker).__name__} executed task: {task}"
+
+    async def _provide_friendly_greeting(self, state: TeamState) -> str:
+        """Provide a friendly greeting and understanding of the user's request."""
+        prompt = f"""You are a friendly AI assistant managing a team of specialized agents.
+
+The user has asked: "{state.current_task}"
+
+Provide a warm, helpful greeting that:
+1. Acknowledges their request
+2. Shows understanding of what they want to accomplish
+3. Explains that you'll coordinate with your team of specialists to help them
+4. Keeps it conversational and friendly
+
+Be concise but welcoming. Don't start working yet - just greet them and show you understand."""
+
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
+        return response.content.strip()
+
+    async def _decide_routing_strategy(self, state: TeamState) -> Dict[str, str]:
+        """Decide whether to have a conversation or route to workers."""
+        prompt = f"""You are a friendly supervisor deciding how to handle a user request.
+
+USER REQUEST: "{state.current_task}"
+
+AVAILABLE SPECIALIST AGENTS:
+{self._format_workers_for_llm(list(self.workers.keys()))}
+
+CURRENT PROGRESS:
+{self._format_results_for_llm(state.worker_results)}
+
+Decide the best approach:
+
+1. CONVERSATION - If the request is:
+   - A greeting (hello, hi, how are you)
+   - A question about capabilities ("what can you do?")
+   - A general chat or thanks
+   - Asking for help or information
+
+2. ROUTE_TO_WORKER - If the request needs actual work:
+   - File operations, code execution, data processing, etc.
+   - Choose the most appropriate specialist agent
+
+3. FINISH - If the work is complete and user just needs a summary
+
+Respond with ONLY one of:
+- "CONVERSATION"
+- "ROUTE_TO_WORKER:agent_name"
+- "FINISH"
+
+Current analysis shows the request is asking for: practical work that needs specialist agents."""
+
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
+        decision = response.content.strip()
+
+        if decision == "CONVERSATION":
+            return {"action": "CONVERSATION"}
+        elif decision == "FINISH":
+            return {"action": "FINISH"}
+        elif decision.startswith("ROUTE_TO_WORKER:"):
+            worker = decision.split(":", 1)[1].strip()
+            return {"action": "ROUTE_TO_WORKER", "worker": worker}
+        else:
+            # Default to conversation for safety
+            return {"action": "CONVERSATION"}
+
+    async def _provide_conversational_response(self, state: TeamState) -> str:
+        """Provide a conversational response without tool calling."""
+        prompt = f"""You are a friendly AI assistant. The user said: "{state.current_task}"
+
+This appears to be a conversational message rather than a task requiring specialist agents.
+
+Provide a helpful, friendly response that:
+- Directly addresses their message
+- Offers information about your capabilities if they ask
+- Suggests how you could help them with practical tasks
+- Keeps the tone warm and conversational
+
+Available specialists you can coordinate: Python execution, file operations, database work, data processing, web scraping, ETL pipelines."""
+
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
+        return response.content.strip()
+
+    async def _explain_worker_routing(self, state: TeamState, worker_name: str) -> str:
+        """Explain what we're doing when routing to a worker."""
+        worker_caps = ', '.join(self.worker_capabilities.get(worker_name, ['general tasks']))
+
+        prompt = f"""You are explaining to the user what you're doing next.
+
+USER REQUEST: "{state.current_task}"
+SPECIALIST BEING USED: {worker_name} (specializes in: {worker_caps})
+
+Write a brief, friendly message explaining:
+- You understand their request
+- Which specialist you're asking to help
+- What that specialist is good at
+
+Keep it conversational and reassuring. Examples:
+"I'll have my file operations specialist take a look at that for you..."
+"Let me ask my Python expert to help with that code..."
+"I'm connecting you with my database specialist who can handle that..."
+"""
+
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
+        return response.content.strip()
+
+    async def _summarize_worker_result(self, worker_name: str, result: Any) -> str:
+        """Provide a friendly summary of what the worker accomplished."""
+        prompt = f"""A specialist agent just completed work. Provide a friendly summary for the user.
+
+SPECIALIST: {worker_name}
+RESULT: {str(result)[:500]}
+
+Write a conversational summary that:
+- Explains what was accomplished in plain language
+- Highlights key outcomes or findings
+- Maintains a helpful, positive tone
+- Avoids technical jargon unless necessary
+
+Keep it concise but informative."""
+
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
+        return response.content.strip()
+
+    async def _handle_worker_error(self, worker_name: str, error: str) -> str:
+        """Handle worker errors with friendly explanation."""
+        prompt = f"""A specialist encountered an issue. Explain this to the user in a helpful way.
+
+SPECIALIST: {worker_name}
+ERROR: {error}
+
+Write a friendly message that:
+- Acknowledges the issue without being alarming
+- Explains what went wrong in simple terms
+- Suggests what they might try instead or how to fix it
+- Maintains a supportive, problem-solving tone"""
+
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
+        return response.content.strip()
+
+    async def _provide_completion_summary(self, state: TeamState) -> str:
+        """Provide a friendly completion summary."""
+        prompt = f"""Provide a friendly completion summary for the user.
+
+ORIGINAL REQUEST: "{state.current_task}"
+WORK COMPLETED:
+{self._format_results_for_llm(state.worker_results)}
+
+Write a warm, helpful summary that:
+- Confirms what was accomplished
+- Highlights key results or outcomes
+- Thanks them for using the system
+- Offers help with anything else they might need
+
+Keep it conversational and positive."""
+
+        response = await self.llm.ainvoke([HumanMessage(content=prompt)])
+        return response.content.strip()
