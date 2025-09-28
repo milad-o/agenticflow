@@ -55,7 +55,7 @@ class TestSupervisor:
         supervisor.add_agent(agent1)
         supervisor.add_agent(agent2)
         
-        available = supervisor._get_available_agents()
+        available = supervisor.get_available_agents()
         assert len(available) == 2
         assert "agent1" in available
         assert "agent2" in available
@@ -63,16 +63,14 @@ class TestSupervisor:
     def test_supervisor_str_representation(self):
         """Test string representation of supervisor."""
         supervisor = Supervisor("test_supervisor", initialize_llm=False)
-        supervisor_str = str(supervisor)
-        assert "test_supervisor" in supervisor_str
-        assert "Supervisor" in supervisor_str
+        supervisor_str = repr(supervisor)
+        assert supervisor_str == "Supervisor(name='test_supervisor')"
 
     def test_supervisor_repr(self):
         """Test repr of supervisor."""
         supervisor = Supervisor("test_supervisor", initialize_llm=False)
         supervisor_repr = repr(supervisor)
-        assert "test_supervisor" in supervisor_repr
-        assert "Supervisor" in supervisor_repr
+        assert supervisor_repr == "Supervisor(name='test_supervisor')"
 
     @pytest.mark.asyncio
     async def test_process_message_without_llm(self):
@@ -82,7 +80,7 @@ class TestSupervisor:
         supervisor.add_agent(agent)
         
         message = AgentMessage(
-            type=MessageType.HUMAN,
+            type=MessageType.USER,
             sender="user",
             content="Test message"
         )

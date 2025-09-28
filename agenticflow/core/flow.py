@@ -11,17 +11,9 @@ from ..observability.observer import Observer
 from .orchestrator import Orchestrator
 from .langgraph_state import AgenticFlowState
 
-try:
-    from langgraph.graph import StateGraph, START, END
-    from langchain_core.messages import HumanMessage
-    HAS_LANGGRAPH = True
-except ImportError:
-    HAS_LANGGRAPH = False
-    # Define fallback types for type checking
-    StateGraph = Any
-    START = Any
-    END = Any
-    HumanMessage = Any
+# LangGraph is required for the framework
+from langgraph.graph import StateGraph, START, END
+from langchain_core.messages import HumanMessage
 
 
 class Flow:
@@ -64,13 +56,17 @@ class Flow:
         # Initialize orchestrator
         self.orchestrator: Optional[Orchestrator] = None
 
-        # LangGraph integration
+        # LangGraph integration - core architecture
+        self._enable_langgraph = True
         self._graph: Optional[Any] = None
         self._compiled_graph: Optional[Any] = None
 
         # Flow execution state
         self._running = False
         self._tasks: List[asyncio.Task] = []
+
+    def __repr__(self) -> str:  # pragma: no cover - trivial
+        return f"Flow(name='{self.name}', id='{self.id[:8]}')"
 
     def add_orchestrator(self, orchestrator: Orchestrator) -> "Flow":
         """Add an orchestrator to the flow.
@@ -123,11 +119,11 @@ class Flow:
             if self.observer:
                 await self.observer.flow_started(self.id, self.name)
 
-            # Execute with LangGraph if available, otherwise fallback to async messaging
-            if self._compiled_graph and HAS_LANGGRAPH:
-                # Use LangGraph execution
+            # Execute with LangGraph (core architecture)
+            if self._compiled_graph:
+                # Use LangGraph execution (following tutorial pattern)
                 initial_state = {
-                    "messages": [HumanMessage(content=initial_message)],  # type: ignore
+                    "messages": [("user", initial_message)],  # Use tuple format like tutorial
                     "orchestrator_context": {},
                     "team_contexts": {},
                     "execution_path": [],
@@ -137,17 +133,29 @@ class Flow:
                     "workspace_path": str(self.workspace.workspace_path),
                 }
                 
-                # Execute the graph
-                result = await self._compiled_graph.ainvoke(initial_state)
+                # Execute the graph and get final result
+                result = await self._compiled_graph.ainvoke(initial_state, {"recursion_limit": 100})
                 
-                # Update flow state with results
+                # Convert all messages from LangGraph result to our AgentMessage format
                 if "messages" in result:
                     for msg in result["messages"]:
-                        if hasattr(msg, 'content'):
+                        if hasattr(msg, 'content') and msg.content:
+                            # Determine message type and sender
+                            sender = getattr(msg, 'name', 'system')
+                            if hasattr(msg, 'type') and msg.type == 'human':
+                                msg_type = MessageType.USER
+                            elif sender == 'user':
+                                msg_type = MessageType.USER
+                            elif 'failed' in msg.content.lower() or 'error' in msg.content.lower():
+                                msg_type = MessageType.ERROR
+                            else:
+                                msg_type = MessageType.AGENT
+                                
                             agent_msg = AgentMessage(
-                                type=MessageType.AGENT,
-                                sender="system",
+                                type=msg_type,
+                                sender=sender,
                                 content=msg.content,
+                                metadata=getattr(msg, 'additional_kwargs', {})
                             )
                             await self.state.add_message(agent_msg)
             else:
@@ -184,6 +192,11 @@ class Flow:
             await asyncio.gather(*self._tasks, return_exceptions=True)
 
         self._tasks.clear()
+
+        # Clean up compiled graph to free memory
+        if hasattr(self, '_compiled_graph') and self._compiled_graph:
+            del self._compiled_graph
+            self._compiled_graph = None
 
         if self.observer and was_running:
             await self.observer.flow_completed(self.id)
@@ -296,8 +309,7 @@ class Flow:
 
     def _build_langgraph(self) -> None:
         """Build LangGraph StateGraph from orchestrator structure."""
-        if not HAS_LANGGRAPH:
-            raise ImportError("LangGraph is required for flow execution. Install with: pip install langgraph")
+        # LangGraph is required for the framework
         
         if not self.orchestrator:
             return
@@ -321,27 +333,16 @@ class Flow:
         for agent_name, agent in self.orchestrator.agents.items():
             self._graph.add_node(agent_name, agent._create_agent_node())  # type: ignore
         
-        # Define edges
+        # Define edges - Command pattern handles routing automatically
         self._graph.add_edge(START, "orchestrator")  # type: ignore
         
-        # Team routing edges (orchestrator -> teams)
-        for team_name in self.orchestrator.teams.keys():
-            self._graph.add_edge("orchestrator", team_name)  # type: ignore
+        # For Command pattern, we don't need explicit edges between nodes
+        # Command objects handle the routing automatically
         
-        # Individual agent routing edges (orchestrator -> agents)
-        for agent_name in self.orchestrator.agents.keys():
-            self._graph.add_edge("orchestrator", agent_name)  # type: ignore
-        
-        # Agent routing edges within teams (agents -> back to team supervisor)
-        for team_name, supervisor in self.orchestrator.teams.items():
-            for agent_name in supervisor.agents.keys():
-                agent_node_name = f"{team_name}_{agent_name}"
-                self._graph.add_edge(agent_node_name, team_name)  # type: ignore
-        
-        # Individual agents back to orchestrator
-        for agent_name in self.orchestrator.agents.keys():
-            self._graph.add_edge(agent_name, "orchestrator")  # type: ignore
-        
+        # Clean up previous graph if it exists
+        if hasattr(self, '_compiled_graph') and self._compiled_graph:
+            del self._compiled_graph
+            
         # Compile the graph
         self._compiled_graph = self._graph.compile()  # type: ignore
 

@@ -29,10 +29,11 @@ help:
 	@echo "  examples    Run example scripts"
 	@echo ""
 	@echo "Demos (Working with Tangible Results):"
-	@echo "  demos       Run all working demos"
-	@echo "  quick-demo  Run quick demo (0.98s execution)"
-	@echo "  full-demo   Run comprehensive demo (3 tasks, 1.52s avg)"
-	@echo "  test-runner Run comprehensive test suite"
+	@echo "  demos         Run all working demos"
+	@echo "  quick-demo    Run quick demo (0.98s execution)"
+	@echo "  full-demo     Run comprehensive demo (3 tasks, 1.52s avg)"
+	@echo "  research-demo Run research & writing team (saves markdown report)"
+	@echo "  test-runner   Run comprehensive test suite"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  clean       Clean temporary files"
@@ -115,7 +116,7 @@ example-advanced:
 	uv run python examples/advanced/research_and_writing_workflow.py
 
 # Demos with tangible results
-demos: quick-demo full-demo
+demos: quick-demo full-demo research-demo
 	@echo "All demos completed!"
 
 quick-demo:
@@ -125,6 +126,10 @@ quick-demo:
 full-demo:
 	@echo "Running comprehensive demo (3 tasks, 1.52s avg)..."
 	uv run python demos/comprehensive_demo.py
+
+research-demo:
+	@echo "Running research & writing team demo (saves markdown report)..."
+	uv run python demos/research_and_write_team.py
 
 test-runner:
 	@echo "Running comprehensive test suite..."

@@ -20,10 +20,12 @@ async def test_simple_agent():
         content="Hello",
     )
 
-    response = await agent.process_message(message)
+    command = await agent.process_message(message)
 
-    assert response is not None
-    assert response.sender == "test_agent"
+    assert command is not None
+    assert command.goto == "orchestrator"
+    response = command.update["messages"][0]
+    assert response.name == "test_agent"  # AIMessage uses 'name' instead of 'sender'
     assert "test_agent processed: Hello" in response.content
 
 

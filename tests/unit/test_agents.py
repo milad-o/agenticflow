@@ -50,31 +50,40 @@ class TestSimpleAgent:
         """Test executing a simple message."""
         agent = SimpleAgent("test_agent", description="A test agent")
         
+        # Create a mock flow context so agent returns Command objects
+        from unittest.mock import Mock
+        mock_orchestrator = Mock()
+        mock_flow = Mock()
+        mock_flow._enable_langgraph = True
+        mock_orchestrator.flow = mock_flow
+        agent.set_orchestrator(mock_orchestrator)
+        
         from agenticflow.core.state import AgentMessage, MessageType
         message = AgentMessage(
-            type=MessageType.HUMAN,
+            type=MessageType.USER,
             sender="user",
             content="Hello, agent!"
         )
-        
-        result = await agent.execute(message)
-        assert result is not None
-        # SimpleAgent should return a Command
-        assert hasattr(result, 'goto')
+
+        command = await agent.execute(message)
+        assert command is not None
+        assert command.goto == "orchestrator"
+        assert "messages" in command.update
+        response = command.update["messages"][0]
+        assert response.name == "test_agent"  # AIMessage uses 'name' instead of 'sender'
+        assert "Hello, agent!" in response.content
 
     def test_agent_str_representation(self):
         """Test string representation of agent."""
         agent = SimpleAgent("test_agent", description="A test agent")
-        agent_str = str(agent)
-        assert "test_agent" in agent_str
-        assert "SimpleAgent" in agent_str
+        agent_str = repr(agent)
+        assert agent_str == "SimpleAgent(name='test_agent')"
 
     def test_agent_repr(self):
         """Test repr of agent."""
         agent = SimpleAgent("test_agent", description="A test agent")
         agent_repr = repr(agent)
-        assert "test_agent" in agent_repr
-        assert "SimpleAgent" in agent_repr
+        assert agent_repr == "SimpleAgent(name='test_agent')"
 
 
 class TestReActAgent:
@@ -113,28 +122,34 @@ class TestReActAgent:
         """Test executing ReAct agent without LLM."""
         agent = ReActAgent("test_agent", description="A test agent", initialize_llm=False)
         
+        # Create a mock flow context so agent returns Command objects
+        from unittest.mock import Mock
+        mock_orchestrator = Mock()
+        mock_flow = Mock()
+        mock_flow._enable_langgraph = True
+        mock_orchestrator.flow = mock_flow
+        agent.set_orchestrator(mock_orchestrator)
+        
         from agenticflow.core.state import AgentMessage, MessageType
         message = AgentMessage(
-            type=MessageType.HUMAN,
+            type=MessageType.USER,
             sender="user",
             content="Hello, agent!"
         )
-        
-        result = await agent.execute(message)
-        assert result is not None
-        # Should return a Command even without LLM
-        assert hasattr(result, 'goto')
+
+        command = await agent.execute(message)
+        assert command is not None
+        assert command.goto in {agent.supervisor.name if agent.supervisor else "orchestrator"}
+        assert "messages" in command.update
 
     def test_react_agent_str_representation(self):
         """Test string representation of ReAct agent."""
         agent = ReActAgent("test_agent", description="A test agent", initialize_llm=False)
-        agent_str = str(agent)
-        assert "test_agent" in agent_str
-        assert "ReActAgent" in agent_str
+        agent_str = repr(agent)
+        assert agent_str == "ReActAgent(name='test_agent')"
 
     def test_react_agent_repr(self):
         """Test repr of ReAct agent."""
         agent = ReActAgent("test_agent", description="A test agent", initialize_llm=False)
         agent_repr = repr(agent)
-        assert "test_agent" in agent_repr
-        assert "ReActAgent" in agent_repr
+        assert agent_repr == "ReActAgent(name='test_agent')"

@@ -15,7 +15,7 @@ from .core.orchestrator import Orchestrator
 from .core.agent import Agent, SimpleAgent, ReActAgent, Tool
 from .core.supervisor import Supervisor
 from .core.state import FlowState, AgentMessage, AgentStatus, MessageType
-from .core.command import Command
+# Command is imported directly from langgraph.types when needed
 from .workspace.workspace import Workspace
 from .observability.observer import Observer
 from .observability.metrics import Metrics
@@ -33,7 +33,6 @@ __all__ = [
     "AgentMessage",
     "AgentStatus",
     "MessageType",
-    "Command",
     "Workspace",
     "Observer",
     "Metrics",

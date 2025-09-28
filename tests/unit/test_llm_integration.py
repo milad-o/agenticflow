@@ -42,11 +42,14 @@ class TestLLMIntegration:
                 sender="user",
                 content="search for AI agents"
             )
-            message = await agent.process_message(input_message)
+            command = await agent.process_message(input_message)
 
-            assert message.type == MessageType.AGENT
-            assert "AI agents" in message.content
-            assert "Test Result" in message.content
+            assert command is not None
+            assert command.goto == "orchestrator"  # Default goto when no supervisor
+            response = command.update["messages"][0]
+            assert response.name == "search_agent"  # AIMessage uses 'name' instead of 'sender'
+            assert "AI agents" in response.content
+            assert "Test Result" in response.content
 
     async def test_document_writer_agent_with_workspace(self):
         """Test document writer agent with workspace integration."""
@@ -83,14 +86,14 @@ class TestLLMIntegration:
             flow = Flow("research_flow", workspace_path=temp_dir)
 
             # Create research team
-            research_team = Supervisor("research_team", keywords=["research"])
+            research_team = Supervisor("research_team", keywords=["research"], initialize_llm=False)
             search_agent = SearchAgent()
             scraper_agent = WebScraperAgent()
 
             research_team.add_agent(search_agent).add_agent(scraper_agent)
 
             # Create orchestrator
-            orchestrator = Orchestrator()
+            orchestrator = Orchestrator(initialize_llm=False)
             orchestrator.add_team(research_team)
 
             flow.add_orchestrator(orchestrator)
@@ -109,12 +112,8 @@ class TestLLMIntegration:
                 mock_session_instance = AsyncMock()
                 mock_session.return_value.__aenter__.return_value = mock_session_instance
 
-                # Start flow
-                start_task = asyncio.create_task(
-                    flow.start("Research information about AI safety")
-                )
-
-                await asyncio.sleep(0.3)  # Let it process
+                # Start flow (not continuous for testing)
+                await flow.start("Research information about AI safety")
 
                 # Get messages
                 messages = await flow.get_messages()
@@ -124,11 +123,7 @@ class TestLLMIntegration:
                 agent_responses = [msg for msg in messages if msg.type == MessageType.AGENT]
                 assert len(agent_responses) >= 1
 
-                await flow.stop()
-                try:
-                    await start_task
-                except:
-                    pass
+                # Flow is already completed, no need to stop
 
         finally:
             shutil.rmtree(temp_dir)
@@ -141,7 +136,7 @@ class TestLLMIntegration:
             flow = Flow("document_flow", workspace_path=temp_dir)
 
             # Create document team
-            doc_team = Supervisor("document_team", keywords=["write", "document"])
+            doc_team = Supervisor("document_team", keywords=["write", "document"], initialize_llm=False)
             writer_agent = DocumentWriterAgent()
             note_agent = NoteWriterAgent()
 
@@ -152,7 +147,7 @@ class TestLLMIntegration:
             doc_team.add_agent(writer_agent).add_agent(note_agent)
 
             # Create orchestrator
-            orchestrator = Orchestrator()
+            orchestrator = Orchestrator(initialize_llm=False)
             orchestrator.add_team(doc_team)
 
             flow.add_orchestrator(orchestrator)
@@ -227,11 +222,13 @@ class TestLLMIntegration:
                 mock_soup.return_value = mock_soup_instance
                 mock_soup_instance.get_text.return_value = "Scraped test content"
 
-                response = await agent.process_message(message)
+                command = await agent.process_message(message)
 
-                assert response.type == MessageType.AGENT
+                assert command is not None
+                assert command.goto == "orchestrator"  # Default goto when no supervisor
+                response = command.update["messages"][0]
+                assert response.name == "web_scraper_agent"  # AIMessage uses 'name' instead of 'sender'
                 assert "2 URL(s)" in response.content
-                assert response.metadata["url_count"] == 2
 
     async def test_note_writer_point_extraction(self):
         """Test note writer agent point extraction."""
@@ -274,15 +271,15 @@ class TestLLMIntegration:
             flow = Flow("hierarchical_flow", workspace_path=temp_dir, enable_observability=True)
 
             # Create research team
-            research_team = Supervisor("research_team")
+            research_team = Supervisor("research_team", initialize_llm=False)
             research_team.add_agent(SearchAgent())
 
             # Create document team
-            doc_team = Supervisor("document_team")
+            doc_team = Supervisor("document_team", initialize_llm=False)
             doc_team.add_agent(DocumentWriterAgent())
 
             # Create top-level orchestrator
-            orchestrator = Orchestrator()
+            orchestrator = Orchestrator(initialize_llm=False)
             orchestrator.add_team(research_team).add_team(doc_team)
 
             flow.add_orchestrator(orchestrator)

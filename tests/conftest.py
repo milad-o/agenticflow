@@ -2,13 +2,22 @@
 
 import asyncio
 import pytest
+import pytest_asyncio
 import tempfile
 import os
 from pathlib import Path
 from typing import Generator, AsyncGenerator
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not available
+
 from agenticflow import Flow, Orchestrator, Supervisor, ReActAgent, SimpleAgent
 from agenticflow.tools import WriteFileTool, ReadFileTool
+from agenticflow.workspace.workspace import Workspace
 
 
 @pytest.fixture(scope="session")
@@ -20,13 +29,14 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 
 
 @pytest.fixture
-def temp_workspace() -> Generator[Path, None, None]:
+def temp_workspace() -> Generator[Workspace, None, None]:
     """Create a temporary workspace for testing."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        yield Path(temp_dir)
+        workspace = Workspace(temp_dir)
+        yield workspace
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def simple_flow() -> AsyncGenerator[Flow, None]:
     """Create a simple flow for testing."""
     flow = Flow("test_flow")
@@ -39,10 +49,13 @@ async def simple_flow() -> AsyncGenerator[Flow, None]:
     team.add_agent(agent)
     orchestrator.add_team(team)
     
-    yield flow
+    try:
+        yield flow
+    finally:
+        await flow.stop()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def react_flow() -> AsyncGenerator[Flow, None]:
     """Create a flow with ReAct agents for testing."""
     flow = Flow("react_test_flow")
@@ -56,7 +69,10 @@ async def react_flow() -> AsyncGenerator[Flow, None]:
     team.add_agent(agent)
     orchestrator.add_team(team)
     
-    yield flow
+    try:
+        yield flow
+    finally:
+        await flow.stop()
 
 
 @pytest.fixture

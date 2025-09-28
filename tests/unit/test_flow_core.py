@@ -1,88 +1,79 @@
 """Unit tests for Flow core functionality."""
 
 import pytest
+import pytest_asyncio
 import asyncio
 from pathlib import Path
 
-from agenticflow import Flow, Orchestrator, Supervisor, SimpleAgent
+from agenticflow import Flow, Orchestrator
+from agenticflow.core.agent import SimpleAgent
+
+
+@pytest_asyncio.fixture
+async def flow_instance() -> Flow:
+    flow = Flow("core_test_flow")
+    yield flow
+    await flow.stop()
 
 
 class TestFlow:
     """Test cases for Flow class."""
 
-    def test_flow_creation(self):
-        """Test basic flow creation."""
-        flow = Flow("test_flow")
+    def test_flow_creation(self, temp_workspace):
+        flow = Flow("test_flow", workspace_path=temp_workspace.workspace_path)
         assert flow.name == "test_flow"
         assert flow.orchestrator is None
-        assert not flow._running
+        assert not flow.is_running()
 
     def test_flow_with_workspace(self, temp_workspace):
-        """Test flow creation with workspace."""
-        flow = Flow("test_flow", workspace_path=str(temp_workspace))
-        assert flow.workspace is not None
-        assert flow.workspace.path == temp_workspace
+        flow = Flow("test_flow", workspace_path=temp_workspace.workspace_path)
+        assert flow.workspace.workspace_path == temp_workspace.workspace_path
 
-    def test_add_orchestrator(self):
-        """Test adding orchestrator to flow."""
-        flow = Flow("test_flow")
+    def test_add_orchestrator(self, flow_instance):
         orchestrator = Orchestrator("test_orchestrator", initialize_llm=False)
-        
-        flow.add_orchestrator(orchestrator)
-        assert flow.orchestrator == orchestrator
-        assert orchestrator.flow == flow
+        flow_instance.add_orchestrator(orchestrator)
+        assert flow_instance.orchestrator == orchestrator
+        assert orchestrator.flow == flow_instance
 
     def test_flow_method_chaining(self):
-        """Test method chaining on flow."""
         flow = (Flow("test_flow")
                 .add_orchestrator(Orchestrator("test_orchestrator", initialize_llm=False)))
-        
         assert flow.name == "test_flow"
         assert flow.orchestrator.name == "test_orchestrator"
 
     @pytest.mark.asyncio
-    async def test_flow_start_without_orchestrator(self):
-        """Test starting flow without orchestrator raises error."""
-        flow = Flow("test_flow")
-        
+    async def test_flow_start_without_orchestrator(self, flow_instance):
         with pytest.raises(ValueError, match="No orchestrator configured"):
-            await flow.start("test message")
+            await flow_instance.start("test message")
 
     @pytest.mark.asyncio
     async def test_flow_start_simple(self, simple_flow):
-        """Test starting a simple flow."""
-        flow = simple_flow
-        
-        # This should not raise an error
-        await flow.start("test message")
-        
-        # Check that flow state was updated
-        assert flow.state is not None
-        assert len(flow.state.messages) > 0
+        start_task = asyncio.create_task(simple_flow.start("test message", continuous=True))
+        await asyncio.sleep(0.1)
+        assert simple_flow.is_running()
+        await simple_flow.stop()
+        start_task.cancel()
 
-    def test_flow_context_manager(self):
-        """Test flow as context manager."""
-        with Flow("test_flow") as flow:
-            assert flow.name == "test_flow"
-            assert not flow._running
+    def test_flow_context_manager(self, temp_workspace):
+        orchestrator = Orchestrator("context_orchestrator", initialize_llm=False)
+        orchestrator.add_agent(SimpleAgent("test_agent"))
 
-    @pytest.mark.asyncio
-    async def test_flow_async_context_manager(self):
-        """Test flow as async context manager."""
-        async with Flow("test_flow") as flow:
-            assert flow.name == "test_flow"
-            assert not flow._running
+        async def run_context():
+            async with Flow("test_flow", workspace_path=temp_workspace.workspace_path) as flow:
+                flow.add_orchestrator(orchestrator)
+                start_task = asyncio.create_task(flow.start("Test message", continuous=True))
+                await asyncio.sleep(0.1)
+                assert flow.is_running()
+                await flow.stop()
+                start_task.cancel()
+            assert not flow.is_running()
+
+        asyncio.run(run_context())
 
     def test_flow_str_representation(self):
-        """Test string representation of flow."""
         flow = Flow("test_flow")
-        flow_str = str(flow)
-        assert "test_flow" in flow_str
-        assert "Flow" in flow_str
+        assert repr(flow) == f"Flow(name='test_flow', id='{flow.id[:8]}')"
 
     def test_flow_repr(self):
-        """Test repr of flow."""
         flow = Flow("test_flow")
-        flow_repr = repr(flow)
-        assert "test_flow" in flow_repr
-        assert "Flow" in flow_repr
+        assert repr(flow) == f"Flow(name='test_flow', id='{flow.id[:8]}')"

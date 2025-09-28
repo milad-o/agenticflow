@@ -10,7 +10,9 @@ from uuid import UUID, uuid4
 
 class MessageType(Enum):
     """Types of messages in the agent communication system."""
+
     USER = "user"
+    HUMAN = "human"
     AGENT = "agent"
     SUPERVISOR = "supervisor"
     ORCHESTRATOR = "orchestrator"
@@ -98,9 +100,18 @@ class FlowState:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert state to dictionary."""
+        # Filter out non-AgentMessage objects (like Command objects) for serialization
+        serializable_messages = []
+        for msg in self.messages:
+            if hasattr(msg, 'to_dict'):
+                serializable_messages.append(msg.to_dict())
+            else:
+                # Skip non-serializable objects (like Command objects)
+                continue
+                
         return {
             "id": str(self.id),
-            "messages": [msg.to_dict() for msg in self.messages],
+            "messages": serializable_messages,
             "agent_statuses": {k: v.value for k, v in self.agent_statuses.items()},
             "shared_context": self.shared_context,
             "active_agents": self.active_agents,

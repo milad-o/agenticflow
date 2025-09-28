@@ -5,6 +5,8 @@ from typing import Optional
 from ..core.agent import Agent
 from ..core.state import AgentMessage, MessageType
 from ..tools.web_tools import TavilySearchTool, WebScrapeTool
+from langchain_core.messages import AIMessage
+from langgraph.types import Command
 
 
 class SearchAgent(Agent):
@@ -36,20 +38,16 @@ class SearchAgent(Agent):
             # Perform search
             search_results = await self.use_tool("tavily_search", query=query)
 
-            # Return results
-            return AgentMessage(
-                type=MessageType.AGENT,
-                sender=self.name,
-                content=f"Search results for '{query}':\n\n{search_results}",
-                metadata={"query": query, "tool_used": "tavily_search"},
+            # Return results as Command with LangGraph-native message
+            return Command(
+                goto="supervisor" if hasattr(self, 'supervisor') and self.supervisor else "orchestrator",
+                update={"messages": [AIMessage(content=f"Search results for '{query}':\n\n{search_results}", name=self.name)]}
             )
 
         except Exception as e:
-            return AgentMessage(
-                type=MessageType.ERROR,
-                sender=self.name,
-                content=f"Search failed: {str(e)}",
-                metadata={"error_type": type(e).__name__},
+            return Command(
+                goto="supervisor" if hasattr(self, 'supervisor') and self.supervisor else "orchestrator",
+                update={"messages": [AIMessage(content=f"Search failed: {str(e)}", name=self.name)]}
             )
 
     def _extract_search_query(self, content: str) -> str:
@@ -110,30 +108,24 @@ class WebScraperAgent(Agent):
             urls = self._extract_urls(message.content)
 
             if not urls:
-                return AgentMessage(
-                    type=MessageType.AGENT,
-                    sender=self.name,
-                    content="No URLs found in the message to scrape.",
-                    metadata={"urls_found": 0},
+                return Command(
+                    goto="supervisor" if hasattr(self, 'supervisor') and self.supervisor else "orchestrator",
+                    update={"messages": [AIMessage(content="No URLs found in the message to scrape.", name=self.name)]}
                 )
 
             # Scrape the URLs
             scraped_content = await self.use_tool("scrape_webpages", urls=urls)
 
-            # Return results
-            return AgentMessage(
-                type=MessageType.AGENT,
-                sender=self.name,
-                content=f"Scraped content from {len(urls)} URL(s):\n\n{scraped_content}",
-                metadata={"urls_scraped": urls, "url_count": len(urls)},
+            # Return results as Command with LangGraph-native message
+            return Command(
+                goto="supervisor" if hasattr(self, 'supervisor') and self.supervisor else "orchestrator",
+                update={"messages": [AIMessage(content=f"Scraped content from {len(urls)} URL(s):\n\n{scraped_content}", name=self.name)]}
             )
 
         except Exception as e:
-            return AgentMessage(
-                type=MessageType.ERROR,
-                sender=self.name,
-                content=f"Web scraping failed: {str(e)}",
-                metadata={"error_type": type(e).__name__},
+            return Command(
+                goto="supervisor" if hasattr(self, 'supervisor') and self.supervisor else "orchestrator",
+                update={"messages": [AIMessage(content=f"Web scraping failed: {str(e)}", name=self.name)]}
             )
 
     def _extract_urls(self, content: str) -> list[str]:
@@ -176,9 +168,7 @@ class ResearchCoordinatorAgent(Agent):
         """Coordinate research workflow."""
         # This agent would typically delegate to other agents in a team
         # For now, provide a coordination response
-        return AgentMessage(
-            type=MessageType.AGENT,
-            sender=self.name,
-            content=f"Research coordination: Analyzing request '{message.content}' and planning research strategy.",
-            metadata={"coordination_type": "research_planning"},
+        return Command(
+            goto="supervisor" if hasattr(self, 'supervisor') and self.supervisor else "orchestrator",
+            update={"messages": [AIMessage(content=f"Research coordination: Analyzing request '{message.content}' and planning research strategy.", name=self.name)]}
         )

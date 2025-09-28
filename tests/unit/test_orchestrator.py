@@ -70,20 +70,18 @@ class TestOrchestrator:
         orchestrator.add_team(team)
         orchestrator.add_agent(SimpleAgent("direct_agent", description="Direct agent"))
         
-        targets = orchestrator._get_available_targets()
+        targets = orchestrator.get_available_targets()
         assert "test_team" in targets
         assert "direct_agent" in targets
 
     def test_orchestrator_str_representation(self):
         """Test string representation of orchestrator."""
         orchestrator = Orchestrator("test_orchestrator", initialize_llm=False)
-        orchestrator_str = str(orchestrator)
-        assert "test_orchestrator" in orchestrator_str
-        assert "Orchestrator" in orchestrator_str
+        orchestrator_str = repr(orchestrator)
+        assert orchestrator_str == "Orchestrator(name='test_orchestrator')"
 
     def test_orchestrator_repr(self):
         """Test repr of orchestrator."""
         orchestrator = Orchestrator("test_orchestrator", initialize_llm=False)
         orchestrator_repr = repr(orchestrator)
-        assert "test_orchestrator" in orchestrator_repr
-        assert "Orchestrator" in orchestrator_repr
+        assert orchestrator_repr == "Orchestrator(name='test_orchestrator')"

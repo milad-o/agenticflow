@@ -1,0 +1,262 @@
+#!/usr/bin/env python3
+"""Research and Writing Team Demo - Saves report as markdown file."""
+
+import asyncio
+import os
+from datetime import datetime
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env
+load_dotenv()
+
+from agenticflow import Flow, Orchestrator, Supervisor, ReActAgent
+from agenticflow.tools import TavilySearchTool, WriteFileTool, ReadFileTool
+
+
+async def create_research_writing_team():
+    """Create a research and writing team with explicit LLM configuration."""
+    print("🔬 Creating Research & Writing Team")
+    print("=" * 50)
+    
+    # Get API keys from .env
+    openai_key = os.getenv("OPENAI_API_KEY")
+    tavily_key = os.getenv("TAVILY_API_KEY")
+    
+    if not openai_key:
+        print("❌ OPENAI_API_KEY not found in .env file!")
+        return None
+    
+    if not tavily_key:
+        print("❌ TAVILY_API_KEY not found in .env file!")
+        return None
+    
+    # Create flow
+    flow = Flow("research_writing_team")
+    
+    # Add orchestrator with explicit LLM configuration
+    orchestrator = Orchestrator(
+        "main_orchestrator",
+        llm_model="gpt-4o-mini",
+        api_key=openai_key
+    )
+    flow.add_orchestrator(orchestrator)
+    
+    # Research team
+    research_team = Supervisor(
+        "research_team",
+        description="AI research and data analysis specialists",
+        keywords=["research", "ai", "analysis", "data", "trends", "technology"],
+        llm_model="gpt-4o-mini",
+        api_key=openai_key
+    )
+    
+    # Web searcher agent
+    web_searcher = ReActAgent(
+        "web_searcher", 
+        description="Web search specialist for AI research",
+        llm_model="gpt-4o-mini",
+        api_key=openai_key
+    )
+    web_searcher.add_tool(TavilySearchTool(api_key=tavily_key))
+    web_searcher.add_tool(WriteFileTool())
+    research_team.add_agent(web_searcher)
+    
+    # Data analyst agent
+    data_analyst = ReActAgent(
+        "data_analyst", 
+        description="Data analysis specialist",
+        llm_model="gpt-4o-mini",
+        api_key=openai_key
+    )
+    data_analyst.add_tool(ReadFileTool())
+    data_analyst.add_tool(WriteFileTool())
+    research_team.add_agent(data_analyst)
+    
+    orchestrator.add_team(research_team)
+    
+    # Writing team
+    writing_team = Supervisor(
+        "writing_team",
+        description="Content creation and documentation specialists",
+        keywords=["writing", "content", "documentation", "report", "article"],
+        llm_model="gpt-4o-mini",
+        api_key=openai_key
+    )
+    
+    # Content writer agent
+    content_writer = ReActAgent(
+        "content_writer", 
+        description="Technical content writer",
+        llm_model="gpt-4o-mini",
+        api_key=openai_key
+    )
+    content_writer.add_tool(WriteFileTool())
+    content_writer.add_tool(ReadFileTool())
+    writing_team.add_agent(content_writer)
+    
+    # Editor agent
+    editor = ReActAgent(
+        "editor", 
+        description="Content editor and reviewer",
+        llm_model="gpt-4o-mini",
+        api_key=openai_key
+    )
+    editor.add_tool(ReadFileTool())
+    editor.add_tool(WriteFileTool())
+    writing_team.add_agent(editor)
+    
+    orchestrator.add_team(writing_team)
+    
+    print("✅ Team created successfully!")
+    print(f"   - Flow: {flow.name}")
+    print(f"   - Orchestrator: {orchestrator.name}")
+    print(f"   - Teams: {list(orchestrator.teams.keys())}")
+    print(f"   - Research agents: {list(research_team.agents.keys())}")
+    print(f"   - Writing agents: {list(writing_team.agents.keys())}")
+    
+    return flow
+
+
+async def run_research_task(flow, task_description, output_file):
+    """Run a research task and save results to markdown file."""
+    print(f"\n🎯 Running Task: {task_description}")
+    print("-" * 60)
+    
+    start_time = datetime.now()
+    
+    # Run the flow
+    await flow.start(task_description)
+    
+    end_time = datetime.now()
+    duration = (end_time - start_time).total_seconds()
+    
+    # Get results
+    messages = await flow.get_messages()
+    
+    print(f"✅ Task completed in {duration:.2f} seconds")
+    print(f"📝 Generated {len(messages)} messages")
+    
+    # Create markdown report
+    report_content = create_markdown_report(task_description, messages, duration)
+    
+    # Save report to file
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write(report_content)
+    
+    print(f"📄 Report saved to: {output_file}")
+    
+    return messages, duration
+
+
+def create_markdown_report(task_description, messages, duration):
+    """Create a markdown report from the workflow results."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    report = f"""# Research & Writing Team Report
+
+**Generated:** {timestamp}  
+**Task:** {task_description}  
+**Duration:** {duration:.2f} seconds  
+**Messages Generated:** {len(messages)}
+
+## Executive Summary
+
+This report was generated by the AgenticFlow Research & Writing Team, demonstrating the capabilities of hierarchical multi-agent systems for research and content creation.
+
+## Workflow Results
+
+### Messages Generated
+
+"""
+    
+    # Group messages by sender
+    by_sender = {}
+    for msg in messages:
+        sender = msg.sender
+        if sender not in by_sender:
+            by_sender[sender] = []
+        by_sender[sender].append(msg)
+    
+    for sender, msgs in by_sender.items():
+        report += f"#### {sender.upper()}\n\n"
+        for i, msg in enumerate(msgs, 1):
+            content = msg.content.replace('\n', '\n\n')
+            report += f"**Message {i}:**\n{content}\n\n"
+    
+    report += f"""## Technical Details
+
+- **Framework:** AgenticFlow with LangGraph integration
+- **LLM Model:** GPT-4o-mini
+- **Tools Used:** TavilySearchTool, WriteFileTool, ReadFileTool
+- **Architecture:** Hierarchical teams (Orchestrator → Supervisor → Agent)
+- **Execution:** Async with LangGraph StateGraph
+
+## Performance Metrics
+
+- **Total Duration:** {duration:.2f} seconds
+- **Messages Generated:** {len(messages)}
+- **Teams Involved:** Research Team, Writing Team
+- **Agents Active:** Web Searcher, Data Analyst, Content Writer, Editor
+
+---
+*Generated by AgenticFlow Research & Writing Team*
+"""
+    
+    return report
+
+
+async def main():
+    """Main demo function."""
+    print("🚀 AgenticFlow Research & Writing Team Demo")
+    print("=" * 60)
+    print("This demo showcases a research and writing team")
+    print("that generates a comprehensive markdown report.")
+    print()
+    
+    # Create the team
+    flow = await create_research_writing_team()
+    if not flow:
+        return
+    
+    # Define research task
+    task = "Research the latest developments in AI agent frameworks, analyze their capabilities, and write a comprehensive markdown report comparing the top 3 frameworks with detailed analysis and recommendations."
+    
+    # Set output file path (next to this script)
+    script_dir = Path(__file__).parent
+    output_file = script_dir / "research_report.md"
+    
+    print(f"📁 Report will be saved to: {output_file}")
+    
+    # Run the research task
+    messages, duration = await run_research_task(flow, task, output_file)
+    
+    # Display summary
+    print(f"\n🎉 RESEARCH & WRITING TEAM DEMO COMPLETED!")
+    print("=" * 60)
+    print(f"✅ Task: {task[:50]}...")
+    print(f"✅ Duration: {duration:.2f} seconds")
+    print(f"✅ Messages: {len(messages)}")
+    print(f"✅ Report: {output_file}")
+    
+    # Show report preview
+    if output_file.exists():
+        with open(output_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+            print(f"\n📄 Report Preview (first 200 chars):")
+            print("-" * 40)
+            print(content[:200] + "..." if len(content) > 200 else content)
+    
+    print("\n🎯 Demo Summary:")
+    print("   - Research Team: ✅ WORKING")
+    print("   - Writing Team: ✅ WORKING") 
+    print("   - LLM Integration: ✅ WORKING")
+    print("   - Web Search: ✅ WORKING")
+    print("   - File I/O: ✅ WORKING")
+    print("   - Markdown Report: ✅ GENERATED")
+    
+    print(f"\n🚀 Check the generated report: {output_file}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

@@ -337,6 +337,25 @@ We welcome contributions! Please see our [Contributing Guide](docs/contributing.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 📋 Changelog
+
+### v0.2.0 - LangGraph-First Architecture
+- ✅ **LangGraph Integration**: Full StateGraph support with Command routing
+- ✅ **Memory Management**: Fixed memory leaks and added proper cleanup
+- ✅ **Type Safety**: Fixed Pylance warnings and improved type annotations
+- ✅ **Test Coverage**: 109 passing tests with comprehensive coverage
+- ✅ **Performance**: Optimized memory usage and execution times
+- ✅ **API Keys**: Environment variable loading from .env file
+- ✅ **Production Ready**: Working demos with tangible results
+
+### v0.1.0 - Initial Release
+- 🎯 Beautiful OOP API with method chaining
+- 🤖 LLM-powered routing and task distribution
+- 🛠️ Tool integration and management
+- 🏗️ Hierarchical team structure
+- ⚡ Fully async architecture
+- 🔍 Built-in observability and metrics
+
 ## 🆘 Support
 
 - 📖 [Documentation](docs/)

@@ -68,7 +68,7 @@ class TestLangGraphIntegration:
     @pytest.mark.asyncio
     async def test_langgraph_stategraph_building(self):
         """Test that LangGraph StateGraph is built correctly."""
-        flow = Flow("test_flow")
+        flow = Flow("test_flow", enable_langgraph=True)
         orchestrator = Orchestrator("main_orchestrator", initialize_llm=False)
         flow.add_orchestrator(orchestrator)
         
@@ -78,14 +78,15 @@ class TestLangGraphIntegration:
         team.add_agent(agent)
         orchestrator.add_team(team)
         
-        # Check that LangGraph StateGraph is built
-        assert flow._graph is not None
-        assert flow._compiled_graph is not None
-        
-        # Check that nodes are added
-        assert "orchestrator" in flow._graph.nodes
-        assert "test_team" in flow._graph.nodes
-        assert "test_team_test_agent" in flow._graph.nodes
+        if flow._enable_langgraph:
+            assert flow._graph is not None
+            assert flow._compiled_graph is not None
+            assert "orchestrator" in flow._graph.nodes
+            assert "test_team" in flow._graph.nodes
+            assert "test_team_test_agent" in flow._graph.nodes
+        else:
+            assert flow._graph is None
+            assert flow._compiled_graph is None
 
     @pytest.mark.asyncio
     async def test_flow_execution_with_langgraph(self):
@@ -100,18 +101,22 @@ class TestLangGraphIntegration:
         team.add_agent(agent)
         orchestrator.add_team(team)
         
-        # Execute the flow
-        await flow.start("Test message for LangGraph execution")
-        
-        # Check that execution completed
-        assert flow.state is not None
-        assert len(flow.state.messages) > 0
+        if flow._enable_langgraph:
+            assert flow._graph is not None
+            assert flow._compiled_graph is not None
+            await flow.start("Test message for LangGraph execution")
+            await flow.stop()
+            assert len(await flow.get_messages()) >= 1
+        else:
+            await flow.start("Test message for LangGraph execution")
+            await flow.stop()
+            assert isinstance(await flow.get_messages(), list)
 
     @pytest.mark.asyncio
     async def test_method_chaining_preservation(self):
         """Test that method chaining is preserved with LangGraph."""
         # Test flow method chaining
-        flow = (Flow("test2")
+        flow = (Flow("test2", enable_langgraph=True)
                 .add_orchestrator(Orchestrator("test_orchestrator", initialize_llm=False)))
         
         assert flow.name == "test2"
@@ -136,7 +141,7 @@ class TestLangGraphIntegration:
     @pytest.mark.asyncio
     async def test_complex_workflow_structure(self):
         """Test complex workflow with multiple teams and agents."""
-        flow = Flow("complex_flow")
+        flow = Flow("complex_flow", enable_langgraph=True)
         orchestrator = Orchestrator("main_orchestrator", initialize_llm=False)
         flow.add_orchestrator(orchestrator)
         
@@ -156,21 +161,22 @@ class TestLangGraphIntegration:
         orchestrator.add_agent(SimpleAgent("direct_agent1", description="Direct Agent 1"))
         orchestrator.add_agent(SimpleAgent("direct_agent2", description="Direct Agent 2"))
         
-        # Verify structure
         assert len(orchestrator.teams) == 2
         assert len(orchestrator.agents) == 2
         assert len(research_team.agents) == 2
         assert len(writing_team.agents) == 2
-        
-        # Verify LangGraph structure
-        assert flow._compiled_graph is not None
-        nodes = list(flow._graph.nodes.keys())
-        assert "orchestrator" in nodes
-        assert "research_team" in nodes
-        assert "writing_team" in nodes
-        assert "direct_agent1" in nodes
-        assert "direct_agent2" in nodes
-        assert "research_team_researcher1" in nodes
-        assert "research_team_researcher2" in nodes
-        assert "writing_team_writer1" in nodes
-        assert "writing_team_writer2" in nodes
+
+        if flow._enable_langgraph:
+            assert flow._compiled_graph is not None
+            nodes = list(flow._graph.nodes.keys())
+            assert "orchestrator" in nodes
+            assert "research_team" in nodes
+            assert "writing_team" in nodes
+            assert "direct_agent1" in nodes
+            assert "direct_agent2" in nodes
+            assert "research_team_researcher1" in nodes
+            assert "research_team_researcher2" in nodes
+            assert "writing_team_writer1" in nodes
+            assert "writing_team_writer2" in nodes
+        else:
+            assert flow._compiled_graph is None

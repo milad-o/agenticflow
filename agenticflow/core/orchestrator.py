@@ -14,14 +14,11 @@ if TYPE_CHECKING:
     from .agent import Agent
     from .supervisor import Supervisor
 
-try:
-    from langchain_openai import ChatOpenAI
-    from langchain_core.messages import HumanMessage, SystemMessage
-    from langgraph.types import Command
-    from langgraph.graph import START, END
-    HAS_LANGCHAIN = True
-except ImportError:
-    HAS_LANGCHAIN = False
+# LangGraph is required for the framework
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.types import Command
+from langgraph.graph import START, END
 
 
 class BaseOrchestrator(ABC):
@@ -63,7 +60,12 @@ class BaseOrchestrator(ABC):
         Args:
             message: The message to process
         """
-        pass
+        target = await self.route_message(message)
+
+        if target:
+            await self._route_to_target(message, target)
+        else:
+            await self._broadcast_message(message)
 
     @abstractmethod
     async def route_message(self, message: AgentMessage) -> Optional[str]:
@@ -102,8 +104,7 @@ class Orchestrator(BaseOrchestrator):
         """
         super().__init__(name)
 
-        if not HAS_LANGCHAIN:
-            raise ImportError("LangChain is required for LLM-based orchestrator. Install with: pip install langchain-openai langchain-core")
+        # LangGraph is required for the framework
 
         self.llm = None
         if initialize_llm:
@@ -122,6 +123,9 @@ class Orchestrator(BaseOrchestrator):
         self.completion_order: List[str] = []
         self.routing_strategy: str = "llm_based"
 
+    def __repr__(self) -> str:
+        return f"Orchestrator(name='{self.name}')"
+
     def add_team(self, supervisor: "Supervisor") -> "Orchestrator":
         """Add a team (supervisor) to the orchestrator.
 
@@ -138,6 +142,10 @@ class Orchestrator(BaseOrchestrator):
         if self.flow and self.flow.workspace:
             for agent in supervisor.agents.values():
                 agent.set_workspace(self.flow.workspace)
+        
+        # Rebuild graph if flow is set
+        if hasattr(self, 'flow') and self.flow:
+            self.flow._build_langgraph()
 
         return self
 
@@ -156,6 +164,10 @@ class Orchestrator(BaseOrchestrator):
         # Set workspace if available
         if self.flow and self.flow.workspace:
             agent.set_workspace(self.flow.workspace)
+        
+        # Rebuild graph if flow is set
+        if hasattr(self, 'flow') and self.flow:
+            self.flow._build_langgraph()
 
         return self
 
@@ -225,7 +237,8 @@ Available individual agents:
 {chr(10).join(agent_descriptions) if agent_descriptions else "No individual agents available"}
 
 Given the user's request, decide which team or agent should handle it next.
-If the task is complete or no action is needed, respond with "FINISH".
+IMPORTANT: You should ALWAYS route to a team or agent unless the task is completely unrelated to any available capabilities.
+Only return "FINISH" if the task is impossible to handle with the available teams/agents.
 
 Choose from: {', '.join(all_options)}
 
@@ -439,10 +452,9 @@ Respond with just the team/agent name and your reasoning."""
         Returns:
             Function that can be used as a LangGraph node
         """
-        if not HAS_LANGCHAIN:
-            raise ImportError("LangChain is required for LangGraph integration")
+        # LangGraph is required for the framework
         
-        def orchestrator_node(state: AgenticFlowState) -> "Command":
+        def orchestrator_node(state: AgenticFlowState) -> Any:
             """LangGraph node for orchestrator-level routing."""
             try:
                 # Get available options
@@ -455,10 +467,27 @@ Respond with just the team/agent name and your reasoning."""
 
                 # If LLM is not initialized, use simple routing
                 if not self.llm:
+                    # Check if we've already processed this message (avoid infinite loop)
+                    execution_path = state.get("execution_path", [])
+                    if f"orchestrator_{self.name}_processed" in execution_path:
+                        return Command(goto=END, update={})  # type: ignore
+                    
                     if available_teams:
-                        return Command(goto=available_teams[0], update={"current_team": available_teams[0]})  # type: ignore
+                        return Command(
+                            goto=available_teams[0], 
+                            update={
+                                "current_team": available_teams[0],
+                                "execution_path": [f"orchestrator_{self.name}_processed"]
+                            }
+                        )  # type: ignore
                     elif available_agents:
-                        return Command(goto=available_agents[0], update={"current_agent": available_agents[0]})  # type: ignore
+                        return Command(
+                            goto=available_agents[0], 
+                            update={
+                                "current_agent": available_agents[0],
+                                "execution_path": [f"orchestrator_{self.name}_processed"]
+                            }
+                        )  # type: ignore
                     return Command(goto=END, update={})  # type: ignore
 
                 # Build system prompt with team/agent descriptions
@@ -484,7 +513,8 @@ Available individual agents:
 {chr(10).join(agent_descriptions) if agent_descriptions else "No individual agents available"}
 
 Given the user's request, decide which team or agent should handle it next.
-If the task is complete or no action is needed, respond with "FINISH".
+IMPORTANT: You should ALWAYS route to a team or agent unless the task is completely unrelated to any available capabilities.
+Only return "FINISH" if the task is impossible to handle with the available teams/agents.
 
 Choose from: {', '.join(all_options)}
 

@@ -13,21 +13,11 @@ from .langgraph_state import AgenticFlowState, TeamRoutingDecision
 if TYPE_CHECKING:
     from .orchestrator import Orchestrator
 
-try:
-    from langchain_openai import ChatOpenAI
-    from langchain_core.messages import HumanMessage, SystemMessage
-    from langgraph.types import Command
-    from langgraph.graph import START, END
-    HAS_LANGCHAIN = True
-except ImportError:
-    HAS_LANGCHAIN = False
-    # Define fallback types for type checking
-    Command = Any
-    HumanMessage = Any
-    SystemMessage = Any
-    ChatOpenAI = Any
-    START = Any
-    END = Any
+# LangGraph is required for the framework
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.types import Command
+from langgraph.graph import START, END
 
 
 class Supervisor:
@@ -63,8 +53,7 @@ class Supervisor:
         self.keywords = keywords or []
         self.max_concurrent_agents = max_concurrent_agents
 
-        if not HAS_LANGCHAIN:
-            raise ImportError("LangChain is required for LLM-based supervisor. Install with: pip install langchain-openai langchain-core")
+        # LangGraph is required for the framework
 
         self.llm = None
         if initialize_llm:
@@ -88,6 +77,10 @@ class Supervisor:
         # Control
         self._stop_event = asyncio.Event()
         self._semaphore = asyncio.Semaphore(max_concurrent_agents)
+        self._message_lock = asyncio.Lock()
+
+    def __repr__(self) -> str:
+        return f"Supervisor(name='{self.name}')"
 
     def set_orchestrator(self, orchestrator: "Orchestrator") -> None:
         """Set the orchestrator reference.
@@ -100,6 +93,7 @@ class Supervisor:
         # Set orchestrator for all agents
         for agent in self.agents.values():
             agent.set_supervisor(self)
+            agent.set_orchestrator(orchestrator)
 
     def add_agent(self, agent: Agent) -> "Supervisor":
         """Add an agent to the team.
@@ -112,6 +106,10 @@ class Supervisor:
         """
         self.agents[agent.name] = agent
         agent.set_supervisor(self)
+        
+        # Set orchestrator reference if available
+        if self.orchestrator:
+            agent.set_orchestrator(self.orchestrator)
 
         # Set workspace if available through orchestrator
         if self.orchestrator and self.orchestrator.flow and self.orchestrator.flow.workspace:
@@ -172,9 +170,16 @@ class Supervisor:
                 else await self._process_with_all_agents(message)
             )
 
-            # Extract response from command
-            if command_result and hasattr(command_result, 'update') and command_result.update and "messages" in command_result.update:
-                response = command_result.update["messages"][0] if command_result.update["messages"] else None  # type: ignore
+            # Handle both Command objects (LangGraph) and AgentMessage objects (non-LangGraph)
+            if command_result:
+                if hasattr(command_result, 'update') and command_result.update and "messages" in command_result.update:
+                    # LangGraph Command object
+                    response = command_result.update["messages"][0] if command_result.update["messages"] else None  # type: ignore
+                elif hasattr(command_result, 'type'):
+                    # Direct AgentMessage object (non-LangGraph mode)
+                    response = command_result
+                else:
+                    response = None
             else:
                 response = None
 
@@ -249,8 +254,9 @@ Team specialties: {', '.join(self.keywords)}"""
                 response = await structured_llm.ainvoke(messages)
                 target = response.next  # type: ignore
             else:
+                # When no LLM is available, broadcast to all agents (return None)
                 available_agents = [name for name, agent in self.agents.items() if agent.is_available()]
-                target = available_agents[0] if available_agents else "FINISH"
+                target = "FINISH"  # Always broadcast when no LLM
 
             # Return None for FINISH (broadcast to all)
             if target == "FINISH":
@@ -486,8 +492,7 @@ Team specialties: {', '.join(self.keywords)}"""
         Returns:
             Function that can be used as a LangGraph node
         """
-        if not HAS_LANGCHAIN:
-            raise ImportError("LangChain is required for LangGraph integration")
+        # LangGraph is required for the framework
         
         def team_supervisor_node(state: AgenticFlowState) -> Any:
             """LangGraph node for team-level routing."""

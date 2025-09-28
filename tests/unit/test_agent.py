@@ -1,11 +1,47 @@
 """Tests for agent functionality."""
 
 import pytest
+import pytest_asyncio
 import asyncio
 from unittest.mock import AsyncMock
 
 from agenticflow.core.agent import Agent, SimpleAgent, Tool
 from agenticflow.core.state import AgentMessage, AgentStatus, MessageType
+
+
+@pytest_asyncio.fixture
+async def simple_agent() -> SimpleAgent:
+    agent = SimpleAgent(
+        name="test_agent",
+        description="A test agent",
+        keywords=["test", "hello"],
+    )
+    
+    # Create a mock flow context so agent returns Command objects
+    from unittest.mock import Mock, AsyncMock
+    mock_orchestrator = Mock()
+    mock_flow = Mock()
+    mock_flow._enable_langgraph = True
+    mock_flow.state = Mock()
+    mock_flow.state.update_agent_status = AsyncMock()
+    mock_flow.observer = None
+    mock_orchestrator.flow = mock_flow
+    agent.set_orchestrator(mock_orchestrator)
+    
+    yield agent
+
+
+@pytest.fixture
+def echo_tool() -> Tool:
+    async def _echo(message: str) -> str:
+        return f"Echo: {message}"
+
+    return Tool(
+        name="echo",
+        description="Echo tool",
+        func=_echo,
+        parameters={"message": "str"},
+    )
 
 
 @pytest.mark.asyncio
@@ -87,11 +123,13 @@ class TestSimpleAgent:
             content="Hello agent",
         )
 
-        response = await simple_agent.process_message(message)
+        command = await simple_agent.process_message(message)
 
-        assert response is not None
-        assert response.type == MessageType.AGENT
-        assert response.sender == simple_agent.name
+        assert command is not None
+        assert command.goto == "orchestrator"
+        response = command.update["messages"][0]
+        assert response.type == "ai"  # AIMessage type
+        assert response.name == simple_agent.name  # AIMessage uses 'name' instead of 'sender'
         assert "test_agent processed: Hello agent" in response.content
         assert simple_agent.execution_count == 1
         assert len(simple_agent.message_history) == 1
@@ -119,8 +157,9 @@ class TestSimpleAgent:
         error_agent = ErrorAgent("error_agent")
         message = AgentMessage(sender="user", content="Test")
 
-        response = await error_agent.process_message(message)
+        command = await error_agent.process_message(message)
 
+        response = command.update["messages"][0]
         assert response.type == MessageType.ERROR
         assert error_agent.status == AgentStatus.ERROR
         assert "Error processing message" in response.content
@@ -187,6 +226,6 @@ class TestSimpleAgent:
         )
 
         message = AgentMessage(sender="user", content="Hello")
-        response = await agent.process_message(message)
-
+        command = await agent.process_message(message)
+        response = command.update["messages"][0]
         assert "Custom: Hello from user" in response.content

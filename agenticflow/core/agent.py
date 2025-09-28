@@ -7,31 +7,19 @@ from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, Union
 from datetime import datetime, timezone
 
 from .state import AgentMessage, AgentStatus, MessageType
-from .command import create_agent_response_command, create_finish_command
 from .langgraph_state import AgenticFlowState
 
-try:
-    from langgraph.types import Command
-    HAS_COMMAND = True
-except ImportError:
-    HAS_COMMAND = False
+# LangGraph is required for the framework
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langgraph.prebuilt import create_react_agent
+from langgraph.graph import START, END
+from langgraph.types import Command
 
 if TYPE_CHECKING:
     from .orchestrator import Orchestrator
     from .supervisor import Supervisor
     from ..workspace.workspace import Workspace
-
-try:
-    from langchain_openai import ChatOpenAI
-    from langchain_core.messages import HumanMessage, SystemMessage
-    from langgraph.prebuilt import create_react_agent
-    from langgraph.graph import START, END
-    from langgraph.types import Command
-    HAS_LANGCHAIN = True
-except ImportError:
-    HAS_LANGCHAIN = False
-    # Define fallback types for type checking
-    Command = Any
     HumanMessage = Any
     SystemMessage = Any
     ChatOpenAI = Any
@@ -114,12 +102,16 @@ class Agent(ABC):
 
         # Execution tracking
         self.message_history: List[AgentMessage] = []
+        self._max_message_history = 100  # Limit message history to prevent memory leaks
         self.execution_count = 0
         self.last_execution: Optional[datetime] = None
 
         # Async control
         self._stop_event = asyncio.Event()
         self._current_task: Optional[asyncio.Task] = None
+
+    def __repr__(self) -> str:  # pragma: no cover - trivial
+        return f"{self.__class__.__name__}(name='{self.name}')"
 
     def set_orchestrator(self, orchestrator: "Orchestrator") -> None:
         """Set the orchestrator reference.
@@ -180,8 +172,7 @@ class Agent(ABC):
         Returns:
             Function that can be used as a LangGraph node
         """
-        if not HAS_LANGCHAIN:
-            raise ImportError("LangChain is required for LangGraph integration")
+        # LangGraph is required for the framework
         
         def agent_node(state: AgenticFlowState) -> Any:
             """LangGraph node for agent execution."""
@@ -189,7 +180,7 @@ class Agent(ABC):
                 # Get the last message from state
                 messages = state.get("messages", [])
                 if not messages:
-                    return Command(goto=END, update={})  # type: ignore
+                    return Command(goto=END, update={})
                 
                 last_message = messages[-1]
                 
@@ -207,8 +198,17 @@ class Agent(ABC):
                         content=str(last_message),
                     )
                 
-                # Execute the agent's logic
-                response_command = asyncio.run(self.execute(agent_message))
+                # Execute the agent's logic (sync execution for LangGraph)
+                import asyncio
+                import concurrent.futures
+                
+                # Run async execute in a separate thread to avoid event loop conflicts
+                def run_in_thread():
+                    return asyncio.run(self.execute(agent_message))
+                
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(run_in_thread)
+                    response_command = future.result(timeout=30)
                 
                 # Extract response from command
                 if response_command and hasattr(response_command, 'update') and response_command.update:
@@ -221,12 +221,24 @@ class Agent(ABC):
                         execution_path.append(f"agent_{self.name}_completed")
                         
                         # Determine next step based on command
-                        goto = response_command.goto if hasattr(response_command, 'goto') else "supervisor"
+                        goto = response_command.goto if hasattr(response_command, 'goto') else "orchestrator"
+                        
+                        # Convert AgentMessage to LangChain message type, preserving sender
+                        if hasattr(response_message, 'type') and hasattr(response_message, 'content'):
+                            sender_name = getattr(response_message, 'sender', self.name)
+                            if response_message.type == MessageType.USER:
+                                langchain_message = HumanMessage(content=response_message.content, name=sender_name)  # type: ignore
+                            elif response_message.type == MessageType.AGENT:
+                                langchain_message = AIMessage(content=response_message.content, name=sender_name)  # type: ignore
+                            else:
+                                langchain_message = AIMessage(content=response_message.content, name=sender_name)  # type: ignore
+                        else:
+                            langchain_message = AIMessage(content=str(response_message), name=self.name)  # type: ignore
                         
                         return Command(  # type: ignore
                             goto=goto,
                             update={
-                                "messages": [response_message],
+                                "messages": [langchain_message],
                                 "execution_path": execution_path,
                                 "completion_status": {
                                     **state.get("completion_status", {}),
@@ -236,21 +248,27 @@ class Agent(ABC):
                         )
                 
                 # Fallback if no response
-                return Command(goto="supervisor", update={})  # type: ignore
+                return Command(goto="orchestrator", update={})  # type: ignore
                 
             except Exception as e:
-                # Return error command
-                error_msg = AgentMessage(
-                    type=MessageType.ERROR,
-                    sender=self.name,
+                # Set agent status to error directly
+                self.status = AgentStatus.ERROR
+                
+                # Return error command with LangGraph-native message
+                if hasattr(self, 'supervisor') and self.supervisor:
+                    goto = self.supervisor.name
+                else:
+                    goto = "orchestrator"
+                
+                error_message = AIMessage(
                     content=f"Agent execution failed: {str(e)}",
-                    metadata={"error_type": type(e).__name__},
+                    name=self.name
                 )
                 
                 return Command(  # type: ignore
-                    goto="supervisor",
+                    goto=goto,
                     update={
-                        "messages": [error_msg],
+                        "messages": [error_message],
                         "completion_status": {
                             **state.get("completion_status", {}),
                             f"{self.name}_error": True
@@ -289,10 +307,18 @@ class Agent(ABC):
                 sender=self.name,
                 content=f"Agent {self.name} is in error state",
             )
-            return create_agent_response_command(error_msg)
+            # Always return Command objects (LangGraph is required)
+            return Command(
+                goto="orchestrator",
+                update={"messages": [error_msg]}
+            )
 
         # Add to history
         self.message_history.append(message)
+        
+        # Clean up old messages to prevent memory leaks
+        if len(self.message_history) > self._max_message_history:
+            self.message_history = self.message_history[-self._max_message_history:]
 
         # Set status to busy
         await self._set_status(AgentStatus.BUSY)
@@ -319,7 +345,11 @@ class Agent(ABC):
                 metadata={"error_type": type(e).__name__, "original_message": message.to_dict()},
             )
             self.message_history.append(error_msg)
-            return create_agent_response_command(error_msg)
+            # Always return Command objects (LangGraph is required)
+            return Command(
+                goto="orchestrator",
+                update={"messages": [error_msg]}
+            )
 
     async def use_tool(self, tool_name: str, **kwargs) -> Any:
         """Use a tool by name.
@@ -429,7 +459,7 @@ class SimpleAgent(Agent):
         super().__init__(name, description, **kwargs)
         self.response_template = response_template
 
-    async def execute(self, message: AgentMessage) -> Optional[AgentMessage]:
+    async def execute(self, message: AgentMessage) -> Command:
         """Execute simple message processing.
 
         Args:
@@ -447,14 +477,11 @@ class SimpleAgent(Agent):
             sender=message.sender,
         )
 
-        response_msg = AgentMessage(
-            type=MessageType.AGENT,
-            sender=self.name,
-            content=response_content,
-            metadata={"processed_message_id": str(message.id)},
+        # Always return Command objects with LangGraph-native messages
+        return Command(  # type: ignore
+            goto="orchestrator",
+            update={"messages": [AIMessage(content=response_content, name=self.name)]}
         )
-
-        return create_agent_response_command(response_msg)  # type: ignore
 
 
 class ReActAgent(Agent):
@@ -485,8 +512,7 @@ class ReActAgent(Agent):
         """
         super().__init__(name, description, keywords, max_retries)
 
-        if not HAS_LANGCHAIN:
-            raise ImportError("LangChain is required for ReAct agents. Install with: pip install langchain-openai langchain-core langgraph")
+        # LangGraph is required for the framework
 
         self.llm = None
         if initialize_llm:
@@ -557,21 +583,23 @@ Your capabilities: {', '.join(keywords) if keywords else 'General assistance'}
             else:
                 response_content = f"Agent {self.name} processed: {message.content}"
 
-            response_msg = AgentMessage(
-                type=MessageType.AGENT,
-                sender=self.name,
-                content=response_content,
-                metadata={"agent_type": "react", "tools_used": list(self.tools.keys())},
+            # Always return Command objects with LangGraph-native messages
+            if hasattr(self, 'supervisor') and self.supervisor:
+                goto = self.supervisor.name
+            else:
+                goto = "orchestrator"
+            return Command(
+                goto=goto,
+                update={"messages": [AIMessage(content=response_content, name=self.name)]}
             )
-
-            return create_agent_response_command(response_msg)
 
         except Exception as e:
-            # Return error command
-            error_msg = AgentMessage(
-                type=MessageType.ERROR,
-                sender=self.name,
-                content=f"ReAct execution failed: {str(e)}",
-                metadata={"error_type": type(e).__name__},
+            # Return error command with LangGraph-native message
+            if hasattr(self, 'supervisor') and self.supervisor:
+                goto = self.supervisor.name
+            else:
+                goto = "orchestrator"
+            return Command(
+                goto=goto,
+                update={"messages": [AIMessage(content=f"ReAct execution failed: {str(e)}", name=self.name)]}
             )
-            return create_agent_response_command(error_msg)
