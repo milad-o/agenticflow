@@ -20,16 +20,28 @@ Usage:
 """
 
 from .core import Flow, Agent, Team
-from .tools import create_file, search_web
+from .tools import create_file, search_web, read_file, list_directory
 from .agents.filesystem_agent import FilesystemAgent
 from .agents.python_agent import PythonAgent
 from .agents.excel_agent import ExcelAgent
 from .agents.data_agent import DataAgent
 from .agents.ssis_agent import SSISAnalysisAgent
+from .observability import (
+    EventLogger, ConsoleSubscriber, FileSubscriber, MetricsCollector,
+    FlowStarted, FlowCompleted, FlowError, AgentStarted, AgentCompleted,
+    AgentReasoning, AgentError, ToolExecuted, ToolArgs, ToolResult, ToolError,
+    MessageRouted, MessageReceived, TeamSupervisorCalled, TeamAgentCalled,
+    CustomEvent
+)
 
 __version__ = "1.0.0"
 __all__ = [
     "Flow", "Agent", "Team",
-    "create_file", "search_web",
-    "FilesystemAgent", "PythonAgent", "ExcelAgent", "DataAgent", "SSISAnalysisAgent"
+    "create_file", "search_web", "read_file", "list_directory",
+    "FilesystemAgent", "PythonAgent", "ExcelAgent", "DataAgent", "SSISAnalysisAgent",
+    "EventLogger", "ConsoleSubscriber", "FileSubscriber", "MetricsCollector",
+    "FlowStarted", "FlowCompleted", "FlowError", "AgentStarted", "AgentCompleted",
+    "AgentReasoning", "AgentError", "ToolExecuted", "ToolArgs", "ToolResult", "ToolError",
+    "MessageRouted", "MessageReceived", "TeamSupervisorCalled", "TeamAgentCalled",
+    "CustomEvent"
 ]

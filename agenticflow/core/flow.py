@@ -1,12 +1,21 @@
 """Working framework with simple team support."""
 
 import os
+import time
 from typing import Dict, List, Optional, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langgraph.graph import StateGraph, MessagesState, START, END
 from langgraph.types import Command
 from langgraph.prebuilt import create_react_agent
+from ..observability import (
+    EventLogger, ConsoleSubscriber, FileSubscriber, MetricsCollector,
+    FlowStarted, FlowCompleted, FlowError, AgentStarted, AgentCompleted,
+    AgentReasoning, AgentError, ToolExecuted, ToolArgs, ToolResult, ToolError,
+    MessageRouted, MessageReceived, TeamSupervisorCalled, TeamAgentCalled,
+    CustomEvent
+)
+from ..observability.observable_agent import ObservableReActAgent
 
 class State(MessagesState):
     """Simple state."""
@@ -26,29 +35,61 @@ class Agent:
         self._react_agent = None
         if self.tools:
             self._react_agent = create_react_agent(self.llm, tools=self.tools)
+        
+        # Observability
+        self._flow_id: Optional[str] = None
+        self._event_logger: Optional[EventLogger] = None
     
     def create_node(self):
         """Create agent node."""
         def agent_node(state: State) -> Command:
-            if self._react_agent:
-                # Use the ReAct agent with state directly
-                result = self._react_agent.invoke(state)
-                content = result["messages"][-1].content if "messages" in result and result["messages"] else str(result)
-            else:
-                # Fallback to direct LLM call
-                response = self.llm.invoke([
-                    SystemMessage(content=f"You are {self.name}. {self.description}"),
-                    *state["messages"]
-                ])
-                content = response.content
+            try:
+                if self._react_agent:
+                    # Use the ReAct agent with state directly (it handles observability)
+                    result = self._react_agent.invoke(state)
+                    content = result["messages"][-1].content if "messages" in result and result["messages"] else str(result)
+                else:
+                    # Fallback to direct LLM call
+                    response = self.llm.invoke([
+                        SystemMessage(content=f"You are {self.name}. {self.description}"),
+                        *state["messages"]
+                    ])
+                    content = response.content
+                
+                return Command(
+                    update={
+                        "messages": [AIMessage(content=content, name=self.name)]
+                    },
+                    goto=END
+                )
             
-            return Command(
-                update={
-                    "messages": [AIMessage(content=content, name=self.name)]
-                },
-                goto=END
-            )
+            except Exception as e:
+                # Emit agent error event
+                if self._event_logger:
+                    agent_error = AgentError(
+                        flow_id=self._flow_id,
+                        agent_name=self.name,
+                        agent_type=self.__class__.__name__,
+                        error_message=str(e),
+                        error_type=type(e).__name__,
+                        stack_trace=str(e.__traceback__) if hasattr(e, '__traceback__') else None
+                    )
+                    self._event_logger.get_event_bus().emit_event_sync(agent_error)
+                
+                raise
+        
         return agent_node
+    
+    def set_observability(self, flow_id: str, event_logger: EventLogger) -> None:
+        """Set observability context for this agent."""
+        self._flow_id = flow_id
+        self._event_logger = event_logger
+        
+        # Create observable ReAct agent if tools are available
+        if self.tools and self._event_logger:
+            self._react_agent = ObservableReActAgent(
+                self.llm, self.tools, flow_id, self.name, event_logger
+            )
 
 class Team:
     """Team with supervisor and agents."""
@@ -107,14 +148,118 @@ class Flow:
             api_key=os.getenv("OPENAI_API_KEY")
         )
         self._graph = None
+        
+        # Observability
+        self._observability_enabled = False
+        self._event_logger: Optional[EventLogger] = None
+        self._flow_id: Optional[str] = None
     
     def add_team(self, team: Team):
         """Add a team to the flow."""
         self.teams[team.name] = team
+        
+        # Set observability for team agents if enabled
+        if self._observability_enabled and self._event_logger:
+            flow_id = self._flow_id or "temp-flow-id"
+            for agent in team.agents.values():
+                if hasattr(agent, 'set_observability'):
+                    agent.set_observability(flow_id, self._event_logger)
     
     def add_agent(self, agent: Agent):
         """Add an agent directly to the flow (no team)."""
         self.agents[agent.name] = agent
+        
+        # Set observability if enabled
+        if self._observability_enabled and self._event_logger and hasattr(agent, 'set_observability'):
+            # Use a temporary flow_id if not set yet
+            flow_id = self._flow_id or "temp-flow-id"
+            agent.set_observability(flow_id, self._event_logger)
+    
+    def enable_observability(self, persistent: bool = False, backend: str = "sqlite3", 
+                           console_output: bool = True, file_logging: bool = False,
+                           log_file: str = "examples/artifacts/flow_events.log") -> None:
+        """Enable observability for this flow."""
+        self._observability_enabled = True
+        self._event_logger = EventLogger(persistent=persistent, backend=backend)
+        
+        # Add subscribers
+        if console_output:
+            console_sub = ConsoleSubscriber(show_timestamps=True, show_details=True)
+            self._event_logger.get_event_bus().add_subscriber(console_sub)
+        
+        if file_logging:
+            file_sub = FileSubscriber(log_file, format="json")
+            self._event_logger.get_event_bus().add_subscriber(file_sub)
+        
+        # Always add metrics collector
+        metrics_sub = MetricsCollector()
+        self._event_logger.get_event_bus().add_subscriber(metrics_sub)
+        
+        # Set observability context for all agents
+        self._set_agents_observability()
+    
+    def disable_observability(self) -> None:
+        """Disable observability for this flow."""
+        self._observability_enabled = False
+        self._event_logger = None
+    
+    def emit_custom_event(self, event_type: str, data: Dict[str, Any]) -> None:
+        """Emit a custom event."""
+        if not self._observability_enabled or not self._event_logger:
+            return
+        
+        event = CustomEvent(
+            flow_id=self._flow_id,
+            custom_type=event_type,
+            custom_data=data
+        )
+        
+        # Emit synchronously for immediate processing
+        self._event_logger.get_event_bus().emit_event_sync(event)
+        
+        # Also log the event directly to the logger
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're in an async context, schedule the coroutine
+                asyncio.create_task(self._event_logger.log_event(event))
+            else:
+                # If we're not in an async context, run it
+                loop.run_until_complete(self._event_logger.log_event(event))
+        except RuntimeError:
+            # No event loop, create a new one
+            asyncio.run(self._event_logger.log_event(event))
+    
+    def get_metrics(self) -> Dict[str, Any]:
+        """Get flow metrics."""
+        if not self._observability_enabled or not self._event_logger:
+            return {"error": "Observability not enabled"}
+        
+        return self._event_logger.get_metrics()
+    
+    def get_flow_summary(self) -> Dict[str, Any]:
+        """Get summary for this flow."""
+        if not self._observability_enabled or not self._event_logger or not self._flow_id:
+            return {"error": "Observability not enabled or flow not started"}
+        
+        return self._event_logger.get_flow_summary(self._flow_id)
+    
+    def _set_agents_observability(self) -> None:
+        """Set observability context for all agents."""
+        if not self._observability_enabled or not self._event_logger:
+            return
+        
+        # Set for direct agents
+        for agent in self.agents.values():
+            if hasattr(agent, 'set_observability'):
+                agent.set_observability(self._flow_id, self._event_logger)
+        
+        # Set for team agents
+        for team in self.teams.values():
+            for agent in team.agents.values():
+                if hasattr(agent, 'set_observability'):
+                    agent.set_observability(self._flow_id, self._event_logger)
     
     def build_graph(self):
         """Build the LangGraph with simple hierarchy."""
@@ -186,8 +331,55 @@ class Flow:
         if not self._graph:
             self.build_graph()
         
-        result = await self._graph.ainvoke({
-            "messages": [("user", message)]
-        }, {"recursion_limit": recursion_limit})
+        # Generate flow ID for this execution
+        import uuid
+        self._flow_id = str(uuid.uuid4())
         
-        return result
+        # Set observability context for all agents
+        if self._observability_enabled and self._event_logger:
+            self._set_agents_observability()
+        
+        # Emit flow started event
+        if self._observability_enabled and self._event_logger:
+            start_time = time.time()
+            flow_started = FlowStarted(
+                flow_id=self._flow_id,
+                flow_name=self.name,
+                message=message
+            )
+            await self._event_logger.log_event(flow_started)
+        
+        try:
+            result = await self._graph.ainvoke({
+                "messages": [("user", message)]
+            }, {"recursion_limit": recursion_limit})
+            
+            # Emit flow completed event
+            if self._observability_enabled and self._event_logger:
+                end_time = time.time()
+                duration_ms = (end_time - start_time) * 1000
+                total_messages = len(result.get("messages", []))
+                
+                flow_completed = FlowCompleted(
+                    flow_id=self._flow_id,
+                    flow_name=self.name,
+                    duration_ms=duration_ms,
+                    total_messages=total_messages
+                )
+                await self._event_logger.log_event(flow_completed)
+            
+            return result
+            
+        except Exception as e:
+            # Emit flow error event
+            if self._observability_enabled and self._event_logger:
+                flow_error = FlowError(
+                    flow_id=self._flow_id,
+                    flow_name=self.name,
+                    error_message=str(e),
+                    error_type=type(e).__name__,
+                    stack_trace=str(e.__traceback__) if hasattr(e, '__traceback__') else None
+                )
+                await self._event_logger.log_event(flow_error)
+            
+            raise
