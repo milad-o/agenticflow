@@ -1,6 +1,0 @@
-region,manager,total_sales,market_share_pct,top_product_1,top_product_1_sales,top_product_2,top_product_2_sales,top_product_3,top_product_3_sales
-Northeast,Tom Wilson,743850,26.1,Widget Alpha,182480,Gadget Pro,213680,Consulting,127695
-Midwest,Jennifer Davis,625420,22.0,Widget Beta,151560,Gadget Pro,160260,Support,113507
-West Coast,David Kim,568730,20.0,Widget Alpha,136950,Widget Gamma,164200,Consulting,127695
-Southeast,Maria Garcia,512680,18.0,Widget Beta,113670,Gadget Standard,179050,Support,85076
-Southwest,James Brown,396640,13.9,Widget Gamma,123150,Gadget Standard,119025,Support,85185

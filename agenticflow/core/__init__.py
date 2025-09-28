@@ -1,10 +1,5 @@
-"""Core components of AgenticFlow framework."""
+"""Core components."""
 
-from .flow import Flow
-from .orchestrator import Orchestrator
-from .agent import Agent
-from .supervisor import Supervisor
-from .state import FlowState, AgentMessage
-from .langgraph_state import AgenticFlowState
+from .flow import Flow, Agent, Team
 
-__all__ = ["Flow", "Orchestrator", "Agent", "Supervisor", "FlowState", "AgentMessage", "AgenticFlowState"]
+__all__ = ["Flow", "Agent", "Team"]

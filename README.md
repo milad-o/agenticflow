@@ -1,368 +1,119 @@
-# 🤖 AgenticFlow
+# AgenticFlow
 
-**A production-ready, async, OOP framework for building hierarchical agent teams with LangGraph integration.**
+A simple, clean multi-agent framework with hierarchical team support.
 
-AgenticFlow makes it easy to create sophisticated multi-agent workflows with intelligent routing, tool integration, and seamless LangGraph StateGraph execution. **Fully tested with working demos and tangible results!**
+## Features
 
-## ✨ Features
+- **Hierarchical Teams**: Flow → Teams → Supervisors → Agents
+- **Direct Agents**: Flow → Agents (simple workflows)
+- **Tool Integration**: Built-in tools for web search, file operations, and more
+- **LangGraph Integration**: Built on LangGraph for reliable execution
+- **Clean API**: Simple, intuitive interface
 
-- 🎯 **Beautiful OOP API** - Constructor-based, method chaining design
-- 🔄 **LangGraph Integration** - Full StateGraph support with Command routing
-- 🤖 **LLM-Powered Routing** - Intelligent task distribution at every level
-- 🛠️ **Tool Integration** - Easy tool addition and management
-- 🏗️ **Hierarchical Teams** - Orchestrator → Supervisor → Agent structure
-- ⚡ **Fully Async** - Built for high-performance async workflows
-- 🔍 **Observability** - Built-in monitoring and metrics
-- 🧪 **Comprehensive Testing** - Full test suite with examples
-- 🚀 **Production Ready** - Working demos with tangible results
-- 📊 **Real Performance** - Sub-2-second execution times
-- 🌐 **Web Search** - Tavily integration for real-time data
-- 📝 **Content Generation** - AI-powered writing and analysis
+## Installation
 
-## 🚀 Quick Start
-
-### 1. Install AgenticFlow
 ```bash
-# Install directly from GitHub with uv (recommended)
-uv add git+https://github.com/milad-o/agenticflow.git
-
-# Or with pip
-pip install git+https://github.com/milad-o/agenticflow.git
-
-# For development (clone and install)
-git clone https://github.com/milad-o/agenticflow.git
-cd agenticflow
-uv pip install -e .
-
-# Set up API keys
-cp .env.example .env
-# Edit .env with your API keys
+pip install -e .
 ```
 
-### 2. Run a Quick Demo
-```bash
-# Quick demo (0.98 seconds execution)
-uv run python demos/quick_demo.py
+## Quick Start
 
-# Comprehensive demo (3 tasks, 12 messages, 1.52s avg)
-uv run python demos/comprehensive_demo.py
-```
+### Simple Workflow
 
-### 3. Basic Usage
 ```python
 import asyncio
-from agenticflow import Flow, Orchestrator, Supervisor, ReActAgent
-from agenticflow.tools import WriteFileTool, TavilySearchTool
+from agenticflow import Flow, Agent, create_file, search_web
 
 async def main():
-    # Create your flow
-    flow = Flow("my_flow")
+    # Create flow
+    flow = Flow("my_workflow")
     
-    # Add orchestrator with LLM
-    orchestrator = Orchestrator("main")
-    flow.add_orchestrator(orchestrator)
+    # Create agents
+    researcher = Agent("researcher", tools=[search_web])
+    writer = Agent("writer", tools=[create_file])
     
-    # Create research team
-    research_team = Supervisor("research_team", description="Research specialists")
-    research_team.add_agent(
-        ReActAgent("searcher", description="Web search specialist")
-        .add_tool(TavilySearchTool())
-        .add_tool(WriteFileTool())
-    )
-    orchestrator.add_team(research_team)
+    # Add agents to flow
+    flow.add_agent(researcher)
+    flow.add_agent(writer)
     
-    # Run the flow
-    await flow.start("Research AI agents and write a report")
-    
-    # Get results
-    messages = await flow.get_messages()
-    for msg in messages:
-        print(f"{msg.sender}: {msg.content}")
+    # Run workflow
+    result = await flow.run("Research AI trends and create a report")
+    print("Done!")
 
 asyncio.run(main())
 ```
 
-## 📁 Project Structure
+### Team Workflow
 
-```
-agenticflow/
-├── agenticflow/           # Core framework
-│   ├── core/             # Core classes (Flow, Orchestrator, etc.)
-│   ├── agents/           # Agent implementations
-│   ├── tools/            # Built-in tools
-│   ├── observability/    # Monitoring and metrics
-│   └── workspace/        # Workspace management
-├── examples/             # Example workflows
-│   ├── basic/           # Simple examples
-│   ├── advanced/        # Complex workflows
-│   └── tutorials/       # Step-by-step guides
-├── tests/               # Comprehensive test suite
-│   ├── unit/           # Unit tests
-│   ├── integration/    # Integration tests
-│   └── e2e/           # End-to-end tests
-├── docs/               # Documentation
-├── data/               # Sample and test data
-│   ├── sample/        # Sample datasets
-│   └── test/          # Test data
-└── workspaces/        # Runtime workspaces
-```
-
-## 🛠️ Installation
-
-### From GitHub (Recommended)
-
-```bash
-# Install with uv (recommended)
-uv add git+https://github.com/milad-o/agenticflow.git
-
-# Or with pip
-pip install git+https://github.com/milad-o/agenticflow.git
-
-# For development (editable install)
-uv add -e git+https://github.com/milad-o/agenticflow.git
-# or
-pip install -e git+https://github.com/milad-o/agenticflow.git#egg=agenticflow
-```
-
-### From PyPI (Coming Soon)
-
-```bash
-# Install with uv (recommended)
-uv add agenticflow
-
-# Or with pip
-pip install agenticflow
-```
-
-### Dependencies
-
-```bash
-# For full functionality (installed automatically)
-uv add langchain-openai langchain-core langgraph tavily-python python-dotenv
-
-# Or with pip
-pip install langchain-openai langchain-core langgraph tavily-python python-dotenv
-```
-
-### Installation Methods
-
-| Method | Use Case | Command |
-|--------|----------|---------|
-| **GitHub + uv** | Production use | `uv add git+https://github.com/milad-o/agenticflow.git` |
-| **GitHub + pip** | Production use | `pip install git+https://github.com/milad-o/agenticflow.git` |
-| **Clone + uv** | Development | `git clone && uv pip install -e .` |
-| **Clone + pip** | Development | `git clone && pip install -e .` |
-| **PyPI** | Coming soon | `uv add agenticflow` |
-
-## 📚 Documentation
-
-- [Quick Start Guide](docs/quick_start.md) - Get up and running in minutes
-- [Basic Examples](examples/basic/) - Simple examples to get started
-- [Advanced Examples](examples/advanced/) - Complex workflows
-- [API Reference](docs/api/) - Complete API documentation
-- [LangGraph Integration](docs/langgraph_integration.md) - Advanced features
-
-## 🧪 Testing
-
-```bash
-# Run comprehensive test suite
-uv run python tests/test_runner.py
-
-# Run specific test categories
-make test-unit
-make test-integration
-make test-e2e
-
-# Run with coverage
-make test-cov
-
-# Run working demos
-uv run python demos/quick_demo.py
-uv run python demos/comprehensive_demo.py
-```
-
-### Test Results
-- ✅ **Basic functionality**: All core features working
-- ✅ **LLM capabilities**: Real API integration working  
-- ✅ **Web search**: Tavily integration working
-- ✅ **Comprehensive demo**: Full workflow working
-- ✅ **Performance**: Sub-2-second execution times
-- ✅ **Tangible results**: JSON output files generated
-
-## 🎯 Examples
-
-### Basic Flow
 ```python
-# Simple hello world (0.98s execution)
-flow = Flow("hello_flow")
-orchestrator = Orchestrator("main", initialize_llm=False)
-flow.add_orchestrator(orchestrator)
+import asyncio
+from agenticflow import Flow, Agent, Team, create_file, search_web
 
-team = Supervisor("greeting_team", initialize_llm=False)
-team.add_agent(SimpleAgent("greeter"))
-orchestrator.add_team(team)
+async def main():
+    # Create flow
+    flow = Flow("team_workflow")
+    
+    # Create research team
+    research_team = Team("research_team")
+    researcher = Agent("researcher", tools=[search_web])
+    research_team.add_agent(researcher)
+    flow.add_team(research_team)
+    
+    # Create writing team
+    writing_team = Team("writing_team")
+    writer = Agent("writer", tools=[create_file])
+    writing_team.add_agent(writer)
+    flow.add_team(writing_team)
+    
+    # Run workflow
+    result = await flow.run("Research AI trends and create a report")
+    print("Done!")
 
-await flow.start("Hello, AgenticFlow!")
+asyncio.run(main())
 ```
 
-### Method Chaining
-```python
-# Beautiful method chaining (preserves OOP API)
-flow = (Flow("chaining_flow")
-        .add_orchestrator(Orchestrator("main", initialize_llm=False)))
+## API Reference
 
-team = (Supervisor("research_team", initialize_llm=False)
-        .add_agent(ReActAgent("researcher")
-                  .add_tool(WriteFileTool())))
+### Core Classes
 
-orchestrator.add_team(team)
-```
+- **`Flow(name)`**: Main workflow orchestrator
+- **`Agent(name, tools, description)`**: Individual agent with tools
+- **`Team(name)`**: Team container with supervisor
 
-### Complex Workflow with Real Results
-```python
-# Multi-team workflow with LLM routing (1.52s avg execution)
-flow = Flow("research_writing_flow")
-orchestrator = Orchestrator("main")  # With LLM
-flow.add_orchestrator(orchestrator)
+### Methods
 
-# Research team
-research_team = Supervisor("research_team", description="Research specialists")
-research_team.add_agent(ReActAgent("searcher").add_tool(TavilySearchTool()))
-orchestrator.add_team(research_team)
+- **`flow.add_agent(agent)`**: Add agent directly to flow
+- **`flow.add_team(team)`**: Add team to flow
+- **`team.add_agent(agent)`**: Add agent to team
+- **`flow.run(message)`**: Execute workflow
 
-# Writing team
-writing_team = Supervisor("writing_team", description="Writing specialists")
-writing_team.add_agent(ReActAgent("writer").add_tool(WriteFileTool()))
-orchestrator.add_team(writing_team)
+### Built-in Tools
 
-await flow.start("Research AI trends and write a comprehensive report")
-```
+- **`create_file(content, filename)`**: Create files
+- **`search_web(query)`**: Web search
+- **`read_file(filename)`**: Read files
+- **`list_directory(path)`**: List directory contents
 
-### Working Demos
-```bash
-# Quick demo - 0.98 seconds execution
-uv run python demos/quick_demo.py
+## Examples
 
-# Comprehensive demo - 3 tasks, 12 messages, 1.52s avg
-uv run python demos/comprehensive_demo.py
+See the `examples/` directory for:
+- Simple agent workflows
+- Team-based workflows
+- Tool usage examples
 
-# Basic examples
-uv run python examples/basic/hello_world.py
-uv run python examples/basic/method_chaining.py
-```
-
-## 🏗️ Architecture
-
-```
-User Message → Flow.start()
-    ↓
-LangGraph StateGraph Execution
-    ↓
-Orchestrator Node (LLM routing)
-    ↓
-Team Supervisor Node (LLM routing)
-    ↓
-Agent Node (Tool execution)
-    ↓
-Command routing back to supervisor
-    ↓
-Results aggregated and returned
-```
-
-## 🔧 Development
+## Development
 
 ```bash
-# Setup development environment
-make dev-setup
+# Install dependencies
+uv sync
 
-# Run code quality checks
-make ci
+# Run tests
+uv run pytest
 
 # Run examples
-make examples
-
-# Clean up
-make clean
+uv run python examples/simple_workflow.py
 ```
 
-## 📊 Features in Detail
+## License
 
-### 🎯 Beautiful OOP API
-- Constructor-based design
-- Method chaining support
-- Intuitive class hierarchy
-- Type hints throughout
-- **✅ Tested and working**
-
-### 🔄 LangGraph Integration
-- Full StateGraph support
-- Command pattern routing
-- State management
-- Async execution
-- **✅ Production ready**
-
-### 🤖 LLM-Powered Routing
-- Intelligent task distribution
-- Context-aware routing
-- Fallback mechanisms
-- Structured output
-- **✅ Real API integration**
-
-### 🛠️ Tool Integration
-- Easy tool addition
-- Built-in tool library (Tavily, File I/O)
-- Custom tool support
-- Tool chaining
-- **✅ Working with real tools**
-
-### 🏗️ Hierarchical Teams
-- Orchestrator coordination
-- Team-level supervision
-- Agent execution
-- Flexible organization
-- **✅ Multi-team workflows working**
-
-### 🚀 Performance & Results
-- **Sub-2-second execution times**
-- **Real JSON output generation**
-- **Web search integration**
-- **Content generation**
-- **Production-ready demos**
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](docs/contributing.md) for details.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 📋 Changelog
-
-### v0.2.0 - LangGraph-First Architecture
-- ✅ **LangGraph Integration**: Full StateGraph support with Command routing
-- ✅ **Memory Management**: Fixed memory leaks and added proper cleanup
-- ✅ **Type Safety**: Fixed Pylance warnings and improved type annotations
-- ✅ **Test Coverage**: 109 passing tests with comprehensive coverage
-- ✅ **Performance**: Optimized memory usage and execution times
-- ✅ **API Keys**: Environment variable loading from .env file
-- ✅ **Production Ready**: Working demos with tangible results
-
-### v0.1.0 - Initial Release
-- 🎯 Beautiful OOP API with method chaining
-- 🤖 LLM-powered routing and task distribution
-- 🛠️ Tool integration and management
-- 🏗️ Hierarchical team structure
-- ⚡ Fully async architecture
-- 🔍 Built-in observability and metrics
-
-## 🆘 Support
-
-- 📖 [Documentation](docs/)
-- 💬 [GitHub Discussions](https://github.com/your-org/agenticflow/discussions)
-- 🐛 [Issue Tracker](https://github.com/your-org/agenticflow/issues)
-- 📧 [Email Support](mailto:support@agenticflow.dev)
-
----
-
-**Built with ❤️ for the AI agent community**
+MIT License - see LICENSE file for details.

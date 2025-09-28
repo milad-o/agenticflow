@@ -1,39 +1,26 @@
 """
-AgenticFlow - A fully async, OOP, modular framework for hierarchical multi-agent systems.
+AgenticFlow - A simple, clean multi-agent framework.
 
-Inspired by LangGraph's hierarchical agent teams pattern, this framework provides:
-- Flow: Main container for orchestrating agent workflows
-- Orchestrator: Top-level coordination of teams and individual agents
-- Supervisor: Team-level coordination of multiple agents
-- Agent: Individual workers with specific tools and capabilities
-- Observability: Monitoring and tracking of agent operations
-- Workspace: Shared filesystem access for all agents
+Usage:
+    from agenticflow import Flow, Agent, create_file, search_web
+    
+    # Create flow
+    flow = Flow("my_workflow")
+    
+    # Create agents
+    agent1 = Agent("researcher", tools=[search_web])
+    agent2 = Agent("writer", tools=[create_file])
+    
+    # Add agents to flow
+    flow.add_agent(agent1)
+    flow.add_agent(agent2)
+    
+    # Run workflow
+    result = await flow.run("Research and write a report")
 """
 
-from .core.flow import Flow
-from .core.orchestrator import Orchestrator
-from .core.agent import Agent, SimpleAgent, ReActAgent, Tool
-from .core.supervisor import Supervisor
-from .core.state import FlowState, AgentMessage, AgentStatus, MessageType
-# Command is imported directly from langgraph.types when needed
-from .workspace.workspace import Workspace
-from .observability.observer import Observer
-from .observability.metrics import Metrics
+from .core import Flow, Agent, Team
+from .tools import create_file, search_web
 
-__version__ = "0.1.0"
-__all__ = [
-    "Flow",
-    "Orchestrator",
-    "Agent",
-    "SimpleAgent",
-    "ReActAgent",
-    "Tool",
-    "Supervisor",
-    "FlowState",
-    "AgentMessage",
-    "AgentStatus",
-    "MessageType",
-    "Workspace",
-    "Observer",
-    "Metrics",
-]
+__version__ = "1.0.0"
+__all__ = ["Flow", "Agent", "Team", "create_file", "search_web"]

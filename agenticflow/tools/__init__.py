@@ -1,12 +1,5 @@
-"""Tools for AgenticFlow agents."""
+"""Simple tools for agents."""
 
-from .file_tools import ReadFileTool, WriteFileTool, CreateOutlineTool
-from .web_tools import TavilySearchTool, WebScrapeTool
+from .tools import create_file, search_web
 
-__all__ = [
-    "ReadFileTool",
-    "WriteFileTool",
-    "CreateOutlineTool",
-    "TavilySearchTool",
-    "WebScrapeTool",
-]
+__all__ = ["create_file", "search_web"]
