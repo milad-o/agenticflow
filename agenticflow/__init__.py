@@ -25,10 +25,11 @@ from .agents.filesystem_agent import FilesystemAgent
 from .agents.python_agent import PythonAgent
 from .agents.excel_agent import ExcelAgent
 from .agents.data_agent import DataAgent
+from .agents.ssis_agent import SSISAnalysisAgent
 
 __version__ = "1.0.0"
 __all__ = [
-    "Flow", "Agent", "Team", 
+    "Flow", "Agent", "Team",
     "create_file", "search_web",
-    "FilesystemAgent", "PythonAgent", "ExcelAgent", "DataAgent"
+    "FilesystemAgent", "PythonAgent", "ExcelAgent", "DataAgent", "SSISAnalysisAgent"
 ]
