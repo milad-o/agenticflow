@@ -1,269 +1,337 @@
-"""
-Metrics Collection System
-========================
-
-Advanced metrics collection for AgenticFlow performance monitoring.
-"""
+"""Metrics collection and aggregation for AgenticFlow."""
 
 import time
-from typing import Dict, List, Any, Optional
-from datetime import datetime, timedelta
 from collections import defaultdict, deque
-import threading
+from dataclasses import dataclass, field
+from datetime import datetime, timezone, timedelta
+from typing import Any, Dict, List, Optional
+from uuid import UUID
 
 
-class MetricsCollector:
-    """Comprehensive metrics collection for flow performance."""
+@dataclass
+class MetricEvent:
+    """Individual metric event."""
+    timestamp: datetime
+    event_type: str
+    entity_id: str
+    entity_type: str  # 'flow', 'agent', 'supervisor', 'message'
+    value: Any
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
-    def __init__(self, window_size_minutes: int = 60):
-        self.window_size = timedelta(minutes=window_size_minutes)
-        self.metrics_data = {
-            "flow_metrics": defaultdict(list),
-            "agent_metrics": defaultdict(lambda: defaultdict(list)),
-            "tool_metrics": defaultdict(lambda: defaultdict(list)),
-            "performance_metrics": defaultdict(list)
-        }
-        self._lock = threading.Lock()
 
-    def record_flow_metric(self, metric_name: str, value: float, metadata: Dict[str, Any] = None) -> None:
-        """Record a flow-level metric."""
-        with self._lock:
-            timestamp = datetime.now()
-            self.metrics_data["flow_metrics"][metric_name].append({
-                "timestamp": timestamp,
-                "value": value,
-                "metadata": metadata or {}
-            })
-            self._cleanup_old_data("flow_metrics", metric_name, timestamp)
+class Metrics:
+    """Metrics collection and aggregation system."""
 
-    def record_agent_metric(self, agent_name: str, metric_name: str, value: float,
-                           metadata: Dict[str, Any] = None) -> None:
-        """Record an agent-specific metric."""
-        with self._lock:
-            timestamp = datetime.now()
-            self.metrics_data["agent_metrics"][agent_name][metric_name].append({
-                "timestamp": timestamp,
-                "value": value,
-                "metadata": metadata or {}
-            })
-            self._cleanup_old_data("agent_metrics", (agent_name, metric_name), timestamp)
+    def __init__(self, max_events: int = 10000, retention_hours: int = 24):
+        """Initialize metrics collector.
 
-    def record_tool_metric(self, tool_name: str, metric_name: str, value: float,
-                          metadata: Dict[str, Any] = None) -> None:
-        """Record a tool-specific metric."""
-        with self._lock:
-            timestamp = datetime.now()
-            self.metrics_data["tool_metrics"][tool_name][metric_name].append({
-                "timestamp": timestamp,
-                "value": value,
-                "metadata": metadata or {}
-            })
-            self._cleanup_old_data("tool_metrics", (tool_name, metric_name), timestamp)
+        Args:
+            max_events: Maximum number of events to keep in memory
+            retention_hours: Hours to retain metrics data
+        """
+        self.max_events = max_events
+        self.retention_hours = retention_hours
 
-    def record_performance_metric(self, metric_name: str, value: float,
-                                 metadata: Dict[str, Any] = None) -> None:
-        """Record a performance metric."""
-        with self._lock:
-            timestamp = datetime.now()
-            self.metrics_data["performance_metrics"][metric_name].append({
-                "timestamp": timestamp,
-                "value": value,
-                "metadata": metadata or {}
-            })
-            self._cleanup_old_data("performance_metrics", metric_name, timestamp)
+        # Event storage
+        self.events: deque = deque(maxlen=max_events)
 
-    def _cleanup_old_data(self, category: str, key: Any, current_time: datetime) -> None:
-        """Remove data older than the window size."""
-        cutoff_time = current_time - self.window_size
+        # Performance tracking
+        self.start_times: Dict[str, float] = {}
+        self.counters: Dict[str, int] = defaultdict(int)
+        self.gauges: Dict[str, float] = defaultdict(float)
+        self.histograms: Dict[str, List[float]] = defaultdict(list)
 
-        if category == "agent_metrics":
-            agent_name, metric_name = key
-            data_list = self.metrics_data[category][agent_name][metric_name]
-        elif category == "tool_metrics":
-            tool_name, metric_name = key
-            data_list = self.metrics_data[category][tool_name][metric_name]
+        # Agent-specific metrics
+        self.agent_execution_times: Dict[str, List[float]] = defaultdict(list)
+        self.agent_success_rates: Dict[str, Dict[str, int]] = defaultdict(lambda: {"success": 0, "error": 0})
+
+    def record_event(
+        self,
+        event_type: str,
+        entity_id: str,
+        entity_type: str,
+        value: Any = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Record a metric event.
+
+        Args:
+            event_type: Type of event (e.g., 'execution_start', 'message_sent')
+            entity_id: ID of the entity (agent, flow, etc.)
+            entity_type: Type of entity ('flow', 'agent', 'supervisor', 'message')
+            value: Event value
+            metadata: Additional metadata
+        """
+        event = MetricEvent(
+            timestamp=datetime.now(timezone.utc),
+            event_type=event_type,
+            entity_id=entity_id,
+            entity_type=entity_type,
+            value=value,
+            metadata=metadata or {},
+        )
+
+        self.events.append(event)
+        self._cleanup_old_events()
+
+    def start_timer(self, timer_id: str) -> None:
+        """Start a timer for measuring execution time.
+
+        Args:
+            timer_id: Unique identifier for the timer
+        """
+        self.start_times[timer_id] = time.time()
+
+    def end_timer(self, timer_id: str) -> Optional[float]:
+        """End a timer and return the elapsed time.
+
+        Args:
+            timer_id: Unique identifier for the timer
+
+        Returns:
+            Elapsed time in seconds, or None if timer wasn't found
+        """
+        if timer_id not in self.start_times:
+            return None
+
+        elapsed = time.time() - self.start_times[timer_id]
+        del self.start_times[timer_id]
+        return elapsed
+
+    def increment_counter(self, counter_name: str, value: int = 1) -> None:
+        """Increment a counter.
+
+        Args:
+            counter_name: Name of the counter
+            value: Value to increment by
+        """
+        self.counters[counter_name] += value
+
+    def set_gauge(self, gauge_name: str, value: float) -> None:
+        """Set a gauge value.
+
+        Args:
+            gauge_name: Name of the gauge
+            value: Value to set
+        """
+        self.gauges[gauge_name] = value
+
+    def record_histogram_value(self, histogram_name: str, value: float) -> None:
+        """Record a value in a histogram.
+
+        Args:
+            histogram_name: Name of the histogram
+            value: Value to record
+        """
+        self.histograms[histogram_name].append(value)
+
+        # Keep only last 1000 values per histogram
+        if len(self.histograms[histogram_name]) > 1000:
+            self.histograms[histogram_name] = self.histograms[histogram_name][-1000:]
+
+    def record_agent_execution(self, agent_id: str, execution_time: float, success: bool) -> None:
+        """Record agent execution metrics.
+
+        Args:
+            agent_id: Agent identifier
+            execution_time: Time taken for execution
+            success: Whether execution was successful
+        """
+        self.agent_execution_times[agent_id].append(execution_time)
+
+        # Keep only last 100 execution times per agent
+        if len(self.agent_execution_times[agent_id]) > 100:
+            self.agent_execution_times[agent_id] = self.agent_execution_times[agent_id][-100:]
+
+        # Update success rates
+        if success:
+            self.agent_success_rates[agent_id]["success"] += 1
         else:
-            data_list = self.metrics_data[category][key]
+            self.agent_success_rates[agent_id]["error"] += 1
 
-        # Remove old entries
-        while data_list and data_list[0]["timestamp"] < cutoff_time:
-            data_list.pop(0)
+    def get_agent_metrics(self, agent_id: str) -> Dict[str, Any]:
+        """Get metrics for a specific agent.
 
-    def get_flow_metrics(self, metric_name: str = None) -> Dict[str, Any]:
-        """Get flow metrics."""
-        with self._lock:
-            if metric_name:
-                return {
-                    metric_name: self.metrics_data["flow_metrics"].get(metric_name, [])
-                }
-            return dict(self.metrics_data["flow_metrics"])
+        Args:
+            agent_id: Agent identifier
 
-    def get_agent_metrics(self, agent_name: str = None, metric_name: str = None) -> Dict[str, Any]:
-        """Get agent metrics."""
-        with self._lock:
-            if agent_name and metric_name:
-                return {
-                    agent_name: {
-                        metric_name: self.metrics_data["agent_metrics"][agent_name].get(metric_name, [])
-                    }
-                }
-            elif agent_name:
-                return {
-                    agent_name: dict(self.metrics_data["agent_metrics"][agent_name])
-                }
-            return {
-                agent: dict(metrics)
-                for agent, metrics in self.metrics_data["agent_metrics"].items()
-            }
+        Returns:
+            Dictionary with agent metrics
+        """
+        execution_times = self.agent_execution_times.get(agent_id, [])
+        success_data = self.agent_success_rates.get(agent_id, {"success": 0, "error": 0})
 
-    def get_tool_metrics(self, tool_name: str = None, metric_name: str = None) -> Dict[str, Any]:
-        """Get tool metrics."""
-        with self._lock:
-            if tool_name and metric_name:
-                return {
-                    tool_name: {
-                        metric_name: self.metrics_data["tool_metrics"][tool_name].get(metric_name, [])
-                    }
-                }
-            elif tool_name:
-                return {
-                    tool_name: dict(self.metrics_data["tool_metrics"][tool_name])
-                }
-            return {
-                tool: dict(metrics)
-                for tool, metrics in self.metrics_data["tool_metrics"].items()
-            }
+        metrics = {
+            "agent_id": agent_id,
+            "total_executions": len(execution_times),
+            "avg_execution_time": sum(execution_times) / len(execution_times) if execution_times else 0,
+            "min_execution_time": min(execution_times) if execution_times else 0,
+            "max_execution_time": max(execution_times) if execution_times else 0,
+            "success_count": success_data["success"],
+            "error_count": success_data["error"],
+            "success_rate": (
+                success_data["success"] / (success_data["success"] + success_data["error"])
+                if (success_data["success"] + success_data["error"]) > 0
+                else 0
+            ),
+        }
 
-    def get_performance_metrics(self, metric_name: str = None) -> Dict[str, Any]:
-        """Get performance metrics."""
-        with self._lock:
-            if metric_name:
-                return {
-                    metric_name: self.metrics_data["performance_metrics"].get(metric_name, [])
-                }
-            return dict(self.metrics_data["performance_metrics"])
+        return metrics
 
-    def get_summary_stats(self) -> Dict[str, Any]:
-        """Get summary statistics."""
-        with self._lock:
-            now = datetime.now()
-            stats = {
-                "collection_window_minutes": self.window_size.total_seconds() / 60,
-                "data_points": 0,
-                "agents_tracked": len(self.metrics_data["agent_metrics"]),
-                "tools_tracked": len(self.metrics_data["tool_metrics"]),
-                "flow_metrics_count": len(self.metrics_data["flow_metrics"]),
-                "performance_metrics_count": len(self.metrics_data["performance_metrics"]),
-                "oldest_data": None,
-                "newest_data": None
-            }
+    def get_flow_metrics(self) -> Dict[str, Any]:
+        """Get overall flow metrics.
 
-            # Count total data points and find date range
-            all_timestamps = []
+        Returns:
+            Dictionary with flow-wide metrics
+        """
+        # Calculate event statistics
+        event_types = defaultdict(int)
+        entity_types = defaultdict(int)
 
-            for metric_data in self.metrics_data["flow_metrics"].values():
-                stats["data_points"] += len(metric_data)
-                all_timestamps.extend([d["timestamp"] for d in metric_data])
+        for event in self.events:
+            event_types[event.event_type] += 1
+            entity_types[event.entity_type] += 1
 
-            for agent_metrics in self.metrics_data["agent_metrics"].values():
-                for metric_data in agent_metrics.values():
-                    stats["data_points"] += len(metric_data)
-                    all_timestamps.extend([d["timestamp"] for d in metric_data])
-
-            for tool_metrics in self.metrics_data["tool_metrics"].values():
-                for metric_data in tool_metrics.values():
-                    stats["data_points"] += len(metric_data)
-                    all_timestamps.extend([d["timestamp"] for d in metric_data])
-
-            for metric_data in self.metrics_data["performance_metrics"].values():
-                stats["data_points"] += len(metric_data)
-                all_timestamps.extend([d["timestamp"] for d in metric_data])
-
-            if all_timestamps:
-                stats["oldest_data"] = min(all_timestamps).isoformat()
-                stats["newest_data"] = max(all_timestamps).isoformat()
-
-            return stats
-
-    def calculate_throughput(self, category: str, key: str, time_window_minutes: int = 5) -> float:
-        """Calculate throughput for a specific metric."""
-        with self._lock:
-            cutoff_time = datetime.now() - timedelta(minutes=time_window_minutes)
-
-            if category == "flow":
-                data_list = self.metrics_data["flow_metrics"].get(key, [])
-            elif category == "performance":
-                data_list = self.metrics_data["performance_metrics"].get(key, [])
-            else:
-                return 0.0
-
-            recent_data = [d for d in data_list if d["timestamp"] >= cutoff_time]
-            return len(recent_data) / time_window_minutes  # items per minute
-
-    def calculate_average_latency(self, category: str, key: str, time_window_minutes: int = 5) -> float:
-        """Calculate average latency for a specific metric."""
-        with self._lock:
-            cutoff_time = datetime.now() - timedelta(minutes=time_window_minutes)
-
-            if category == "performance":
-                data_list = self.metrics_data["performance_metrics"].get(key, [])
-            else:
-                return 0.0
-
-            recent_data = [d["value"] for d in data_list if d["timestamp"] >= cutoff_time]
-
-            if not recent_data:
-                return 0.0
-
-            return sum(recent_data) / len(recent_data)
-
-    def get_trend_analysis(self, category: str, key: str, time_window_minutes: int = 30) -> Dict[str, Any]:
-        """Get trend analysis for a metric."""
-        with self._lock:
-            cutoff_time = datetime.now() - timedelta(minutes=time_window_minutes)
-
-            if category == "flow":
-                data_list = self.metrics_data["flow_metrics"].get(key, [])
-            elif category == "performance":
-                data_list = self.metrics_data["performance_metrics"].get(key, [])
-            else:
-                return {}
-
-            recent_data = [d for d in data_list if d["timestamp"] >= cutoff_time]
-
-            if len(recent_data) < 2:
-                return {
-                    "trend": "insufficient_data",
-                    "data_points": len(recent_data),
-                    "time_span_minutes": 0
+        # Calculate histogram statistics
+        histogram_stats = {}
+        for name, values in self.histograms.items():
+            if values:
+                histogram_stats[name] = {
+                    "count": len(values),
+                    "avg": sum(values) / len(values),
+                    "min": min(values),
+                    "max": max(values),
                 }
 
-            values = [d["value"] for d in recent_data]
-            timestamps = [d["timestamp"] for d in recent_data]
+        return {
+            "total_events": len(self.events),
+            "event_types": dict(event_types),
+            "entity_types": dict(entity_types),
+            "counters": dict(self.counters),
+            "gauges": dict(self.gauges),
+            "histograms": histogram_stats,
+            "active_timers": len(self.start_times),
+            "retention_hours": self.retention_hours,
+        }
 
-            # Simple trend calculation
-            first_half = values[:len(values)//2]
-            second_half = values[len(values)//2:]
+    def get_events_by_type(self, event_type: str, limit: Optional[int] = None) -> List[MetricEvent]:
+        """Get events of a specific type.
 
-            if first_half and second_half:
-                first_avg = sum(first_half) / len(first_half)
-                second_avg = sum(second_half) / len(second_half)
+        Args:
+            event_type: Type of events to retrieve
+            limit: Maximum number of events to return (most recent first)
 
-                if second_avg > first_avg * 1.1:
-                    trend = "increasing"
-                elif second_avg < first_avg * 0.9:
-                    trend = "decreasing"
-                else:
-                    trend = "stable"
-            else:
-                trend = "unknown"
+        Returns:
+            List of metric events
+        """
+        matching_events = [event for event in self.events if event.event_type == event_type]
 
-            return {
-                "trend": trend,
-                "data_points": len(recent_data),
-                "time_span_minutes": (max(timestamps) - min(timestamps)).total_seconds() / 60,
-                "min_value": min(values),
-                "max_value": max(values),
-                "avg_value": sum(values) / len(values),
-                "latest_value": values[-1] if values else 0
-            }
+        # Sort by timestamp (most recent first)
+        matching_events.sort(key=lambda x: x.timestamp, reverse=True)
+
+        if limit:
+            matching_events = matching_events[:limit]
+
+        return matching_events
+
+    def get_events_by_entity(
+        self,
+        entity_id: str,
+        entity_type: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> List[MetricEvent]:
+        """Get events for a specific entity.
+
+        Args:
+            entity_id: Entity identifier
+            entity_type: Optional entity type filter
+            limit: Maximum number of events to return (most recent first)
+
+        Returns:
+            List of metric events
+        """
+        matching_events = []
+        for event in self.events:
+            if event.entity_id == entity_id:
+                if entity_type is None or event.entity_type == entity_type:
+                    matching_events.append(event)
+
+        # Sort by timestamp (most recent first)
+        matching_events.sort(key=lambda x: x.timestamp, reverse=True)
+
+        if limit:
+            matching_events = matching_events[:limit]
+
+        return matching_events
+
+    def get_events_in_timerange(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+        event_type: Optional[str] = None,
+    ) -> List[MetricEvent]:
+        """Get events within a time range.
+
+        Args:
+            start_time: Start of time range
+            end_time: End of time range
+            event_type: Optional event type filter
+
+        Returns:
+            List of metric events
+        """
+        matching_events = []
+        for event in self.events:
+            if start_time <= event.timestamp <= end_time:
+                if event_type is None or event.event_type == event_type:
+                    matching_events.append(event)
+
+        # Sort by timestamp
+        matching_events.sort(key=lambda x: x.timestamp)
+
+        return matching_events
+
+    def clear_metrics(self) -> None:
+        """Clear all metrics data."""
+        self.events.clear()
+        self.start_times.clear()
+        self.counters.clear()
+        self.gauges.clear()
+        self.histograms.clear()
+        self.agent_execution_times.clear()
+        self.agent_success_rates.clear()
+
+    def export_metrics(self) -> Dict[str, Any]:
+        """Export all metrics data.
+
+        Returns:
+            Dictionary with all metrics data
+        """
+        return {
+            "events": [
+                {
+                    "timestamp": event.timestamp.isoformat(),
+                    "event_type": event.event_type,
+                    "entity_id": event.entity_id,
+                    "entity_type": event.entity_type,
+                    "value": event.value,
+                    "metadata": event.metadata,
+                }
+                for event in self.events
+            ],
+            "counters": dict(self.counters),
+            "gauges": dict(self.gauges),
+            "histograms": {name: list(values) for name, values in self.histograms.items()},
+            "agent_execution_times": {
+                agent: list(times) for agent, times in self.agent_execution_times.items()
+            },
+            "agent_success_rates": dict(self.agent_success_rates),
+        }
+
+    def _cleanup_old_events(self) -> None:
+        """Remove events older than retention period."""
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=self.retention_hours)
+
+        # Remove old events from the left of the deque
+        while self.events and self.events[0].timestamp < cutoff_time:
+            self.events.popleft()

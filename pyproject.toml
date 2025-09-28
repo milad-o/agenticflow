@@ -1,68 +1,118 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "agenticflow"
-version = "0.2.0"
-description = "Advanced AI Multi-Agent Framework for Developers"
+version = "0.1.0"
+description = "A production-ready, async, OOP framework for building hierarchical agent teams with LangGraph integration"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
+authors = [
+    {name = "AgenticFlow Team", email = "team@agenticflow.dev"}
+]
+keywords = ["ai", "agents", "langgraph", "async", "multi-agent", "llm", "workflow"]
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    # Core LangChain and LangGraph
-    "langchain>=0.2.0",
-    "langchain-core>=0.2.0",
-    "langchain-community>=0.2.0",
-    "langgraph>=0.2.0",
-    # LLM Providers (optional but commonly used)
-    "langchain-groq>=0.1.0",
-    "langchain-ollama>=0.2.0",
-    "langchain-openai>=0.1.0",
-    "langchain-anthropic>=0.1.0",
-    "langchain-huggingface>=0.0.3",
-    # Security and encryption
-    "cryptography>=41.0.0",
-    # Core utilities
-    "pydantic>=2.0.0",
-    "python-dotenv>=1.0.1",
-    "aiofiles>=23.0.0",
-    "structlog>=23.0.0",
-    "pyyaml>=6.0",
-    # Data processing
-    "pandas>=2.0.0",
-    # HTTP and async
-    "httpx>=0.25.0",
+    "aiofiles>=24.1.0",
+    "anthropic>=0.68.1",
+    "beautifulsoup4>=4.14.0",
+    "ipykernel>=6.30.1",
+    "langchain>=0.3.27",
+    "langchain-anthropic>=0.3.20",
+    "langchain-core>=0.3.76",
+    "langchain-experimental>=0.3.4",
+    "langchain-openai>=0.3.33",
+    "langchain-tavily>=0.2.11",
+    "langgraph>=0.6.7",
+    "openai>=1.109.1",
+    "python-dotenv>=1.1.1",
     "tavily-python>=0.7.12",
-    "streamlit>=1.50.0",
-    "plotly>=6.3.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "pytest-cov>=4.0.0",
     "black>=23.0.0",
-    "ruff>=0.1.0",
+    "isort>=5.12.0",
     "mypy>=1.0.0",
+    "ruff>=0.1.0",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+    "mkdocstrings>=0.24.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agenticflow*"]
+exclude = ["tests*", "examples*", "docs*", "data*", "logs*", "workspaces*", "demos*"]
+
+[tool.setuptools.package-data]
+agenticflow = ["*.yaml", "*.yml", "*.json"]
+
+[project.urls]
+Homepage = "https://github.com/your-org/agenticflow"
+Documentation = "https://agenticflow.dev"
+Repository = "https://github.com/your-org/agenticflow"
+Issues = "https://github.com/your-org/agenticflow/issues"
+Changelog = "https://github.com/your-org/agenticflow/blob/main/CHANGELOG.md"
+
+[project.scripts]
+agenticflow = "agenticflow.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-warnings",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests", 
+    "e2e: End-to-end tests",
+    "slow: Slow running tests",
 ]
 
 [tool.black]
 line-length = 88
-target-version = ['py310']
+target-version = ['py39']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
 
-[tool.ruff]
-select = ["E", "F", "I", "N", "W"]
-ignore = []
-line-length = 88
-target-version = "py310"
-
-[tool.mypy]
-python_version = "3.10"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["agenticflow"]

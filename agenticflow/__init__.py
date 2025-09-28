@@ -1,54 +1,40 @@
 """
-AgenticFlow - Hierarchical Multi-Agent Framework
+AgenticFlow - A fully async, OOP, modular framework for hierarchical multi-agent systems.
 
-Clean implementation based on LangGraph hierarchical patterns:
-
-Architecture: Flow → Supervisor → Workers
-
-- Flow: Main orchestration and configuration
-- Supervisor: Intelligent task coordination and worker selection
-- Workers: Specialized agents for specific domains
-
-Key Features:
-- 🏗️ Hierarchical agent coordination via LangGraph
-- 🎯 Intelligent supervisor-based task delegation
-- ⚡ Direct worker specialization (no complex registries)
-- 📊 Stateful team coordination
-- 🔧 Simple, clean architecture
-
-Quick Start:
-    from agenticflow import Flow
-    from agenticflow.agents import FileSystemWorker, ReportingWorker
-
-    # Create specialized workers
-    fs_worker = FileSystemWorker()
-    reporter = ReportingWorker()
-
-    # Create hierarchical flow
-    flow = Flow()
-    flow.add_worker("filesystem", fs_worker)
-    flow.add_worker("reporter", reporter)
-
-    # Execute with supervisor coordination
-    result = await flow.execute("Analyze CSV files and create report")
+Inspired by LangGraph's hierarchical agent teams pattern, this framework provides:
+- Flow: Main container for orchestrating agent workflows
+- Orchestrator: Top-level coordination of teams and individual agents
+- Supervisor: Team-level coordination of multiple agents
+- Agent: Individual workers with specific tools and capabilities
+- Observability: Monitoring and tracking of agent operations
+- Workspace: Shared filesystem access for all agents
 """
 
-from .core import Flow
-from .core.observable_flow import ObservableFlow
-from .teams import SupervisorAgent, TeamState, TeamGraph
-from .observability import EventTracker, FlowObserver, MetricsCollector
+from .core.flow import Flow
+from .core.orchestrator import Orchestrator
+from .core.agent import Agent, SimpleAgent, ReActAgent, Tool
+from .core.supervisor import Supervisor
+from .core.state import FlowState, AgentMessage, AgentStatus, MessageType
+from .core.command import Command
+from .workspace.workspace import Workspace
+from .observability.observer import Observer
+from .observability.metrics import Metrics
 
-__version__ = "0.3.0"
-__author__ = "AgenticFlow Team"
-__description__ = "Hierarchical Multi-Agent Framework with Observability"
-
+__version__ = "0.1.0"
 __all__ = [
     "Flow",
-    "ObservableFlow",
-    "SupervisorAgent",
-    "TeamState",
-    "TeamGraph",
-    "EventTracker",
-    "FlowObserver",
-    "MetricsCollector"
+    "Orchestrator",
+    "Agent",
+    "SimpleAgent",
+    "ReActAgent",
+    "Tool",
+    "Supervisor",
+    "FlowState",
+    "AgentMessage",
+    "AgentStatus",
+    "MessageType",
+    "Command",
+    "Workspace",
+    "Observer",
+    "Metrics",
 ]

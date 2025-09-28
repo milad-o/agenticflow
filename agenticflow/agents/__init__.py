@@ -1,24 +1,12 @@
-"""
-Specialized Worker Agents
+"""Specialized agent implementations based on the hierarchical agent teams notebook."""
 
-Clean, focused worker agents for hierarchical teams.
-Each worker specializes in specific domains with direct tool assignment.
-"""
-
-from .filesystem_worker import FileSystemWorker
-from .reporting_worker import ReportingWorker
-from .analysis_worker import AnalysisWorker
-from .validation_agents import (
-    StructureValidationAgent,
-    ContentValidationAgent,
-    ConsistencyValidationAgent
-)
+from .research_agents import SearchAgent, WebScraperAgent
+from .document_agents import DocumentWriterAgent, NoteWriterAgent, ChartGeneratorAgent
 
 __all__ = [
-    "FileSystemWorker",
-    "ReportingWorker",
-    "AnalysisWorker",
-    "StructureValidationAgent",
-    "ContentValidationAgent",
-    "ConsistencyValidationAgent"
+    "SearchAgent",
+    "WebScraperAgent",
+    "DocumentWriterAgent",
+    "NoteWriterAgent",
+    "ChartGeneratorAgent",
 ]

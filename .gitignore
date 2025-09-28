@@ -33,6 +33,13 @@ htmlcov/
 logs/
 *.log
 
+# Generated files and results
+demos/results/
+workspaces/
+*.json
+!data/test/*.json
+!data/sample/*.json
+
 # Node / misc
 node_modules/
 

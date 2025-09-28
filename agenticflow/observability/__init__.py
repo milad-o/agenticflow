@@ -1,22 +1,6 @@
-"""
-AgenticFlow Observability Module
-===============================
+"""Observability module for monitoring and tracking agent operations."""
 
-Comprehensive observability infrastructure for monitoring multi-agent workflows.
-Provides event tracking, agent reflection, tool call monitoring, and real-time visualization.
-"""
+from .observer import Observer
+from .metrics import Metrics
 
-from .event_tracker import EventTracker, FlowEvent, AgentEvent, ToolEvent
-from .observer import FlowObserver
-from .metrics import MetricsCollector
-from .visualization import create_flow_visualizer
-
-__all__ = [
-    "EventTracker",
-    "FlowEvent",
-    "AgentEvent",
-    "ToolEvent",
-    "FlowObserver",
-    "MetricsCollector",
-    "create_flow_visualizer"
-]
+__all__ = ["Observer", "Metrics"]

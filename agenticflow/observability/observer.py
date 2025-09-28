@@ -1,258 +1,497 @@
-"""
-Flow Observer System
-==================
+"""Observer for monitoring flow execution and agent operations."""
 
-Advanced observability and monitoring for AgenticFlow multi-agent systems.
-"""
+import asyncio
+import logging
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+from uuid import UUID
 
-import time
-from typing import Dict, List, Any, Optional, Callable
-from datetime import datetime
-import threading
-from .event_tracker import EventTracker, EventType
+from .metrics import Metrics
 
 
-class FlowObserver:
-    """Advanced observer for monitoring flow execution."""
+class Observer:
+    """Observer for monitoring and tracking flow execution.
 
-    def __init__(self, event_tracker: EventTracker = None):
-        self.event_tracker = event_tracker or EventTracker()
-        self.active_agents: Dict[str, Dict[str, Any]] = {}
-        self.flow_state = {
-            "status": "idle",
-            "current_task": None,
-            "workers": [],
-            "start_time": None,
-            "messages": [],
-            "results": {}
+    The observer provides comprehensive monitoring capabilities including:
+    - Flow lifecycle tracking
+    - Agent execution monitoring
+    - Message routing observation
+    - Performance metrics collection
+    - Error tracking and debugging
+    """
+
+    def __init__(
+        self,
+        enabled: bool = True,
+        log_level: str = "INFO",
+        metrics_enabled: bool = True,
+        max_events: int = 10000,
+    ):
+        """Initialize the observer.
+
+        Args:
+            enabled: Whether observability is enabled
+            log_level: Logging level for events
+            metrics_enabled: Whether to collect metrics
+            max_events: Maximum number of events to keep in metrics
+        """
+        self.enabled = enabled
+        self.metrics_enabled = metrics_enabled
+
+        # Setup logging
+        self.logger = logging.getLogger("agenticflow.observer")
+        self.logger.setLevel(getattr(logging, log_level.upper()))
+
+        # Setup metrics collection
+        self.metrics = Metrics(max_events=max_events) if metrics_enabled else None
+
+        # Event tracking
+        self.flow_events: List[Dict[str, Any]] = []
+        self.agent_events: List[Dict[str, Any]] = []
+        self.message_events: List[Dict[str, Any]] = []
+        self.error_events: List[Dict[str, Any]] = []
+
+    async def flow_started(self, flow_id: str, flow_name: str) -> None:
+        """Record flow start event.
+
+        Args:
+            flow_id: Flow identifier
+            flow_name: Flow name
+        """
+        if not self.enabled:
+            return
+
+        event = {
+            "timestamp": datetime.now(timezone.utc),
+            "event_type": "flow_started",
+            "flow_id": flow_id,
+            "flow_name": flow_name,
         }
-        self._callbacks: List[Callable] = []
-        self._lock = threading.Lock()
 
-    def register_callback(self, callback: Callable) -> None:
-        """Register callback for real-time updates."""
-        self._callbacks.append(callback)
+        self.flow_events.append(event)
+        self.logger.info(f"Flow started: {flow_name} ({flow_id})")
 
-    def _notify_callbacks(self, event_data: Dict[str, Any]) -> None:
-        """Notify all registered callbacks."""
-        for callback in self._callbacks:
-            try:
-                callback(event_data)
-            except Exception as e:
-                print(f"Callback error: {e}")
+        if self.metrics:
+            self.metrics.record_event(
+                event_type="flow_started",
+                entity_id=flow_id,
+                entity_type="flow",
+                value=flow_name,
+            )
+            self.metrics.start_timer(f"flow_{flow_id}")
 
-    def observe_flow_start(self, task: str, workers: List[str]) -> None:
-        """Observe flow start."""
-        with self._lock:
-            self.flow_state.update({
-                "status": "running",
-                "current_task": task,
-                "workers": workers,
-                "start_time": datetime.now(),
-                "messages": [],
-                "results": {}
-            })
+    async def flow_completed(self, flow_id: str) -> None:
+        """Record flow completion event.
 
-        event_id = self.event_tracker.track_flow_start(task, workers)
+        Args:
+            flow_id: Flow identifier
+        """
+        if not self.enabled:
+            return
 
-        self._notify_callbacks({
-            "type": "flow_start",
-            "event_id": event_id,
-            "task": task,
-            "workers": workers,
-            "timestamp": datetime.now().isoformat()
-        })
+        event = {
+            "timestamp": datetime.now(timezone.utc),
+            "event_type": "flow_completed",
+            "flow_id": flow_id,
+        }
 
-    def observe_flow_end(self, success: bool, result: Dict[str, Any], duration_ms: float) -> None:
-        """Observe flow end."""
-        with self._lock:
-            self.flow_state.update({
-                "status": "completed" if success else "failed",
-                "results": result
-            })
+        self.flow_events.append(event)
+        self.logger.info(f"Flow completed: {flow_id}")
 
-        event_id = self.event_tracker.track_flow_end(success, result, duration_ms)
+        if self.metrics:
+            execution_time = self.metrics.end_timer(f"flow_{flow_id}")
+            self.metrics.record_event(
+                event_type="flow_completed",
+                entity_id=flow_id,
+                entity_type="flow",
+                value=execution_time,
+            )
 
-        self._notify_callbacks({
-            "type": "flow_end",
-            "event_id": event_id,
+    async def flow_stopped(self, flow_id: str) -> None:
+        """Record flow stop event.
+
+        Args:
+            flow_id: Flow identifier
+        """
+        if not self.enabled:
+            return
+
+        event = {
+            "timestamp": datetime.now(timezone.utc),
+            "event_type": "flow_stopped",
+            "flow_id": flow_id,
+        }
+
+        self.flow_events.append(event)
+        self.logger.info(f"Flow stopped: {flow_id}")
+
+        if self.metrics:
+            self.metrics.record_event(
+                event_type="flow_stopped",
+                entity_id=flow_id,
+                entity_type="flow",
+            )
+
+    async def flow_error(self, flow_id: str, error_message: str) -> None:
+        """Record flow error event.
+
+        Args:
+            flow_id: Flow identifier
+            error_message: Error description
+        """
+        if not self.enabled:
+            return
+
+        event = {
+            "timestamp": datetime.now(timezone.utc),
+            "event_type": "flow_error",
+            "flow_id": flow_id,
+            "error_message": error_message,
+        }
+
+        self.flow_events.append(event)
+        self.error_events.append(event)
+        self.logger.error(f"Flow error in {flow_id}: {error_message}")
+
+        if self.metrics:
+            self.metrics.record_event(
+                event_type="flow_error",
+                entity_id=flow_id,
+                entity_type="flow",
+                value=error_message,
+            )
+            self.metrics.increment_counter("flow_errors")
+
+    async def agent_execution_started(self, agent_id: str, message_id: UUID) -> None:
+        """Record agent execution start.
+
+        Args:
+            agent_id: Agent identifier
+            message_id: Message being processed
+        """
+        if not self.enabled:
+            return
+
+        event = {
+            "timestamp": datetime.now(timezone.utc),
+            "event_type": "agent_execution_started",
+            "agent_id": agent_id,
+            "message_id": str(message_id),
+        }
+
+        self.agent_events.append(event)
+        self.logger.debug(f"Agent {agent_id} started processing message {message_id}")
+
+        if self.metrics:
+            self.metrics.record_event(
+                event_type="agent_execution_started",
+                entity_id=agent_id,
+                entity_type="agent",
+                value=str(message_id),
+            )
+            self.metrics.start_timer(f"agent_{agent_id}_{message_id}")
+
+    async def agent_execution_completed(
+        self,
+        agent_id: str,
+        message_id: UUID,
+        success: bool = True,
+        result: Optional[str] = None,
+    ) -> None:
+        """Record agent execution completion.
+
+        Args:
+            agent_id: Agent identifier
+            message_id: Message that was processed
+            success: Whether execution was successful
+            result: Execution result or error message
+        """
+        if not self.enabled:
+            return
+
+        event = {
+            "timestamp": datetime.now(timezone.utc),
+            "event_type": "agent_execution_completed",
+            "agent_id": agent_id,
+            "message_id": str(message_id),
             "success": success,
             "result": result,
-            "duration_ms": duration_ms,
-            "timestamp": datetime.now().isoformat()
-        })
-
-    def observe_agent_activity(self, agent_name: str, activity_type: str,
-                             details: Dict[str, Any] = None) -> None:
-        """Observe agent activity."""
-        with self._lock:
-            if agent_name not in self.active_agents:
-                self.active_agents[agent_name] = {
-                    "status": "active",
-                    "activities": [],
-                    "start_time": datetime.now(),
-                    "tool_calls": 0,
-                    "errors": 0
-                }
-
-            self.active_agents[agent_name]["activities"].append({
-                "type": activity_type,
-                "timestamp": datetime.now(),
-                "details": details or {}
-            })
-
-        # Track specific events
-        if activity_type == "tool_call":
-            tool_name = details.get("tool_name", "unknown") if details else "unknown"
-            input_data = details.get("input_data", {}) if details else {}
-            self.event_tracker.track_tool_call(tool_name, agent_name, input_data)
-
-            with self._lock:
-                self.active_agents[agent_name]["tool_calls"] += 1
-
-        elif activity_type == "error":
-            error_msg = details.get("error", "Unknown error") if details else "Unknown error"
-            self.event_tracker.track_error(agent_name, "agent_error", error_msg, details)
-
-            with self._lock:
-                self.active_agents[agent_name]["errors"] += 1
-
-        elif activity_type == "decision":
-            decision = details.get("decision", "") if details else ""
-            reasoning = details.get("reasoning", "") if details else ""
-            options = details.get("options", []) if details else []
-            self.event_tracker.track_decision(agent_name, decision, reasoning, options)
-
-        self._notify_callbacks({
-            "type": "agent_activity",
-            "agent_name": agent_name,
-            "activity_type": activity_type,
-            "details": details,
-            "timestamp": datetime.now().isoformat()
-        })
-
-    def observe_agent_reflection(self, agent_name: str, reflection: Dict[str, Any]) -> None:
-        """Observe agent reflection/self-assessment."""
-        with self._lock:
-            if agent_name not in self.active_agents:
-                self.active_agents[agent_name] = {
-                    "status": "active",
-                    "activities": [],
-                    "start_time": datetime.now(),
-                    "tool_calls": 0,
-                    "errors": 0
-                }
-
-            self.active_agents[agent_name]["reflection"] = reflection
-
-        # Track reflection event
-        from .event_tracker import AgentEvent, EventType
-        reflection_event = AgentEvent(
-            event_type=EventType.AGENT_REFLECTION,
-            source=agent_name,
-            agent_name=agent_name,
-            reflection=reflection
-        )
-        self.event_tracker.track_event(reflection_event)
-
-        self._notify_callbacks({
-            "type": "agent_reflection",
-            "agent_name": agent_name,
-            "reflection": reflection,
-            "timestamp": datetime.now().isoformat()
-        })
-
-    def observe_state_update(self, state_data: Dict[str, Any]) -> None:
-        """Observe flow state updates."""
-        with self._lock:
-            if "messages" in state_data:
-                self.flow_state["messages"] = state_data["messages"]
-
-        from .event_tracker import FlowEvent, EventType
-        state_event = FlowEvent(
-            event_type=EventType.STATE_UPDATE,
-            source="flow",
-            data=state_data
-        )
-        self.event_tracker.track_event(state_event)
-
-        self._notify_callbacks({
-            "type": "state_update",
-            "state_data": state_data,
-            "timestamp": datetime.now().isoformat()
-        })
-
-    def get_real_time_status(self) -> Dict[str, Any]:
-        """Get current real-time status."""
-        with self._lock:
-            return {
-                "flow_state": self.flow_state.copy(),
-                "active_agents": self.active_agents.copy(),
-                "metrics": self.event_tracker.get_metrics(),
-                "recent_events": [
-                    event.to_dict() for event in
-                    self.event_tracker.get_events(limit=10)
-                ]
-            }
-
-    def get_agent_insights(self, agent_name: str) -> Dict[str, Any]:
-        """Get detailed insights for specific agent."""
-        timeline = self.event_tracker.get_agent_timeline(agent_name)
-
-        with self._lock:
-            agent_data = self.active_agents.get(agent_name, {})
-
-        return {
-            "agent_name": agent_name,
-            "status": agent_data.get("status", "unknown"),
-            "activities": agent_data.get("activities", []),
-            "timeline": timeline,
-            "reflection": agent_data.get("reflection", {}),
-            "stats": {
-                "tool_calls": agent_data.get("tool_calls", 0),
-                "errors": agent_data.get("errors", 0),
-                "start_time": agent_data.get("start_time"),
-                "active_duration": (
-                    datetime.now() - agent_data["start_time"]
-                ).total_seconds() if agent_data.get("start_time") else 0
-            }
         }
 
-    def get_flow_analytics(self) -> Dict[str, Any]:
-        """Get comprehensive flow analytics."""
-        metrics = self.event_tracker.get_metrics()
-        tool_usage = self.event_tracker.get_tool_usage()
+        self.agent_events.append(event)
 
-        with self._lock:
-            flow_state = self.flow_state.copy()
-            active_agents = self.active_agents.copy()
+        if success:
+            self.logger.debug(f"Agent {agent_id} completed processing message {message_id}")
+        else:
+            self.logger.warning(f"Agent {agent_id} failed processing message {message_id}: {result}")
+            self.error_events.append(event)
 
-        # Calculate performance metrics
-        total_agents = len(active_agents)
-        total_tool_calls = sum(agent.get("tool_calls", 0) for agent in active_agents.values())
-        total_errors = sum(agent.get("errors", 0) for agent in active_agents.values())
+        if self.metrics:
+            execution_time = self.metrics.end_timer(f"agent_{agent_id}_{message_id}")
+            self.metrics.record_event(
+                event_type="agent_execution_completed",
+                entity_id=agent_id,
+                entity_type="agent",
+                value=execution_time,
+                metadata={"success": success, "result": result},
+            )
 
-        success_rate = (
-            (total_tool_calls - total_errors) / total_tool_calls * 100
-            if total_tool_calls > 0 else 100
+            if execution_time is not None:
+                self.metrics.record_agent_execution(agent_id, execution_time, success)
+
+            counter_name = "agent_executions_success" if success else "agent_executions_error"
+            self.metrics.increment_counter(counter_name)
+
+    async def agent_status_changed(self, agent_id: str, status: str) -> None:
+        """Record agent status change.
+
+        Args:
+            agent_id: Agent identifier
+            status: New status
+        """
+        if not self.enabled:
+            return
+
+        event = {
+            "timestamp": datetime.now(timezone.utc),
+            "event_type": "agent_status_changed",
+            "agent_id": agent_id,
+            "status": status,
+        }
+
+        self.agent_events.append(event)
+        self.logger.debug(f"Agent {agent_id} status changed to: {status}")
+
+        if self.metrics:
+            self.metrics.record_event(
+                event_type="agent_status_changed",
+                entity_id=agent_id,
+                entity_type="agent",
+                value=status,
+            )
+
+    async def message_processed(self, message_id: UUID, processor_id: str, target: str) -> None:
+        """Record message processing event.
+
+        Args:
+            message_id: Message identifier
+            processor_id: ID of the processor (orchestrator, supervisor, agent)
+            target: Target that processed the message
+        """
+        if not self.enabled:
+            return
+
+        event = {
+            "timestamp": datetime.now(timezone.utc),
+            "event_type": "message_processed",
+            "message_id": str(message_id),
+            "processor_id": processor_id,
+            "target": target,
+        }
+
+        self.message_events.append(event)
+        self.logger.debug(f"Message {message_id} processed by {processor_id} -> {target}")
+
+        if self.metrics:
+            self.metrics.record_event(
+                event_type="message_processed",
+                entity_id=str(message_id),
+                entity_type="message",
+                value=processor_id,
+                metadata={"target": target},
+            )
+            self.metrics.increment_counter("messages_processed")
+
+    async def routing_error(self, message_id: UUID, error_message: str) -> None:
+        """Record message routing error.
+
+        Args:
+            message_id: Message identifier
+            error_message: Error description
+        """
+        if not self.enabled:
+            return
+
+        event = {
+            "timestamp": datetime.now(timezone.utc),
+            "event_type": "routing_error",
+            "message_id": str(message_id),
+            "error_message": error_message,
+        }
+
+        self.message_events.append(event)
+        self.error_events.append(event)
+        self.logger.error(f"Routing error for message {message_id}: {error_message}")
+
+        if self.metrics:
+            self.metrics.record_event(
+                event_type="routing_error",
+                entity_id=str(message_id),
+                entity_type="message",
+                value=error_message,
+            )
+            self.metrics.increment_counter("routing_errors")
+
+    async def tool_execution(
+        self,
+        agent_id: str,
+        tool_name: str,
+        success: bool = True,
+        execution_time: Optional[float] = None,
+    ) -> None:
+        """Record tool execution event.
+
+        Args:
+            agent_id: Agent identifier
+            tool_name: Name of the tool executed
+            success: Whether execution was successful
+            execution_time: Time taken for execution
+        """
+        if not self.enabled:
+            return
+
+        event = {
+            "timestamp": datetime.now(timezone.utc),
+            "event_type": "tool_execution",
+            "agent_id": agent_id,
+            "tool_name": tool_name,
+            "success": success,
+            "execution_time": execution_time,
+        }
+
+        self.agent_events.append(event)
+
+        if success:
+            self.logger.debug(f"Agent {agent_id} successfully executed tool {tool_name}")
+        else:
+            self.logger.warning(f"Agent {agent_id} failed to execute tool {tool_name}")
+            self.error_events.append(event)
+
+        if self.metrics:
+            self.metrics.record_event(
+                event_type="tool_execution",
+                entity_id=agent_id,
+                entity_type="agent",
+                value=tool_name,
+                metadata={"success": success, "execution_time": execution_time},
+            )
+
+            if execution_time is not None:
+                self.metrics.record_histogram_value(f"tool_execution_time_{tool_name}", execution_time)
+
+            counter_name = f"tool_{tool_name}_success" if success else f"tool_{tool_name}_error"
+            self.metrics.increment_counter(counter_name)
+
+    async def get_metrics(self) -> Dict[str, Any]:
+        """Get comprehensive metrics data.
+
+        Returns:
+            Dictionary with all metrics and events
+        """
+        if not self.enabled:
+            return {"observability_disabled": True}
+
+        base_metrics = {
+            "enabled": self.enabled,
+            "total_flow_events": len(self.flow_events),
+            "total_agent_events": len(self.agent_events),
+            "total_message_events": len(self.message_events),
+            "total_error_events": len(self.error_events),
+        }
+
+        if self.metrics:
+            base_metrics.update(self.metrics.get_flow_metrics())
+
+        return base_metrics
+
+    async def get_agent_metrics(self, agent_id: str) -> Dict[str, Any]:
+        """Get metrics for a specific agent.
+
+        Args:
+            agent_id: Agent identifier
+
+        Returns:
+            Dictionary with agent-specific metrics
+        """
+        if not self.enabled or not self.metrics:
+            return {"observability_disabled": True}
+
+        return self.metrics.get_agent_metrics(agent_id)
+
+    def get_recent_events(
+        self,
+        event_type: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """Get recent events.
+
+        Args:
+            event_type: Filter by event type
+            limit: Maximum number of events to return
+
+        Returns:
+            List of recent events
+        """
+        if not self.enabled:
+            return []
+
+        all_events = (
+            self.flow_events + self.agent_events + self.message_events + self.error_events
         )
 
+        if event_type:
+            all_events = [event for event in all_events if event.get("event_type") == event_type]
+
+        # Sort by timestamp (most recent first)
+        all_events.sort(key=lambda x: x["timestamp"], reverse=True)
+
+        return all_events[:limit]
+
+    def get_error_summary(self) -> Dict[str, Any]:
+        """Get summary of errors.
+
+        Returns:
+            Dictionary with error statistics
+        """
+        if not self.enabled:
+            return {"observability_disabled": True}
+
+        error_types = {}
+        for event in self.error_events:
+            event_type = event.get("event_type", "unknown")
+            error_types[event_type] = error_types.get(event_type, 0) + 1
+
         return {
-            "flow_state": flow_state,
-            "performance": {
-                "total_agents": total_agents,
-                "total_tool_calls": total_tool_calls,
-                "total_errors": total_errors,
-                "success_rate": success_rate,
-                "events_tracked": metrics.get("total_events", 0)
-            },
-            "tool_usage": tool_usage,
-            "agent_summary": {
-                agent_name: {
-                    "status": agent_data.get("status"),
-                    "tool_calls": agent_data.get("tool_calls", 0),
-                    "errors": agent_data.get("errors", 0)
-                }
-                for agent_name, agent_data in active_agents.items()
-            }
+            "total_errors": len(self.error_events),
+            "error_types": error_types,
+            "recent_errors": self.error_events[-10:] if self.error_events else [],
         }
+
+    async def export_data(self) -> Dict[str, Any]:
+        """Export all observability data.
+
+        Returns:
+            Complete observability data export
+        """
+        data = {
+            "enabled": self.enabled,
+            "flow_events": self.flow_events,
+            "agent_events": self.agent_events,
+            "message_events": self.message_events,
+            "error_events": self.error_events,
+        }
+
+        if self.metrics:
+            data["metrics"] = self.metrics.export_metrics()
+
+        return data
+
+    def clear_data(self) -> None:
+        """Clear all observability data."""
+        self.flow_events.clear()
+        self.agent_events.clear()
+        self.message_events.clear()
+        self.error_events.clear()
+
+        if self.metrics:
+            self.metrics.clear_metrics()

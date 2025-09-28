@@ -1,0 +1,33 @@
+# Test configuration for AgenticFlow
+test_settings:
+  timeout: 30
+  max_retries: 3
+  log_level: "INFO"
+  
+# Test data paths
+data_paths:
+  sample_data: "data/sample"
+  test_data: "data/test"
+  output_data: "data/output"
+
+# Test scenarios
+test_scenarios:
+  - name: "simple_flow"
+    description: "Basic flow with single agent"
+    complexity: "low"
+    
+  - name: "multi_team_flow"
+    description: "Flow with multiple teams"
+    complexity: "medium"
+    
+  - name: "complex_workflow"
+    description: "Complex workflow with LLM routing"
+    complexity: "high"
+
+# Mock settings for testing without API keys
+mock_settings:
+  use_mock_llm: true
+  mock_responses:
+    - "This is a mock response for testing"
+    - "Another mock response"
+    - "Yet another mock response"
