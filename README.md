@@ -23,11 +23,15 @@ AgenticFlow makes it easy to create sophisticated multi-agent workflows with int
 
 ### 1. Install AgenticFlow
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/agenticflow.git
-cd agenticflow
+# Install directly from GitHub with uv (recommended)
+uv add git+https://github.com/milad-o/agenticflow.git
 
-# Install with uv (recommended)
+# Or with pip
+pip install git+https://github.com/milad-o/agenticflow.git
+
+# For development (clone and install)
+git clone https://github.com/milad-o/agenticflow.git
+cd agenticflow
 uv pip install -e .
 
 # Set up API keys
@@ -105,16 +109,50 @@ agenticflow/
 
 ## 🛠️ Installation
 
+### From GitHub (Recommended)
+
+```bash
+# Install with uv (recommended)
+uv add git+https://github.com/milad-o/agenticflow.git
+
+# Or with pip
+pip install git+https://github.com/milad-o/agenticflow.git
+
+# For development (editable install)
+uv add -e git+https://github.com/milad-o/agenticflow.git
+# or
+pip install -e git+https://github.com/milad-o/agenticflow.git#egg=agenticflow
+```
+
+### From PyPI (Coming Soon)
+
 ```bash
 # Install with uv (recommended)
 uv add agenticflow
 
 # Or with pip
 pip install agenticflow
-
-# For full functionality
-uv add langchain-openai langchain-core langgraph tavily-python
 ```
+
+### Dependencies
+
+```bash
+# For full functionality (installed automatically)
+uv add langchain-openai langchain-core langgraph tavily-python python-dotenv
+
+# Or with pip
+pip install langchain-openai langchain-core langgraph tavily-python python-dotenv
+```
+
+### Installation Methods
+
+| Method | Use Case | Command |
+|--------|----------|---------|
+| **GitHub + uv** | Production use | `uv add git+https://github.com/milad-o/agenticflow.git` |
+| **GitHub + pip** | Production use | `pip install git+https://github.com/milad-o/agenticflow.git` |
+| **Clone + uv** | Development | `git clone && uv pip install -e .` |
+| **Clone + pip** | Development | `git clone && pip install -e .` |
+| **PyPI** | Coming soon | `uv add agenticflow` |
 
 ## 📚 Documentation
 
