@@ -3,7 +3,7 @@
 import os
 from typing import Dict, List, Optional, Any
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langgraph.graph import StateGraph, MessagesState, START, END
 from langgraph.types import Command
 from langgraph.prebuilt import create_react_agent
@@ -31,9 +31,11 @@ class Agent:
         """Create agent node."""
         def agent_node(state: State) -> Command:
             if self._react_agent:
+                # Use the ReAct agent with state directly
                 result = self._react_agent.invoke(state)
-                content = result["messages"][-1].content
+                content = result["messages"][-1].content if "messages" in result and result["messages"] else str(result)
             else:
+                # Fallback to direct LLM call
                 response = self.llm.invoke([
                     SystemMessage(content=f"You are {self.name}. {self.description}"),
                     *state["messages"]
@@ -42,7 +44,7 @@ class Agent:
             
             return Command(
                 update={
-                    "messages": [HumanMessage(content=content, name=self.name)]
+                    "messages": [AIMessage(content=content, name=self.name)]
                 },
                 goto=END
             )

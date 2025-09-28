@@ -21,6 +21,14 @@ Usage:
 
 from .core import Flow, Agent, Team
 from .tools import create_file, search_web
+from .agents.filesystem_agent import FilesystemAgent
+from .agents.python_agent import PythonAgent
+from .agents.excel_agent import ExcelAgent
+from .agents.data_agent import DataAgent
 
 __version__ = "1.0.0"
-__all__ = ["Flow", "Agent", "Team", "create_file", "search_web"]
+__all__ = [
+    "Flow", "Agent", "Team", 
+    "create_file", "search_web",
+    "FilesystemAgent", "PythonAgent", "ExcelAgent", "DataAgent"
+]

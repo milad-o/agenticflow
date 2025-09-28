@@ -1,12 +1,13 @@
-"""Specialized agent implementations based on the hierarchical agent teams notebook."""
+"""Agents for AgenticFlow."""
 
-from .research_agents import SearchAgent, WebScraperAgent
-from .document_agents import DocumentWriterAgent, NoteWriterAgent, ChartGeneratorAgent
+from .filesystem_agent import FilesystemAgent
+from .python_agent import PythonAgent
+from .excel_agent import ExcelAgent
+from .data_agent import DataAgent
 
 __all__ = [
-    "SearchAgent",
-    "WebScraperAgent",
-    "DocumentWriterAgent",
-    "NoteWriterAgent",
-    "ChartGeneratorAgent",
+    "FilesystemAgent",
+    "PythonAgent", 
+    "ExcelAgent",
+    "DataAgent",
 ]
