@@ -9,7 +9,7 @@ from langchain_core.tools import BaseTool
 from .events import (
     Event, AgentStarted, AgentCompleted, AgentError, AgentThinking, AgentWorking
 )
-from .tool_wrapper import ObservableTool
+from .tool_instrumentation import instrument_tool
 
 
 class ObservableReActAgent:
@@ -22,9 +22,9 @@ class ObservableReActAgent:
         self.agent_name = agent_name
         self.event_logger = event_logger
         
-        # Wrap tools with observability
+        # Instrument tools with observability
         self._observable_tools = [
-            ObservableTool(tool, flow_id, agent_name, event_logger) 
+            instrument_tool(tool, flow_id, agent_name, event_logger)
             for tool in tools
         ]
         

@@ -7,6 +7,7 @@ A powerful framework for building hierarchical multi-agent workflows with specia
 - **Hierarchical Teams**: Organize agents into teams with supervisors for complex workflows
 - **Direct Agents**: Use agents directly without team structure for simple tasks
 - **Specialized Agents**: Pre-built agents for specific domains (Filesystem, Python, Excel, Data, SSIS)
+- **Advanced Observability**: Real-time monitoring with rich console output and event logging
 - **Vector Storage**: Multiple backends (ChromaDB, SQLite) for semantic and text search
 - **LangGraph Integration**: Built on LangGraph for robust state management
 - **Tool Integration**: Easy integration with LangChain tools and custom tools
@@ -53,6 +54,9 @@ async def main():
     flow.add_agent(researcher)
     flow.add_agent(writer)
     
+    # Enable observability with rich console output
+    flow.enable_observability(rich_console=True)
+    
     result = await flow.run("Research AI trends and create a report")
     print(result)
 
@@ -79,6 +83,9 @@ async def main():
     writer = Agent(name="writer", tools=[create_file])
     writing_team.add_agent(writer)
     flow.add_team(writing_team)
+    
+    # Enable rich console observability
+    flow.enable_observability(rich_console=True)
     
     result = await flow.run("Research AI trends and create a report")
     print(result)
@@ -108,6 +115,53 @@ async def main():
 
 asyncio.run(main())
 ```
+
+## 🔍 Observability & Monitoring
+
+AgenticFlow provides comprehensive observability features to monitor and debug your agent workflows:
+
+### Rich Console Output
+Beautiful, real-time terminal output with tree structures, colors, and detailed progress tracking:
+
+```python
+# Enable rich console output
+flow.enable_observability(rich_console=True)
+
+# Or use standard console output
+flow.enable_observability(console_output=True)
+```
+
+### Event Logging
+Track all agent activities, tool calls, and workflow events:
+
+```python
+# Enable persistent event logging
+flow.enable_observability(
+    persistent=True,
+    file_logging=True,
+    log_file="workflow_events.log"
+)
+
+# Get flow metrics
+metrics = flow.get_metrics()
+print(f"Total duration: {metrics['total_duration_ms']}ms")
+print(f"Tools executed: {metrics['tool_executions']}")
+```
+
+### Event Types
+- **Flow Events**: Start, completion, errors
+- **Agent Events**: Start, completion, thinking, working, errors
+- **Tool Events**: Arguments, execution, results, errors
+- **Team Events**: Supervisor decisions, agent routing
+- **Custom Events**: User-defined events
+
+### Console Output Features
+- **Tree Structure**: Hierarchical view of teams and agents
+- **Role Indicators**: Clear identification of orchestrators, supervisors, agents, tools
+- **Real-time Progress**: Live updates during execution
+- **Tool Details**: Arguments, execution status, and results
+- **Color Coding**: Visual distinction between different event types
+- **Performance Metrics**: Duration, tool usage, and completion statistics
 
 ## 🛠️ Specialized Agents
 
@@ -180,9 +234,10 @@ See the `examples/` directory for comprehensive examples:
 
 - `simple_workflow.py` - Basic agent workflow
 - `team_workflow.py` - Team-based workflow
-- `test_ssis_agent.py` - SSIS analysis example
-- `test_ssis_sqlite.py` - SQLite vector storage
-- `test_ssis_chroma.py` - ChromaDB vector storage
+- `rich_console_demo.py` - Rich console output demonstration
+- `rich_teams_demo.py` - Team workflow with rich console
+- `console_comparison_demo.py` - Compare console output styles
+- `researcher_writer_teams.py` - Multi-team coordination example
 
 ## 🔧 Configuration
 
@@ -203,6 +258,9 @@ TAVILY_API_KEY=your_tavily_api_key  # For web search
 ## 🚀 Advanced Features
 
 - **Hierarchical Teams**: Complex organizational structures
+- **Advanced Observability**: Real-time monitoring and debugging
+- **Rich Console Output**: Beautiful terminal visualization
+- **Event Logging**: Comprehensive activity tracking
 - **Vector Search**: Semantic and text-based search
 - **Persistent Storage**: Save analysis results
 - **Tool Integration**: Extend with custom tools

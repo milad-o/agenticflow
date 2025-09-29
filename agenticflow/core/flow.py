@@ -9,7 +9,7 @@ from langgraph.graph import StateGraph, MessagesState, START, END
 from langgraph.types import Command
 from langgraph.prebuilt import create_react_agent
 from ..observability import (
-    EventLogger, ConsoleSubscriber, FileSubscriber, MetricsCollector,
+    EventLogger, ConsoleSubscriber, FileSubscriber, MetricsCollector, RichConsoleSubscriber,
     FlowStarted, FlowCompleted, FlowError, AgentStarted, AgentCompleted,
     AgentReasoning, AgentError, ToolExecuted, ToolArgs, ToolResult, ToolError,
     MessageRouted, MessageReceived, TeamSupervisorCalled, TeamAgentCalled,
@@ -124,13 +124,34 @@ class Team:
             response = self.llm.invoke(messages)
             content = response.content
             
+            # Emit team supervisor called event
+            if hasattr(self, '_flow_id') and hasattr(self, '_event_logger') and self._event_logger:
+                team_event = TeamSupervisorCalled(
+                    flow_id=self._flow_id,
+                    team_name=self.name,
+                    team_agents=agent_names
+                )
+                self._event_logger.get_event_bus().emit_event_sync(team_event)
+            
             if "FINISH" in content.upper():
                 return Command(goto=END, update={})
             
-            # Route to appropriate agent
+            # Route to appropriate agent (use full node name with team prefix)
             for agent_name in agent_names:
                 if agent_name.lower() in content.lower():
-                    return Command(goto=agent_name, update={})
+                    # Emit team agent called event
+                    if hasattr(self, '_flow_id') and hasattr(self, '_event_logger') and self._event_logger:
+                        agent_event = TeamAgentCalled(
+                            flow_id=self._flow_id,
+                            team_name=self.name,
+                            agent_name=agent_name,
+                            supervisor_decision=content
+                        )
+                        self._event_logger.get_event_bus().emit_event_sync(agent_event)
+                    
+                    # Use the full node name: team_name_agent_name
+                    full_node_name = f"{self.name}_{agent_name}"
+                    return Command(goto=full_node_name, update={})
             
             return Command(goto=END, update={})
         
@@ -158,9 +179,13 @@ class Flow:
         """Add a team to the flow."""
         self.teams[team.name] = team
         
-        # Set observability for team agents if enabled
+        # Set observability for team and team agents if enabled
         if self._observability_enabled and self._event_logger:
             flow_id = self._flow_id or "temp-flow-id"
+            # Set team observability context
+            team._flow_id = flow_id
+            team._event_logger = self._event_logger
+            # Set observability for team agents
             for agent in team.agents.values():
                 if hasattr(agent, 'set_observability'):
                     agent.set_observability(flow_id, self._event_logger)
@@ -177,14 +202,18 @@ class Flow:
     
     def enable_observability(self, persistent: bool = False, backend: str = "sqlite3", 
                            console_output: bool = True, file_logging: bool = False,
-                           log_file: str = "examples/artifacts/flow_events.log") -> None:
+                           log_file: str = "examples/artifacts/flow_events.log",
+                           rich_console: bool = False) -> None:
         """Enable observability for this flow."""
         self._observability_enabled = True
         self._event_logger = EventLogger(persistent=persistent, backend=backend)
         
         # Add subscribers
         if console_output:
-            console_sub = ConsoleSubscriber(show_timestamps=True, show_details=True)
+            if rich_console:
+                console_sub = RichConsoleSubscriber(show_timestamps=True, show_details=True)
+            else:
+                console_sub = ConsoleSubscriber(show_timestamps=True, show_details=True)
             self._event_logger.get_event_bus().add_subscriber(console_sub)
         
         if file_logging:

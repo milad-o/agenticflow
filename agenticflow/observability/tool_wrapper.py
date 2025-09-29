@@ -21,6 +21,38 @@ class ObservableTool(BaseTool):
                 serializable_kwargs[key] = str(type(value).__name__)
         return serializable_kwargs
     
+    def _extract_meaningful_args(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract meaningful arguments from tool call, filtering out LangGraph internals."""
+        # Keys to exclude (LangGraph internal metadata)
+        exclude_keys = {
+            'callbacks', 'tags', 'metadata', 'run_name', 'run_id', 'parent_run_id',
+            'run_type', 'run_tags', 'run_metadata', 'run_extra', 'run_parents',
+            'run_children', 'run_sibling', 'run_order', 'run_sequence', 'config'
+        }
+        
+        meaningful_args = {}
+        for key, value in kwargs.items():
+            if key not in exclude_keys and value is not None:
+                # Skip empty strings, empty lists, and None values
+                if value != "" and value != [] and value != {}:
+                    # Try to extract meaningful content from complex objects
+                    if isinstance(value, dict) and 'input' in value:
+                        # This might be the actual tool input
+                        meaningful_args[key] = value['input']
+                    else:
+                        meaningful_args[key] = value
+        
+        # If no meaningful args found, try to extract from tool_call_id context
+        if not meaningful_args and 'tool_call_id' in kwargs:
+            # This is a fallback - we can't easily extract the actual arguments
+            # from LangGraph's internal processing, but we can show what we have
+            meaningful_args = {
+                'tool_call_id': kwargs.get('tool_call_id', 'Unknown'),
+                'note': 'Arguments not available in LangGraph internal call'
+            }
+        
+        return meaningful_args
+    
     def __init__(self, tool: BaseTool, flow_id: str, agent_name: str, event_logger):
         # Initialize BaseTool with original tool properties first
         super().__init__(
@@ -59,13 +91,16 @@ class ObservableTool(BaseTool):
         """Execute tool with observability events."""
         event_logger = self.__dict__.get('_event_logger')
         
+        # Try to extract meaningful arguments from the tool's input schema
+        meaningful_args = self._extract_meaningful_args(kwargs)
+        
         # Emit tool args event
         if event_logger:
             tool_args_event = ToolArgs(
                 flow_id=self.__dict__['_flow_id'],
                 agent_name=self.__dict__['_agent_name'],
                 tool_name=self.name,
-                args=self._filter_serializable_args(kwargs)
+                args=meaningful_args
             )
             event_logger._events.append(tool_args_event)
             event_logger.get_event_bus().emit_event_sync(tool_args_event)
@@ -117,13 +152,18 @@ class ObservableTool(BaseTool):
     
     async def _execute_with_observability_async(self, tool_func, kwargs: Dict[str, Any]) -> Any:
         """Execute tool asynchronously with observability events."""
+        event_logger = self.__dict__.get('_event_logger')
+        
+        # Try to extract meaningful arguments from the tool's input schema
+        meaningful_args = self._extract_meaningful_args(kwargs)
+        
         # Emit tool args event
         if event_logger:
             tool_args_event = ToolArgs(
                 flow_id=self.__dict__['_flow_id'],
                 agent_name=self.__dict__['_agent_name'],
                 tool_name=self.name,
-                args=self._filter_serializable_args(kwargs)
+                args=meaningful_args
             )
             event_logger._events.append(tool_args_event)
             event_logger.get_event_bus().emit_event_sync(tool_args_event)

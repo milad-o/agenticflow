@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agenticflow"
-version = "1.0.0"
-description = "A simple, clean multi-agent framework with hierarchical team support"
+version = "1.1.0"
+description = "A powerful multi-agent framework with hierarchical teams, specialized agents, and advanced observability"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
 authors = [
     {name = "AgenticFlow Team", email = "team@agenticflow.com"},
 ]
-keywords = ["ai", "agents", "multi-agent", "workflow", "langgraph"]
+keywords = ["ai", "agents", "multi-agent", "workflow", "langgraph", "observability", "monitoring", "teams"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -41,6 +41,7 @@ dependencies = [
     "python-magic>=0.4.27",
     "pyyaml>=6.0.2",
     "requests>=2.32.5",
+    "rich>=13.0.0",
     "sentence-transformers>=5.1.1",
     "toml>=0.10.2",
     "xlrd>=2.0.2",

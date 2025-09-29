@@ -13,6 +13,7 @@ Welcome to AgenticFlow! This directory contains comprehensive documentation for 
 - [Flow Configuration](flow_configuration.md) - How to configure flows
 - [Agent Development](agent_development.md) - Creating custom agents
 - [Tool Integration](tool_integration.md) - Adding and using tools
+- [Observability & Monitoring](OBSERVABILITY.md) - Real-time monitoring and debugging
 - [LangGraph Integration](langgraph_integration.md) - Advanced LangGraph features
 
 ### API Reference
@@ -47,7 +48,8 @@ If you're new to AgenticFlow, we recommend reading the documentation in this ord
 3. [Flow Configuration](flow_configuration.md)
 4. [Agent Development](agent_development.md)
 5. [Tool Integration](tool_integration.md)
-6. [LangGraph Integration](langgraph_integration.md)
+6. [Observability & Monitoring](OBSERVABILITY.md)
+7. [LangGraph Integration](langgraph_integration.md)
 
 ## 🤝 Contributing
 
