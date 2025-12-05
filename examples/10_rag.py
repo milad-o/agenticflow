@@ -4,6 +4,11 @@ Example 10: RAG (Retrieval-Augmented Generation)
 RAG is a thin capability that provides search tools to agents.
 Document loading/indexing happens OUTSIDE the capability.
 
+Key design principle:
+- LLM receives MINIMAL context: just [id] + content
+- Citations are mapped DETERMINISTICALLY in post-processing
+- No metadata bloat in LLM context (saves tokens)
+
 Two API styles:
 - Single retriever: `RAG(retriever)`
 - Multiple retrievers: `RAG(retrievers=[...], fusion="rrf")`
@@ -22,7 +27,7 @@ import asyncio
 from config import get_embeddings, get_model
 
 from agenticflow import Agent
-from agenticflow.capabilities import RAG, RAGConfig, CitationStyle
+from agenticflow.capabilities import RAG, CitationStyle
 from agenticflow.document import RecursiveCharacterSplitter
 from agenticflow.retriever import DenseRetriever, BM25Retriever
 from agenticflow.vectorstore import VectorStore, Document
@@ -185,6 +190,40 @@ async def main() -> None:
         results = await rag_test.search(query, k=1)
         if results:
             print(f"  {fusion:8} → score={results[0].score:.3f}")
+
+    # =========================================================================
+    # Deterministic Citations (LLM sees minimal, we format full)
+    # =========================================================================
+    print("\n" + "=" * 60)
+    print("Deterministic Citations")
+    print("=" * 60)
+
+    # The tool sends MINIMAL context to LLM:
+    #   [1] Mary had a thin face and thin body...
+    #   [2] The moor was a vast stretch of wild land...
+    #
+    # The LLM just references [1], [2] in its response.
+    # We then deterministically map those IDs to full citations.
+
+    # Simulate what the agent flow looks like:
+    print("\nWhat LLM receives from search tool:")
+    passages = await rag.search("Describe Mary", k=2)
+    for p in passages:
+        preview = p.text[:60] + "..." if len(p.text) > 60 else p.text
+        print(f"  [{p.citation_id}] {preview}")
+
+    print("\nWhat we generate deterministically (post-processing):")
+    # Simulate LLM response
+    llm_response = "Mary had a thin face [1] and arrived at Misselthwaite Manor [1]."
+
+    # Format with bibliography
+    formatted = rag.format_response(llm_response, include_bibliography=True)
+    print(formatted)
+
+    print("\nBenefit: LLM context not wasted on metadata!")
+    print("  - Source, page, score NOT sent to LLM")
+    print("  - Only [id] + content (minimal tokens)")
+    print("  - Full citations added deterministically after")
 
     print("\n✓ Done")
 

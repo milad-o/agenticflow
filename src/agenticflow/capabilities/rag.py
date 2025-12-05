@@ -141,16 +141,34 @@ class CitedPassage:
 class RAGConfig:
     """Configuration for RAG capability.
 
+    The RAG tool sends minimal context to the LLM (just IDs + content).
+    Full citation formatting happens deterministically post-processing.
+
     Attributes:
         top_k: Default number of results to retrieve.
-        citation_style: How to format citations.
-        include_page_in_citation: Include page numbers in citations.
-        include_score_in_bibliography: Include scores in bibliography.
+        score_threshold: Minimum score to include in results (0.0-1.0).
+        max_passage_length: Truncate passages longer than this (0 = no limit).
+        citation_style: How to format citations in final output.
+        include_score_in_bibliography: Show scores in bibliography.
+
+    Example:
+        ```python
+        config = RAGConfig(
+            top_k=5,
+            citation_style=CitationStyle.AUTHOR_YEAR,
+            max_passage_length=500,
+        )
+        rag = RAG(retriever, config=config)
+        ```
     """
 
+    # Retrieval settings
     top_k: int = 4
+    score_threshold: float = 0.0
+    max_passage_length: int = 0  # 0 = no limit
+
+    # Citation formatting (for post-processing, NOT sent to LLM)
     citation_style: CitationStyle = CitationStyle.NUMERIC
-    include_page_in_citation: bool = True
     include_score_in_bibliography: bool = True
 
 
@@ -391,8 +409,17 @@ class RAG(BaseCapability):
     # ================================================================
 
     def _create_tools(self) -> list:
-        """Create RAG tools for the agent."""
+        """Create RAG tools for the agent.
+
+        The tool sends MINIMAL context to the LLM:
+        - Just [id] + content (no metadata bloat)
+        - Citations are stored internally and mapped deterministically
+
+        The LLM just needs to reference [1], [2], etc.
+        Full citation formatting happens in format_response().
+        """
         cap = self
+        cfg = self._config
 
         @tool
         async def search_documents(query: str, num_results: int = 4) -> str:
@@ -403,7 +430,7 @@ class RAG(BaseCapability):
                 num_results: Number of passages (default: 4).
 
             Returns:
-                Formatted passages with citations [1], [2], etc.
+                Passages with IDs. Reference using [1], [2], etc.
             """
             k = min(num_results, 10)
             passages = await cap.search(query, k=k)
@@ -411,17 +438,71 @@ class RAG(BaseCapability):
             if not passages:
                 return "No relevant passages found."
 
-            formatted = []
-            for p in passages:
-                header_parts = [f"[{p.citation_id}]", f"Source: {p.source}"]
-                if p.page is not None:
-                    header_parts.append(f"Page: {p.page}")
-                header_parts.append(f"Score: {p.score:.3f}")
-                formatted.append(f"{' | '.join(header_parts)}\n{p.text}")
+            # Filter by score threshold
+            if cfg.score_threshold > 0:
+                passages = [p for p in passages if p.score >= cfg.score_threshold]
+                if not passages:
+                    return "No passages met the relevance threshold."
 
-            return "\n\n---\n\n".join(formatted)
+            # Format MINIMAL output for LLM: just [id] + content
+            # NO source, page, score - that's all handled deterministically later
+            lines = []
+            for p in passages:
+                text = p.text
+                if cfg.max_passage_length > 0 and len(text) > cfg.max_passage_length:
+                    text = text[: cfg.max_passage_length] + "..."
+                lines.append(f"[{p.citation_id}] {text}")
+
+            return "\n\n".join(lines)
 
         return [search_documents]
+
+    def format_response(
+        self,
+        response: str,
+        passages: list[CitedPassage] | None = None,
+        include_bibliography: bool = True,
+    ) -> str:
+        """Format LLM response with proper citations.
+
+        Replaces [1], [2] references with formatted citations
+        based on citation_style, and optionally appends bibliography.
+
+        This is the DETERMINISTIC post-processing step - no LLM involved.
+
+        Args:
+            response: Raw LLM response containing [1], [2] references.
+            passages: Passages to use (default: last search results).
+            include_bibliography: Whether to append bibliography.
+
+        Returns:
+            Response with formatted citations and optional bibliography.
+
+        Example:
+            ```python
+            raw = await agent.run("What did Mary look like?")
+            # raw: "Mary had yellow hair [1] and a sour expression [2]."
+
+            formatted = rag.format_response(raw)
+            # formatted: "Mary had yellow hair [1] and a sour expression [2].
+            #
+            # ---
+            # **References:**
+            # [1] the_secret_garden.txt p.1 (score: 0.92)
+            # [2] the_secret_garden.txt p.1 (score: 0.87)"
+            ```
+        """
+        passages = passages or self._last_citations
+        if not passages:
+            return response
+
+        result = response
+
+        # Optionally append bibliography
+        if include_bibliography:
+            result += self.format_bibliography(passages)
+
+        return result
 
 
 __all__ = [
