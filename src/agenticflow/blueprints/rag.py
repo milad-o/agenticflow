@@ -2,7 +2,8 @@
 RAG (Retrieval-Augmented Generation) Blueprint.
 
 A pre-configured agent workflow for retrieval-augmented generation.
-Uses an internal Agent with search tools and deterministic citation formatting.
+Uses an internal Agent with search tools and composable post-processors
+for citation formatting.
 
 Example:
     ```python
@@ -20,7 +21,20 @@ Example:
 
     # Query - returns formatted answer with citations
     result = await rag.run("What are the key findings?")
-    print(result.output)
+    print(result)
+    ```
+
+Usage in Flow:
+    ```python
+    flow = Flow(
+        agents=[rag, fact_checker, writer],
+        topology="pipeline",
+    )
+    ```
+
+Usage as Tool:
+    ```python
+    supervisor = Agent(tools=[rag.as_tool()])
     ```
 
 Citation Design:
@@ -32,51 +46,25 @@ Citation Design:
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from agenticflow.blueprints.base import BaseBlueprint, BlueprintResult
 from agenticflow.agent import Agent
+from agenticflow.blueprints.base import BaseBlueprint, BlueprintResult
+from agenticflow.blueprints.context import BlueprintContext
+from agenticflow.blueprints.processors import (
+    CITE_MARKER_PATTERN,
+    BibliographyAppender,
+    CitationFormatter,
+    CitationStyle,
+    CitedPassage,
+)
 from agenticflow.tools.base import tool
 
 if TYPE_CHECKING:
     from agenticflow.models import BaseChatModel
     from agenticflow.retriever.base import FusionStrategy, Retriever
     from agenticflow.retriever.rerankers.base import Reranker
-
-
-# Citation marker: «1», «2» - guillemets are collision-resistant
-CITE_MARKER_PATTERN = re.compile(r"«(\d+)»")
-
-
-class CitationStyle(Enum):
-    """Citation formatting styles for final output."""
-
-    NUMERIC = "numeric"  # [1], [2], [3]
-    AUTHOR_YEAR = "author_year"  # (Source, 2023)
-    FOOTNOTE = "footnote"  # ¹, ², ³
-    INLINE = "inline"  # [source.pdf]
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class CitedPassage:
-    """A retrieved passage with citation metadata.
-
-    Attributes:
-        citation_id: Citation reference number (1, 2, 3...).
-        source: Source document name.
-        page: Page number if available.
-        score: Relevance score (0.0-1.0).
-        text: The passage text.
-    """
-
-    citation_id: int
-    source: str
-    page: int | None = None
-    score: float = 0.0
-    text: str = ""
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -121,18 +109,35 @@ class RAG(BaseBlueprint):
     """Retrieval-Augmented Generation blueprint.
 
     Creates an internal Agent with search tools and handles
-    citation formatting deterministically.
+    citation formatting via composable post-processors.
 
-    Example:
+    Flow-compatible: can be used as a resident in Flow topologies.
+    Tool-compatible: can be converted to tool via `as_tool()`.
+
+    Example - Standalone:
         ```python
         from agenticflow.blueprints import RAG
 
         rag = RAG(retriever=retriever, model=model)
         result = await rag.run("What are the key findings?")
-        print(result.output)  # Formatted with citations + bibliography
+        print(result)  # Formatted with citations + bibliography
         ```
 
-    Example with multiple retrievers:
+    Example - In Flow:
+        ```python
+        flow = Flow(
+            agents=[rag, fact_checker],
+            topology="pipeline",
+        )
+        result = await flow.run("Research X")
+        ```
+
+    Example - As Tool:
+        ```python
+        supervisor = Agent(tools=[rag.as_tool()])
+        ```
+
+    Example - Multiple retrievers:
         ```python
         rag = RAG(
             retrievers=[dense_retriever, sparse_retriever],
@@ -163,6 +168,7 @@ Instructions:
         fusion: FusionStrategy | str = "rrf",
         reranker: Reranker | None = None,
         config: RAGConfig | None = None,
+        postprocessors: list | None = None,
     ) -> None:
         """Create RAG blueprint.
 
@@ -179,6 +185,7 @@ Instructions:
             fusion: Fusion strategy: "rrf", "linear", "max", "voting".
             reranker: Optional reranker for two-stage retrieval.
             config: RAG configuration options.
+            postprocessors: Custom post-processors (override default citation formatting).
 
         Example (simple - just model):
             ```python
@@ -195,9 +202,23 @@ Instructions:
             rag = RAG(retriever=retriever, agent=agent)
             ```
 
+        Example (custom processors):
+            ```python
+            rag = RAG(
+                retriever=retriever,
+                model=model,
+                postprocessors=[
+                    CitationFormatter(style=CitationStyle.FOOTNOTE),
+                    # No bibliography
+                ],
+            )
+            ```
+
         Raises:
             ValueError: If neither model nor agent provided, or both provided.
         """
+        super().__init__()
+
         # Validate model/agent
         if model is None and agent is None:
             raise ValueError("Must provide either 'model' or 'agent'")
@@ -227,23 +248,31 @@ Instructions:
         self._reranker = reranker
         self._config = config or RAGConfig()
 
-        # Storage for last search results (for citation mapping)
-        self._last_passages: list[CitedPassage] = []
-
         # Create or use agent
         if agent is not None:
-            # Advanced mode: use provided agent, add search tool
             self._agent = agent
-            # Add search tool to agent's direct tools
             self._agent._direct_tools.append(self._create_search_tool())
         else:
-            # Simple mode: create minimal agent
             self._agent = Agent(
                 name="rag-agent",
                 model=model,
                 tools=[self._create_search_tool()],
                 instructions=self.SYSTEM_PROMPT,
             )
+
+        # Setup post-processors
+        if postprocessors is not None:
+            self._postprocessors = list(postprocessors)
+        else:
+            # Default: citation formatting + bibliography
+            cfg = self._config
+            self._postprocessors = [
+                CitationFormatter(style=cfg.citation_style),
+            ]
+            if cfg.include_bibliography:
+                self._postprocessors.append(
+                    BibliographyAppender(include_scores=cfg.include_score_in_bibliography)
+                )
 
     @property
     def name(self) -> str:
@@ -318,20 +347,32 @@ Instructions:
             )
             passages.append(passage)
 
-        self._last_passages = passages
         return passages
 
-    async def run(
+    async def run(self, input: str, **kwargs: Any) -> str:
+        """Execute RAG and return formatted output (Flow-compatible).
+
+        Args:
+            input: The question to answer.
+            **kwargs: Additional arguments passed to agent.
+
+        Returns:
+            Formatted string with citations and bibliography.
+        """
+        result = await self.run_detailed(input, **kwargs)
+        return result.output
+
+    async def run_detailed(
         self,
-        query: str,
+        input: str,
         *,
         include_bibliography: bool | None = None,
         **kwargs: Any,
     ) -> RAGResult:
-        """Execute RAG: retrieve, generate, format citations.
+        """Execute RAG with full metadata.
 
         Args:
-            query: The question to answer.
+            input: The question to answer.
             include_bibliography: Override config setting.
             **kwargs: Additional arguments passed to agent.
 
@@ -339,105 +380,51 @@ Instructions:
             RAGResult with formatted output and metadata.
         """
         # Run agent (uses search tool internally)
-        raw_output = await self._agent.run(query, **kwargs)
+        raw_output = await self._agent.run(input, **kwargs)
 
-        # Post-process: replace «1» → [1] and add bibliography
-        formatted = self._format_output(
-            raw_output,
-            include_bibliography=include_bibliography,
-        )
+        # Get passages from last search (via search tool closure)
+        passages = await self._search(input, k=self._config.top_k)
+
+        # Build context with passages
+        ctx = BlueprintContext(
+            input=input,
+            output=raw_output,
+        ).with_metadata(passages=passages)
+
+        # Handle bibliography override
+        if include_bibliography is False:
+            # Remove BibliographyAppender if present
+            processors = [
+                p for p in self._postprocessors
+                if not isinstance(p, BibliographyAppender)
+            ]
+        elif include_bibliography is True and not any(
+            isinstance(p, BibliographyAppender) for p in self._postprocessors
+        ):
+            # Add BibliographyAppender if not present
+            processors = list(self._postprocessors) + [
+                BibliographyAppender(
+                    include_scores=self._config.include_score_in_bibliography
+                )
+            ]
+        else:
+            processors = self._postprocessors
+
+        # Run post-processors
+        for processor in processors:
+            ctx = await processor(ctx)
 
         return RAGResult(
-            output=formatted,
+            output=ctx.output,
             raw_output=raw_output,
-            passages=tuple(self._last_passages),
-            query=query,
+            passages=tuple(passages),
+            query=input,
+            context=ctx,
             metadata={
-                "num_passages": len(self._last_passages),
+                "num_passages": len(passages),
                 "citation_style": self._config.citation_style.value,
             },
         )
-
-    def _format_output(
-        self,
-        raw: str,
-        include_bibliography: bool | None = None,
-    ) -> str:
-        """Format raw output with citations and bibliography.
-
-        Replaces «1», «2» markers with formatted citations.
-        Appends bibliography if configured.
-        """
-        cfg = self._config
-        include_bib = (
-            include_bibliography
-            if include_bibliography is not None
-            else cfg.include_bibliography
-        )
-
-        # Build citation lookup
-        citation_map: dict[int, CitedPassage] = {
-            p.citation_id: p for p in self._last_passages
-        }
-
-        # Replace markers with formatted citations
-        def replace_marker(match: re.Match) -> str:
-            cid = int(match.group(1))
-            passage = citation_map.get(cid)
-            if not passage:
-                return match.group(0)  # Keep original if not found
-            return self._format_citation(passage)
-
-        formatted = CITE_MARKER_PATTERN.sub(replace_marker, raw)
-
-        # Append bibliography
-        if include_bib and self._last_passages:
-            formatted += self._format_bibliography()
-
-        return formatted
-
-    def _format_citation(self, passage: CitedPassage) -> str:
-        """Format a single citation reference."""
-        style = self._config.citation_style
-
-        if style == CitationStyle.NUMERIC:
-            if passage.page is not None:
-                return f"[{passage.citation_id}, p.{passage.page}]"
-            return f"[{passage.citation_id}]"
-        elif style == CitationStyle.FOOTNOTE:
-            superscripts = "⁰¹²³⁴⁵⁶⁷⁸⁹"
-            num_str = "".join(superscripts[int(d)] for d in str(passage.citation_id))
-            return num_str
-        elif style == CitationStyle.INLINE:
-            return f"[{passage.source}]"
-        elif style == CitationStyle.AUTHOR_YEAR:
-            return f"({passage.source})"
-
-        return f"[{passage.citation_id}]"
-
-    def _format_bibliography(self) -> str:
-        """Format bibliography section."""
-        if not self._last_passages:
-            return ""
-
-        cfg = self._config
-
-        # Deduplicate by source
-        seen: dict[str, CitedPassage] = {}
-        for p in self._last_passages:
-            if p.source not in seen:
-                seen[p.source] = p
-
-        lines = ["\n\n---\n**References:**"]
-        for p in seen.values():
-            parts = [f"[{p.citation_id}]", p.source]
-            if p.page is not None:
-                parts.append(f"p.{p.page}")
-            if cfg.include_score_in_bibliography:
-                parts.append(f"(score: {p.score:.2f})")
-            lines.append(" ".join(parts))
-
-        return "\n".join(lines)
 
     # ================================================================
     # Direct access methods (for advanced usage)

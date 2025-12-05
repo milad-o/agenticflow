@@ -1,83 +1,101 @@
-# Blueprints - Pre-configured Agent Workflows
+# AgenticFlow Workboard
 
-## Concept
+## Current Focus: Blueprint Architecture ✅ COMPLETE
 
-**Blueprints** are pre-configured agent/flow wrappers with pre/post processing.
-They leverage the existing Agent and Flow system, not bypass it.
+### Design Decisions (Dec 5, 2025)
+
+**Flow is the ultimate container.** Blueprints are Flow residents alongside Agents.
 
 ```
-Agent       → Core LLM executor
-Capability  → Tools for agents  
-Flow        → Multi-agent orchestration
-Blueprint   → Pre-configured workflow using Agents/Flows
+Flow (container)
+├── Agent (resident)
+├── Blueprint (resident) ← same interface
+└── Agent/Blueprint...
 ```
 
-## API Design
+### Blueprint Contract
 
 ```python
-from agenticflow.blueprints import RAG, Summarize, Extract
+class Blueprint:
+    name: str                           # Flow uses for routing
+    
+    async def run(self, input: str) -> str:  # Flow-compatible
+        ...
+    
+    async def run_detailed(self, input: str) -> BlueprintResult:  # Full metadata
+        ...
+    
+    def as_tool(self) -> Tool:          # Use in other agents
+        ...
+```
 
-# RAG Blueprint - uses Agent internally
-rag = RAG(retriever=retriever, model=model)
-answer = await rag.run("What are the findings?")
+### Usage Patterns
 
-# Customizable
-rag = RAG(
-    retriever=retriever,
-    model=model,
-    citation_style=CitationStyle.NUMERIC,
-    include_bibliography=True,
+```python
+# 1. Standalone
+rag = RAG(retriever, model=model)
+result = await rag.run("query")  # Returns str
+
+# 2. As Flow resident (list, no | operator)
+flow = Flow(
+    agents=[rag, fact_checker, writer],
+    topology="pipeline",
 )
+
+# 3. As tool in another agent
+supervisor = Agent(tools=[rag.as_tool()])
+
+# 4. Full metadata
+result = await rag.run_detailed("query")  # Returns RAGResult
+print(result.passages, result.metadata)
 ```
 
-## Tasks
+### What Blueprint Handles
 
-- [x] Create `blueprints/` module structure
-- [x] Implement `BaseBlueprint` abstract class
-- [x] Implement `RAG` blueprint
-  - [x] Uses Agent internally with search tool
-  - [x] Unique citation markers «1», «2» (collision-resistant)
-  - [x] Deterministic post-processing for citations
-  - [x] Bibliography formatting
-- [x] Support `model` (simple) or `agent` (advanced) modes
-- [x] Update exports in `__init__.py`
-- [x] Update example `10_rag.py`
-- [x] Run tests (1221 passed)
-- [x] Remove old RAG capability
-- [x] Test example with real LLM
-- [x] Create docs/blueprints.md
+| Concern | Blueprint Responsibility |
+|---------|-------------------------|
+| Pre-processing | Query rewriting, context injection |
+| Tool setup | Auto-creates specialized tools |
+| Post-processing | Citation formatting, validation |
+| Encapsulation | Hides complexity, simple `run()` |
 
-## Blueprint Architecture
+---
 
-```python
-class BaseBlueprint(ABC):
-    """Base class for all blueprints."""
-    
-    @abstractmethod
-    async def run(self, input: str, **kwargs) -> BlueprintResult: ...
-    
-    @property
-    @abstractmethod
-    def name(self) -> str: ...
+## Implementation Status ✅
 
-class RAG(BaseBlueprint):
-    """Retrieval-Augmented Generation blueprint."""
-    
-    def __init__(self, retriever, model, ...):
-        # Creates internal agent with search tool
-        self._agent = Agent(...)
-    
-    async def run(self, query: str) -> RAGResult:
-        # 1. Agent searches and generates with «1» markers
-        raw = await self._agent.run(query)
-        # 2. Deterministic post-processing
-        return self._format_citations(raw)
+- [x] `FlowResident` Protocol (shared by Agent, Blueprint)
+- [x] `BlueprintContext` (immutable, thread-safe)
+- [x] `BaseBlueprint` with `as_tool()`, Flow-compatible `run()`
+- [x] Composable processors (`CitationFormatter`, `BibliographyAppender`)
+- [x] `RAG` blueprint refactored
+- [x] Tests passing (1254 passed)
+
+---
+
+## Architecture
+
+```
+blueprints/
+├── __init__.py       # Exports
+├── base.py           # BaseBlueprint, BlueprintResult
+├── context.py        # BlueprintContext (immutable)
+├── protocol.py       # FlowResident protocol
+├── processors.py     # CitationFormatter, BibliographyAppender
+└── rag.py            # RAG blueprint
 ```
 
-## Future Blueprints
+---
 
-- `Summarize` - Long document summarization
-- `Extract` - Structured data extraction  
-- `Classify` - Text classification
-- `MapReduce` - Chunk → process → aggregate
-- `Review` - Multi-agent review pipeline (uses Flow)
+## Rejected Ideas
+
+- ❌ `|` operator for chaining (LangChain-style) - just use Flow with list
+- ❌ Blueprint as separate concept from Flow - it's a resident
+
+---
+
+## Next Steps
+
+- [ ] Test RAG in actual Flow topology
+- [ ] Implement MapReduce blueprint
+- [ ] Implement MultiHopRAG blueprint
+- [ ] Update docs/blueprints.md

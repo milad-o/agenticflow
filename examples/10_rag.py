@@ -95,7 +95,9 @@ async def main() -> None:
     rag = RAG(retriever=dense, model=model)
 
     # Query - blueprint handles everything!
-    result = await rag.run("What was Mary Lennox like when she arrived?")
+    # run() returns str (Flow-compatible)
+    # run_detailed() returns RAGResult with metadata
+    result = await rag.run_detailed("What was Mary Lennox like when she arrived?")
     print(f"\n{result.output}")
     print(f"\n[Metadata: {result.metadata}]")
 
@@ -115,8 +117,9 @@ async def main() -> None:
         model=model,
     )
 
-    result = await rag2.run("Describe the moor and Martha")
-    print(f"\n{result.output}")
+    # run() returns just the formatted string (Flow-compatible)
+    output = await rag2.run("Describe the moor and Martha")
+    print(f"\n{output}")
 
     # =========================================================================
     # Pattern 3: Custom Configuration
@@ -134,8 +137,8 @@ async def main() -> None:
 
     rag3 = RAG(retriever=dense, model=model, config=config)
 
-    result = await rag3.run("What did Martha say about the moor air?")
-    print(f"\n{result.output}")
+    output = await rag3.run("What did Martha say about the moor air?")
+    print(f"\n{output}")
 
     # =========================================================================
     # Direct Search (Low-level access)
@@ -156,7 +159,7 @@ async def main() -> None:
     print("RAGResult Details")
     print("=" * 60)
 
-    result = await rag.run("Who is Mary?")
+    result = await rag.run_detailed("Who is Mary?")
 
     print(f"Query: {result.query}")
     print(f"Passages used: {len(result.passages)}")
