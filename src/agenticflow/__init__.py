@@ -337,11 +337,16 @@ TopologyDiagram = GraphView  # Use GraphView.from_topology() instead
 from agenticflow.capabilities import (
     BaseCapability,
     KnowledgeGraph,
-    # RAG capability
+)
+
+# Blueprints (pre-configured agent workflows)
+from agenticflow.blueprints import (
+    BaseBlueprint,
+    BlueprintResult,
     RAG,
     RAGConfig,
+    RAGResult,
     CitationStyle,
-    CitedPassage,
 )
 
 # Native message types (from core.messages)
@@ -557,11 +562,13 @@ __all__ = [
     # Capabilities
     "BaseCapability",
     "KnowledgeGraph",
-    # RAG capability
+    # Blueprints (pre-configured agent workflows)
+    "BaseBlueprint",
+    "BlueprintResult",
     "RAG",
     "RAGConfig",
+    "RAGResult",
     "CitationStyle",
-    "CitedPassage",
     # LLM & Embedding Models (native)
     "ChatModel",
     "EmbeddingModel",
