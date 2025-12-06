@@ -220,7 +220,45 @@ class VectorStore:
     def count(self) -> int:
         """Return the number of documents in the store."""
         return self.backend.count()  # type: ignore
-    
+
+    def as_retriever(
+        self,
+        *,
+        name: str | None = None,
+        score_threshold: float | None = None,
+    ) -> "DenseRetriever":
+        """Convert this store to a DenseRetriever.
+
+        Convenience method to create a retriever from this store.
+
+        Args:
+            name: Optional name for the retriever.
+            score_threshold: Minimum score threshold (0.0-1.0).
+
+        Returns:
+            DenseRetriever configured with this store.
+
+        Example:
+            ```python
+            store = VectorStore(embeddings=embeddings)
+            await store.add_documents(chunks)
+
+            # Create retriever
+            retriever = store.as_retriever()
+            results = await retriever.retrieve("query", k=10)
+
+            # With score filtering
+            retriever = store.as_retriever(score_threshold=0.5)
+            ```
+        """
+        from agenticflow.retriever import DenseRetriever
+
+        return DenseRetriever(
+            vectorstore=self,
+            name=name,
+            score_threshold=score_threshold,
+        )
+
     @classmethod
     def from_texts(
         cls,

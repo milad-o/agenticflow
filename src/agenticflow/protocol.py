@@ -4,8 +4,11 @@ FlowResident Protocol - shared interface for Flow participants.
 Both Agent and Blueprint implement this protocol, allowing Flow
 to treat them uniformly in topologies.
 
+This protocol lives at the top level since it's shared across
+the framework - not specific to blueprints or agents.
+
 Example:
-    from agenticflow import Agent, Flow
+    from agenticflow import Agent, Flow, FlowResident
     from agenticflow.blueprints import RAG
 
     # Both Agent and Blueprint work as Flow residents
@@ -16,6 +19,10 @@ Example:
         ],
         topology="pipeline",
     )
+
+    # Type checking
+    def process(resident: FlowResident) -> None:
+        print(resident.name)
 """
 
 from __future__ import annotations

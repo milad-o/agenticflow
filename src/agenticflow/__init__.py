@@ -203,6 +203,9 @@ from agenticflow.interceptors import (
 # Context - invocation-scoped data
 from agenticflow.context import RunContext, EMPTY_CONTEXT
 
+# Protocol - shared interfaces
+from agenticflow.protocol import FlowResident
+
 # Graphs - Execution strategies
 from agenticflow.executors import (
     ExecutionStrategy,
@@ -469,6 +472,8 @@ __all__ = [
     # Context
     "RunContext",
     "EMPTY_CONTEXT",
+    # Protocol
+    "FlowResident",
     # Events
     "EventBus",
     "get_event_bus",

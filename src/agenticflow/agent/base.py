@@ -3972,6 +3972,60 @@ Structure your findings:
             show_config=show_config,
         )
 
+    def as_tool(
+        self,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> BaseTool:
+        """Convert this agent to a tool for use in other agents.
+
+        This enables hierarchical agent patterns where a supervisor
+        agent can delegate to specialized worker agents.
+
+        Args:
+            name: Override tool name (default: agent name).
+            description: Override tool description.
+
+        Returns:
+            Tool that executes this agent.
+
+        Example:
+            ```python
+            researcher = Agent(name="researcher", model=model, tools=[search])
+            writer = Agent(name="writer", model=model)
+
+            # Supervisor can call researcher as a tool
+            supervisor = Agent(
+                name="supervisor",
+                model=model,
+                tools=[researcher.as_tool(), writer.as_tool()],
+            )
+
+            result = await supervisor.run("Research AI trends and write a report")
+            ```
+
+        Example with custom name:
+            ```python
+            tool = agent.as_tool(
+                name="expert_researcher",
+                description="Conducts deep research on technical topics",
+            )
+            ```
+        """
+        from agenticflow.tools.base import tool as tool_decorator
+
+        agent = self
+        tool_name = name or self.name
+        tool_desc = description or f"Delegate task to the {self.name} agent."
+
+        @tool_decorator(name=tool_name, description=tool_desc)
+        async def agent_tool(task: str) -> str:
+            """Execute agent with given task."""
+            return await agent.run(task)
+
+        return agent_tool
+
     def _repr_html_(self) -> str:
         """IPython/Jupyter HTML representation."""
         return self.graph().html()

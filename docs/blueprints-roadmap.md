@@ -41,7 +41,7 @@ result = await rag.run("What are the key findings?")
 
 ---
 
-### 2. `MapReduce` ✅ Build
+### 2. `MapReduce` ✅ Done
 
 **What it does**: Process large documents in chunks, aggregate results
 
@@ -66,7 +66,7 @@ result = await map_reduce.run(huge_document)
 
 ---
 
-### 3. `MultiHopRAG` ✅ Build
+### 3. `MultiHopRAG` ✅ Done
 
 **What it does**: Complex queries requiring multiple retrieval steps
 
@@ -89,7 +89,7 @@ result = await multi_hop.run("How does X relate to Y through Z?")
 
 ---
 
-### 4. `FactCheck` ✅ Build
+### 4. `FactCheck` ✅ Done
 
 **What it does**: Verify claims against sources
 
@@ -214,6 +214,8 @@ results = await hyde_retriever.retrieve("query")
 
 ## Implementation Priority
 
-1. **`MapReduce`** - Generic pattern, high value
-2. **`MultiHopRAG`** - Extends RAG for complex queries  
-3. **`FactCheck`** - Specialized verification pattern
+1. ✅ **`MapReduce`** - Generic pattern, high value
+2. ✅ **`MultiHopRAG`** - Extends RAG for complex queries  
+3. ✅ **`FactCheck`** - Specialized verification pattern
+
+**All core blueprints implemented in v1.1.0!**

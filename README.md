@@ -245,6 +245,34 @@ executor = TreeSearchExecutor(
 result = await executor.execute("Complex multi-step task")
 ```
 
+### `agenticflow.blueprints` — Pre-configured Workflows
+
+Blueprints are pre-configured agent workflows with meaningful pre/post processing.
+
+| Blueprint | Description | Pre-processing | Post-processing |
+|-----------|-------------|----------------|-----------------|
+| `RAG` | Retrieval-Augmented Generation | Retrieve passages | Citation formatting |
+| `MapReduce` | Chunk processing | Split into chunks | Aggregate results |
+| `MultiHopRAG` | Multi-step retrieval | Query decomposition | Evidence chain assembly |
+| `FactCheck` | Claim verification | Claim parsing | Verdict synthesis |
+
+```python
+from agenticflow.blueprints import RAG, MapReduce, FactCheck
+
+# RAG with citations
+rag = RAG(retriever=retriever, model=model)
+result = await rag.run("What are the key findings?")
+
+# MapReduce for large documents
+map_reduce = MapReduce(config=config, model=model)
+summary = await map_reduce.run(huge_document)
+
+# Fact checking
+fact_check = FactCheck(retriever=retriever, model=model)
+result = await fact_check.run_detailed("The Eiffel Tower is 300m tall")
+print(f"Verdict: {result.verdict}, Confidence: {result.confidence}")
+```
+
 ### `agenticflow.topologies` — Multi-Agent Patterns
 
 Coordination patterns for multi-agent workflows.
